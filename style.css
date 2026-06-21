@@ -327,59 +327,6 @@ button {
   max-width: 690px;
 }
 
-.hero-brand-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 22px;
-  padding: 10px 14px 10px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 16px 38px rgba(6, 19, 47, 0.2);
-  backdrop-filter: blur(18px);
-}
-
-.hero-brand-chip span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 46px;
-  height: 46px;
-  overflow: hidden;
-  border-radius: 50%;
-  background: white;
-}
-
-.hero-brand-chip img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.28);
-}
-
-.hero-brand-chip div {
-  display: grid;
-  gap: 1px;
-}
-
-.hero-brand-chip strong {
-  color: white;
-  font-size: 0.94rem;
-  font-weight: 800;
-  line-height: 1.1;
-  text-transform: uppercase;
-}
-
-.hero-brand-chip em {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.82rem;
-  font-style: normal;
-  font-weight: 650;
-  line-height: 1.2;
-}
-
 .eyebrow,
 .section-kicker,
 .mini-label {
@@ -536,6 +483,51 @@ button {
 
 .section-copy p:first-child {
   margin-top: 0;
+}
+
+.doctor-profile-card {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 16px;
+  align-items: center;
+  margin-top: 26px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #ffffff, var(--mist));
+  box-shadow: var(--shadow-soft);
+}
+
+.doctor-profile-card img {
+  width: 92px;
+  height: 112px;
+  object-fit: cover;
+  object-position: center 28%;
+  border-radius: var(--radius);
+}
+
+.doctor-profile-card div {
+  display: grid;
+  gap: 3px;
+}
+
+.doctor-profile-card strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.doctor-profile-card span {
+  color: var(--blue-700);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.doctor-profile-card small {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .doctor-points {
@@ -1241,8 +1233,8 @@ button {
   }
 
   .hero {
-    min-height: 86svh;
-    padding: 88px 0 34px;
+    min-height: auto;
+    padding: 104px 0 42px;
   }
 
   .eyebrow,
