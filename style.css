@@ -327,15 +327,57 @@ button {
   max-width: 690px;
 }
 
-.hero-brand-lockup {
-  display: block;
-  width: min(350px, 100%);
-  height: auto;
-  margin-bottom: 24px;
-  padding: 10px 14px;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: 0 18px 46px rgba(6, 19, 47, 0.22);
+.hero-brand-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 16px 38px rgba(6, 19, 47, 0.2);
+  backdrop-filter: blur(18px);
+}
+
+.hero-brand-chip span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: white;
+}
+
+.hero-brand-chip img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.28);
+}
+
+.hero-brand-chip div {
+  display: grid;
+  gap: 1px;
+}
+
+.hero-brand-chip strong {
+  color: white;
+  font-size: 0.94rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.hero-brand-chip em {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .eyebrow,
@@ -414,39 +456,34 @@ button {
 
 .lead-strip-inner {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 16px;
-  min-height: 88px;
+  min-height: 98px;
 }
 
-.lead-strip .mini-label {
-  display: block;
-  margin-bottom: 2px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.lead-strip strong {
-  font-size: 1.08rem;
-}
-
-.lead-strip a {
+.lead-point {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 18px;
+  gap: 12px;
+  min-height: 58px;
+  padding: 0 16px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 999px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.06);
   color: white;
   font-weight: 800;
 }
 
-.lead-strip svg {
+.lead-point svg {
+  flex: 0 0 auto;
   width: 18px;
   height: 18px;
   color: var(--aqua);
+}
+
+.lead-point span {
+  line-height: 1.25;
 }
 
 .section {
@@ -501,6 +538,34 @@ button {
   margin-top: 0;
 }
 
+.doctor-points {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.doctor-points span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 800;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--mist);
+}
+
+.doctor-points svg {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  color: var(--blue-700);
+}
+
 .services-section,
 .testimonials-section {
   background: var(--mist);
@@ -523,6 +588,9 @@ button {
 }
 
 .feature-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   min-height: 218px;
   padding: 28px;
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
@@ -562,6 +630,21 @@ button {
   margin: 0;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.feature-card a {
+  display: inline-flex;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 20px;
+  color: var(--blue-700);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.feature-card a::after {
+  content: ">";
+  margin-left: 8px;
 }
 
 .choose-section {
@@ -1093,19 +1176,16 @@ button {
     font-size: 1.02rem;
   }
 
-  .lead-strip-inner,
   .split-layout,
   .contact-layout {
     grid-template-columns: 1fr;
   }
 
   .lead-strip-inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
-    padding: 20px 0;
-  }
-
-  .lead-strip a {
-    width: 100%;
+    min-height: auto;
+    padding: 18px 0;
   }
 
   .split-layout,
@@ -1165,12 +1245,6 @@ button {
     padding: 88px 0 34px;
   }
 
-  .hero-brand-lockup {
-    width: min(292px, 100%);
-    padding: 9px 12px;
-    margin-bottom: 18px;
-  }
-
   .eyebrow,
   .section-kicker,
   .mini-label {
@@ -1193,6 +1267,10 @@ button {
   }
 
   .hero-actions .btn:first-child {
+    grid-column: auto;
+  }
+
+  .hero-actions .btn:last-child {
     grid-column: 1 / -1;
   }
 
@@ -1220,6 +1298,16 @@ button {
     border: 0;
   }
 
+  .lead-strip-inner {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 16px 0;
+  }
+
+  .lead-point {
+    min-height: 52px;
+  }
+
   .section {
     padding: 58px 0;
   }
@@ -1239,6 +1327,10 @@ button {
   .diagnostic-grid,
   .lens-grid,
   .testimonial-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-points {
     grid-template-columns: 1fr;
   }
 
