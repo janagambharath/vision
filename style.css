@@ -31,6 +31,8 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: var(--header-height);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -639,9 +641,7 @@ button {
 
 .choose-section {
   color: white;
-  background:
-    linear-gradient(135deg, rgba(6, 19, 47, 0.96), rgba(14, 59, 130, 0.94)),
-    linear-gradient(180deg, var(--blue-950), var(--blue-800));
+  background: linear-gradient(135deg, #06132f 0%, #0e3b82 100%);
 }
 
 .choose-section .section-heading h2,
@@ -1258,18 +1258,21 @@ button {
   }
 
   .lead-strip-inner {
-    display: block;
-    padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 12px 0;
   }
 
   .lead-point {
     width: 100%;
-    min-height: 48px;
-    padding: 0 4px;
+    min-height: auto;
+    padding: 13px 0;
     border: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0;
     background: transparent;
+    contain: layout paint;
   }
 
   .lead-point:last-child {
@@ -1291,11 +1294,30 @@ button {
   }
 
   .card-grid,
-  .reason-grid,
   .diagnostic-grid,
   .lens-grid,
   .testimonial-grid {
     grid-template-columns: 1fr;
+  }
+
+  .reason-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .reason-item {
+    min-height: auto;
+    padding: 15px 0;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 0;
+    background: transparent;
+    contain: layout paint;
+  }
+
+  .reason-item:last-child {
+    border-bottom: 0;
   }
 
   .doctor-points {
