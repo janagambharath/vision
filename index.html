@@ -1,847 +1,501 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vision Vistara Optics & Lasers Eye Care | Advanced Eye Hospital</title>
-<meta name="description" content="Vision Vistara Optics & Lasers Eye Care - Premium eye hospital offering cataract surgery, LASIK, retina care, glaucoma treatment, diagnostics and optical solutions. Free consultation available.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vision Vistara Optics & Lasers Eye Care | Advanced Eye Hospital</title>
+  <meta name="description" content="Vision Vistara Optics & Lasers Eye Care offers premium eye consultation, cataract care, LASIK evaluation, retina care, glaucoma evaluation, diagnostics, and optical lens solutions. Call 7842938316.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <header class="site-header" data-header>
+    <a class="brand" href="#top" aria-label="Vision Vistara home">
+      <span class="brand-mark">
+        <img src="assets/vision-vistara-eye-logo.png" alt="">
+      </span>
+      <span class="brand-text">
+        <strong>Vision Vistara</strong>
+        <span>Optics & Lasers Eye Care</span>
+      </span>
+    </a>
 
-<!-- NAVIGATION -->
-<nav>
-  <div class="nav-logo">
-    <img src="https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=100&h=100&fit=crop&crop=center" alt="Vision Vistara Logo" onerror="this.style.display='none'">
-    <div class="nav-brand">
-      <div class="b1">VISION VISTARA</div>
-      <div class="b2">Optics &amp; Lasers Eye Care</div>
+    <nav class="desktop-nav" aria-label="Primary navigation">
+      <a href="#about">About</a>
+      <a href="#services">Services</a>
+      <a href="#treatments">Treatments</a>
+      <a href="#diagnostics">Diagnostics</a>
+      <a href="#optical">Optical</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="header-actions">
+      <a class="header-call" href="tel:+917842938316">
+        <i data-lucide="phone-call" aria-hidden="true"></i>
+        <span>Call Now</span>
+      </a>
+      <a class="btn btn-primary btn-small" href="#contact">
+        <i data-lucide="calendar-check" aria-hidden="true"></i>
+        <span>Book</span>
+      </a>
     </div>
-  </div>
-  <ul class="nav-links">
-    <li><a href="#about">About</a></li>
-    <li><a href="#cataract">Cataract</a></li>
-    <li><a href="#lasik">LASIK</a></li>
-    <li><a href="#retina">Retina</a></li>
-    <li><a href="#glaucoma">Glaucoma</a></li>
-    <li><a href="#opticals">Opticals</a></li>
-    <li><a href="#contact" class="nav-cta">Book Appointment</a></li>
-  </ul>
-  <div class="hamburger" onclick="toggleMenu()" id="hamburger">
-    <span></span><span></span><span></span>
-  </div>
-</nav>
 
-<div class="mobile-menu" id="mobileMenu">
-  <a href="#about" onclick="closeMenu()">About</a>
-  <a href="#cataract" onclick="closeMenu()">Cataract</a>
-  <a href="#lasik" onclick="closeMenu()">LASIK / Refractive</a>
-  <a href="#retina" onclick="closeMenu()">Retina</a>
-  <a href="#glaucoma" onclick="closeMenu()">Glaucoma</a>
-  <a href="#diagnostics" onclick="closeMenu()">Diagnostics</a>
-  <a href="#opticals" onclick="closeMenu()">Opticals</a>
-  <a href="#contact" onclick="closeMenu()">📞 Book Appointment</a>
-</div>
+    <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu" data-menu-toggle>
+      <i data-lucide="menu" aria-hidden="true"></i>
+    </button>
+  </header>
 
-<!-- HERO -->
-<section class="hero" id="home">
-  <div class="hero-bg-circles"></div>
-  <div class="hero-badge"><span></span> Advanced Eye Care Center</div>
-  
-  <!-- SVG Eye Logo representation using clinic colors -->
-  <svg class="hero-logo" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-label="Vision Vistara Logo">
-    <defs>
-      <radialGradient id="irisGrad" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="#4a0080"/>
-        <stop offset="40%" stop-color="#1a1aff"/>
-        <stop offset="70%" stop-color="#00a8e8"/>
-        <stop offset="100%" stop-color="#1e6fd9"/>
-      </radialGradient>
-      <linearGradient id="ringGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#1a4fa0"/>
-        <stop offset="100%" stop-color="#1dbcd4"/>
-      </linearGradient>
-      <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#c8922a"/>
-        <stop offset="100%" stop-color="#e5b84e"/>
-      </linearGradient>
-    </defs>
-    <circle cx="100" cy="100" r="95" fill="white" opacity="0.05"/>
-    <!-- Outer ring segments -->
-    <path d="M100 8 A92 92 0 0 1 168 32" stroke="#1a4fa0" stroke-width="10" fill="none" stroke-linecap="round"/>
-    <path d="M168 32 A92 92 0 0 1 190 100" stroke="#1dbcd4" stroke-width="10" fill="none" stroke-linecap="round"/>
-    <path d="M190 100 A92 92 0 0 1 168 168" stroke="#0fa99a" stroke-width="10" fill="none" stroke-linecap="round"/>
-    <!-- Gold arc left -->
-    <path d="M12 70 A92 92 0 0 0 12 130" stroke="url(#goldGrad)" stroke-width="10" fill="none" stroke-linecap="round"/>
-    <!-- Silver arc left -->
-    <path d="M22 48 A92 92 0 0 0 22 152" stroke="#8a9bb5" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.7"/>
-    <!-- Iris -->
-    <circle cx="100" cy="100" r="68" fill="url(#irisGrad)"/>
-    <!-- Iris lines -->
-    <g opacity="0.3">
-      <line x1="100" y1="32" x2="100" y2="168" stroke="white" stroke-width="0.8"/>
-      <line x1="32" y1="100" x2="168" y2="100" stroke="white" stroke-width="0.8"/>
-      <line x1="52" y1="52" x2="148" y2="148" stroke="white" stroke-width="0.8"/>
-      <line x1="148" y1="52" x2="52" y2="148" stroke="white" stroke-width="0.8"/>
-      <line x1="38" y1="75" x2="162" y2="125" stroke="white" stroke-width="0.5"/>
-      <line x1="38" y1="125" x2="162" y2="75" stroke="white" stroke-width="0.5"/>
-      <line x1="75" y1="38" x2="125" y2="162" stroke="white" stroke-width="0.5"/>
-      <line x1="125" y1="38" x2="75" y2="162" stroke="white" stroke-width="0.5"/>
-    </g>
-    <!-- White ring -->
-    <circle cx="100" cy="100" r="68" fill="none" stroke="white" stroke-width="4"/>
-    <!-- Pupil -->
-    <circle cx="100" cy="100" r="30" fill="#030a1e"/>
-    <!-- Light reflection -->
-    <circle cx="112" cy="88" r="9" fill="white" opacity="0.85"/>
-    <!-- Laser beam -->
-    <line x1="100" y1="100" x2="170" y2="100" stroke="url(#goldGrad)" stroke-width="2" stroke-linecap="round"/>
-    <!-- Star -->
-    <polygon points="174,97 176,100 174,103 177,101 180,103 178,100 180,97 177,99" fill="#e5b84e"/>
-  </svg>
+  <nav class="mobile-menu" id="mobileMenu" aria-label="Mobile navigation" data-mobile-menu>
+    <a href="#about">About</a>
+    <a href="#services">Services</a>
+    <a href="#treatments">Treatments</a>
+    <a href="#diagnostics">Diagnostics</a>
+    <a href="#optical">Optical</a>
+    <a href="#contact">Contact</a>
+    <a class="mobile-menu-cta" href="https://wa.me/917842938316?text=Hello%2C%20I%20would%20like%20to%20book%20an%20eye%20care%20appointment%20at%20Vision%20Vistara." target="_blank" rel="noopener">WhatsApp Us</a>
+  </nav>
 
-  <h1 class="hero-title">
-    Clear Vision.<br>
-    <span class="accent">Advanced Eye Care.</span><br>
-    <span class="gold">Trusted Treatment.</span>
-  </h1>
-  <p class="hero-sub">Premium ophthalmology services — cataract surgery, LASIK, retina care, glaucoma treatment, diagnostics, and optical solutions — all under one roof.</p>
-
-  <div class="hero-btns">
-    <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">📅 Book Appointment</button>
-    <a href="tel:7842938316"><button class="btn-gold">📞 Call Now: 7842938316</button></a>
-    <button class="btn-outline" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">✨ Free Consultation</button>
-    <button class="btn-outline" onclick="document.getElementById('lasik').scrollIntoView({behavior:'smooth'})">🔬 LASIK Evaluation</button>
-  </div>
-
-  <div class="hero-strip">
-    <div class="hero-strip-item"><span class="icon">✅</span> Free Doctor Consultation</div>
-    <div class="hero-strip-item"><span class="icon">✅</span> Free LASIK Evaluation Scan</div>
-    <div class="hero-strip-item"><span class="icon">✅</span> Advanced Cataract Surgery</div>
-    <div class="hero-strip-item"><span class="icon">✅</span> Retina &amp; Glaucoma Specialists</div>
-    <div class="hero-strip-item"><span class="icon">✅</span> Premium Optical Store</div>
-  </div>
-</section>
-
-<!-- FREE SERVICES STRIP -->
-<div class="free-section">
-  <div class="free-section-inner">
-    <div class="free-badge"><span class="star">★</span> FREE Doctor Consultation — Walk-In Welcome</div>
-    <div class="free-badge"><span class="star">★</span> FREE LASIK Evaluation Scan — No Obligation</div>
-  </div>
-</div>
-
-<!-- STATS -->
-<div class="stats-strip">
-  <div class="stats-inner">
-    <div class="stat-item reveal">
-      <div class="stat-num">5000+</div>
-      <div class="stat-label">Surgeries Performed</div>
-    </div>
-    <div class="stat-item reveal">
-      <div class="stat-num">8+</div>
-      <div class="stat-label">Lens Options Available</div>
-    </div>
-    <div class="stat-item reveal">
-      <div class="stat-num">12+</div>
-      <div class="stat-label">Refractive Procedures</div>
-    </div>
-    <div class="stat-item reveal">
-      <div class="stat-num">100%</div>
-      <div class="stat-label">Patient-First Approach</div>
-    </div>
-  </div>
-</div>
-
-<!-- ABOUT -->
-<section class="about" id="about">
-  <div class="about-grid">
-    <div class="about-img-wrap reveal">
-      <img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&h=420&fit=crop&crop=center" alt="Modern Eye Hospital">
-      <div class="about-img-badge">
-        <div class="num">One</div>
-        <div class="lbl">Stop Eye Care Center</div>
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-media" aria-hidden="true">
+        <img src="assets/vision-vistara-hero.png" alt="">
       </div>
-    </div>
-    <div class="reveal">
-      <div class="section-label">About Us</div>
-      <h2 class="section-title">Your Premier <span class="accent">Eye Care</span> Destination</h2>
-      <div class="divider"></div>
-      <p class="section-sub">Vision Vistara Optics &amp; Lasers Eye Care is a modern, fully equipped eye hospital and optical center designed to deliver world-class ophthalmic care with warmth, precision, and transparency. From your first consultation to post-surgery follow-up, we guide you every step of the way.</p>
-      <p style="font-size:14px;color:var(--text-light);line-height:1.7;margin-bottom:24px;">Whether you need a routine eye check-up, advanced cataract surgery, laser vision correction, retina treatment, or a pair of premium lenses — you'll find expert care and state-of-the-art technology all under one roof at Vision Vistara.</p>
-      <div class="about-points">
-        <div class="about-point"><div class="dot"></div><p>Personalized Eye Care</p></div>
-        <div class="about-point"><div class="dot"></div><p>Advanced Eye Scans</p></div>
-        <div class="about-point"><div class="dot"></div><p>Expert Consultations</p></div>
-        <div class="about-point"><div class="dot"></div><p>Premium Optical Store</p></div>
-        <div class="about-point"><div class="dot"></div><p>Cataract &amp; Retina Surgery</p></div>
-        <div class="about-point"><div class="dot"></div><p>LASIK &amp; Refractive Care</p></div>
-      </div>
-    </div>
-  </div>
-</section>
+      <div class="hero-overlay" aria-hidden="true"></div>
 
-<!-- CATARACT -->
-<section class="cataract" id="cataract">
-  <div style="max-width:1200px;margin:0 auto;">
-    <div class="section-header center reveal">
-      <div class="section-label">Cataract Services</div>
-      <h2 class="section-title">Advanced <span class="accent">Cataract Surgery</span> &amp; Premium <span class="gold">Lens Solutions</span></h2>
-      <div class="divider center"></div>
-      <p class="section-sub">We offer the latest cataract surgical techniques and a comprehensive range of premium intraocular lenses tailored to your vision needs, lifestyle, and eye health.</p>
-    </div>
+      <div class="container hero-content">
+        <img class="hero-brand-lockup" src="assets/vision-vistara-wordmark.png" alt="Vision Vistara Optics & Lasers Eye Care">
+        <p class="eyebrow">Advanced Eye Hospital & Optical Center</p>
+        <h1 id="hero-title">
+          <span>Clear Vision.</span>
+          <span>Advanced Eye Care.</span>
+          <span>Trusted Treatment.</span>
+        </h1>
+        <p class="hero-subtext">Modern diagnosis, patient-friendly treatment, laser vision correction, and premium optical solutions under one calm, trusted roof.</p>
 
-    <div class="cataract-grid">
-      <div class="reveal">
-        <h3 style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:20px;">🔹 Surgical Procedures</h3>
-        <div class="procedure-list">
-          <div class="procedure-item">
-            <div class="pi-icon">💎</div>
-            <div class="pi-info">
-              <div class="pi-name">Phaco Surgery</div>
-              <div class="pi-sub">Standard ultrasound cataract removal — safe, effective, time-tested</div>
-            </div>
-          </div>
-          <div class="procedure-item">
-            <div class="pi-icon">🔬</div>
-            <div class="pi-info">
-              <div class="pi-name">MICS Cataract Surgery</div>
-              <div class="pi-sub">Micro-incision surgery for faster recovery and minimal disturbance</div>
-            </div>
-          </div>
-          <div class="procedure-item">
-            <div class="pi-icon">⚡</div>
-            <div class="pi-info">
-              <div class="pi-name">FLACS — Femto Laser Cataract</div>
-              <div class="pi-sub">Bladeless, laser-assisted surgery for the highest precision</div>
-            </div>
-          </div>
+        <div class="hero-actions" aria-label="Primary actions">
+          <a class="btn btn-primary" href="#contact">
+            <i data-lucide="calendar-check" aria-hidden="true"></i>
+            <span>Book Appointment</span>
+          </a>
+          <a class="btn btn-light" href="tel:+917842938316">
+            <i data-lucide="phone-call" aria-hidden="true"></i>
+            <span>Call Now</span>
+          </a>
+          <a class="btn btn-whatsapp" href="https://wa.me/917842938316?text=Hello%2C%20I%20would%20like%20to%20book%20an%20appointment%20at%20Vision%20Vistara%20Optics%20%26%20Lasers%20Eye%20Care." target="_blank" rel="noopener">
+            <i data-lucide="message-circle" aria-hidden="true"></i>
+            <span>WhatsApp Us</span>
+          </a>
         </div>
 
-        <div class="info-box" style="margin-top:24px;">
-          <p><strong>Lens Selection Guide:</strong> The right lens depends on your retina health, corneal shape, lifestyle, and your doctor's evaluation. Our team will guide you to the best option after a thorough assessment.</p>
+        <div class="trust-line" aria-label="Clinic highlights">
+          <span><i data-lucide="check" aria-hidden="true"></i>Free Doctor Consultation</span>
+          <span><i data-lucide="check" aria-hidden="true"></i>Free LASIK Evaluation</span>
+          <span><i data-lucide="check" aria-hidden="true"></i>Advanced Eye Care Under One Roof</span>
         </div>
       </div>
+    </section>
 
-      <div class="reveal">
-        <h3 style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:20px;">🔹 Intraocular Lens Options</h3>
+    <section class="lead-strip" aria-label="Quick contact">
+      <div class="container lead-strip-inner">
+        <div>
+          <span class="mini-label">For appointments</span>
+          <strong>Call or WhatsApp 7842938316</strong>
+        </div>
+        <a href="tel:+917842938316">
+          <i data-lucide="phone-call" aria-hidden="true"></i>
+          Call Now
+        </a>
+        <a href="#contact">
+          <i data-lucide="calendar-check" aria-hidden="true"></i>
+          Free Consultation
+        </a>
+      </div>
+    </section>
+
+    <section class="section about-section" id="about">
+      <div class="container split-layout">
+        <div>
+          <p class="section-kicker">About Vision Vistara</p>
+          <h2>Premium eye care with clarity, comfort, and confidence.</h2>
+        </div>
+        <div class="section-copy">
+          <p>Vision Vistara Optics & Lasers Eye Care is a modern eye hospital and optical center built for trusted diagnosis, precise treatment planning, and clear vision correction.</p>
+          <p>From consultation and advanced scans to cataract care, LASIK evaluation, retina care, glaucoma evaluation, and premium lenses, every visit is designed to feel simple, professional, and reassuring.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section services-section" id="services">
+      <div class="container">
+        <div class="section-heading">
+          <p class="section-kicker">Main Services</p>
+          <h2>Complete eye care without the clutter.</h2>
+          <p>Major services are organized around what patients actually need: accurate answers, safe treatment, and better everyday vision.</p>
+        </div>
+
+        <div class="card-grid service-grid">
+          <article class="feature-card">
+            <i data-lucide="eye" aria-hidden="true"></i>
+            <h3>Cataract care and lens options</h3>
+            <p>Clear guidance on surgery and lens choices for sharper, more comfortable vision.</p>
+          </article>
+          <article class="feature-card">
+            <i data-lucide="sparkles" aria-hidden="true"></i>
+            <h3>LASIK and glasses removal</h3>
+            <p>Eligibility-focused laser vision correction planning for suitable candidates.</p>
+          </article>
+          <article class="feature-card">
+            <i data-lucide="activity" aria-hidden="true"></i>
+            <h3>Retina care</h3>
+            <p>Timely retina evaluation for vision changes, diabetes-related concerns, and follow-up care.</p>
+          </article>
+          <article class="feature-card">
+            <i data-lucide="shield-check" aria-hidden="true"></i>
+            <h3>Glaucoma evaluation</h3>
+            <p>Structured testing and monitoring to protect long-term eye health.</p>
+          </article>
+          <article class="feature-card">
+            <i data-lucide="scan-line" aria-hidden="true"></i>
+            <h3>Eye scans and diagnostics</h3>
+            <p>Advanced measurements that support accurate treatment decisions.</p>
+          </article>
+          <article class="feature-card">
+            <i data-lucide="glasses" aria-hidden="true"></i>
+            <h3>Optical lenses and frames</h3>
+            <p>Premium lens categories and frame solutions matched to lifestyle and prescription.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section choose-section" id="why">
+      <div class="container">
+        <div class="section-heading compact">
+          <p class="section-kicker">Why Choose Us</p>
+          <h2>Built around trust, technology, and patient comfort.</h2>
+        </div>
+
+        <div class="reason-grid">
+          <div class="reason-item"><i data-lucide="microscope" aria-hidden="true"></i><span>Advanced eye technology</span></div>
+          <div class="reason-item"><i data-lucide="stethoscope" aria-hidden="true"></i><span>Experienced consultation</span></div>
+          <div class="reason-item"><i data-lucide="user-round" aria-hidden="true"></i><span>Personalized treatment</span></div>
+          <div class="reason-item"><i data-lucide="badge-check" aria-hidden="true"></i><span>Premium cataract and LASIK care</span></div>
+          <div class="reason-item"><i data-lucide="shield-check" aria-hidden="true"></i><span>Retina and glaucoma expertise</span></div>
+          <div class="reason-item"><i data-lucide="message-circle" aria-hidden="true"></i><span>Friendly patient support</span></div>
+          <div class="reason-item"><i data-lucide="heart-pulse" aria-hidden="true"></i><span>Free consultation options</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section treatments-section" id="treatments">
+      <div class="container">
+        <div class="section-heading">
+          <p class="section-kicker">Featured Treatments</p>
+          <h2>Important care paths, explained simply.</h2>
+          <p>Short, patient-friendly treatment guidance so you can take the next step with confidence.</p>
+        </div>
+
+        <div class="treatment-list">
+          <article class="treatment-row">
+            <span>01</span>
+            <div>
+              <h3>Cataract surgery</h3>
+              <p>Premium cataract evaluation with lens options explained clearly before treatment.</p>
+            </div>
+            <a href="#contact">Book Cataract Consult</a>
+          </article>
+          <article class="treatment-row">
+            <span>02</span>
+            <div>
+              <h3>LASIK / refractive surgery</h3>
+              <p>Free evaluation to understand whether glasses-removal treatment is suitable for you.</p>
+            </div>
+            <a href="#contact">Check Eligibility</a>
+          </article>
+          <article class="treatment-row">
+            <span>03</span>
+            <div>
+              <h3>Retina treatment</h3>
+              <p>Focused retina care for symptoms, diabetic eye checks, and specialist follow-up.</p>
+            </div>
+            <a href="#contact">Request Retina Care</a>
+          </article>
+          <article class="treatment-row">
+            <span>04</span>
+            <div>
+              <h3>Glaucoma evaluation</h3>
+              <p>Pressure, nerve, and visual field evaluation for early and ongoing glaucoma care.</p>
+            </div>
+            <a href="#contact">Book Evaluation</a>
+          </article>
+          <article class="treatment-row">
+            <span>05</span>
+            <div>
+              <h3>Optical lens solutions</h3>
+              <p>Better lens selection for reading, driving, screen work, sunlight, and everyday comfort.</p>
+            </div>
+            <a href="#optical">Explore Lenses</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section diagnostics-section" id="diagnostics">
+      <div class="container split-layout">
+        <div>
+          <p class="section-kicker">Advanced Diagnostics</p>
+          <h2>Accurate scans for confident treatment planning.</h2>
+          <p class="section-lead">Vision decisions become easier when the measurements are precise. These diagnostic tools support consultation, cataract planning, LASIK screening, retina review, and glaucoma monitoring.</p>
+        </div>
+
+        <div class="diagnostic-grid">
+          <div><i data-lucide="eye" aria-hidden="true"></i><span>Eye consultation</span></div>
+          <div><i data-lucide="scan-line" aria-hidden="true"></i><span>AL / IOL scan</span></div>
+          <div><i data-lucide="aperture" aria-hidden="true"></i><span>Orbscan</span></div>
+          <div><i data-lucide="crosshair" aria-hidden="true"></i><span>Pentacam</span></div>
+          <div><i data-lucide="activity" aria-hidden="true"></i><span>Visual fields</span></div>
+          <div><i data-lucide="monitor" aria-hidden="true"></i><span>OCT</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section optical-section" id="optical">
+      <div class="container">
+        <div class="section-heading">
+          <p class="section-kicker">Premium Optical Center</p>
+          <h2>Lenses and frames selected for how you live.</h2>
+          <p>Retail-friendly optical support with premium lens categories for work, reading, driving, screens, and sunlight.</p>
+        </div>
+
         <div class="lens-grid">
-          <div class="lens-card">
-            <div class="lc-name">Monofocal Lens</div>
-            <div class="lc-desc">Suitable for most patients — clear vision at one distance</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">Toric Monofocal</div>
-            <div class="lc-desc">For patients with astigmatism needing corrected distance vision</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">Multifocal Lens</div>
-            <div class="lc-desc">Near + distance vision — reduces dependence on glasses</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">Toric Multifocal</div>
-            <div class="lc-desc">Astigmatism correction + multifocal benefit in one lens</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">Trifocal Lens</div>
-            <div class="lc-desc">Near, intermediate &amp; distance — lifestyle lens for active patients</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">Toric Trifocal</div>
-            <div class="lc-desc">Trifocal benefits with astigmatism correction built in</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">EDOF Lens</div>
-            <div class="lc-desc">Extended Depth of Focus — continuous range of clear vision</div>
-          </div>
-          <div class="lens-card">
-            <div class="lc-name">Toric EDOF</div>
-            <div class="lc-desc">Best for astigmatic patients wanting extended focus range</div>
-          </div>
+          <article><i data-lucide="circle-dot" aria-hidden="true"></i><h3>Single vision</h3><p>Simple clarity for distance or reading.</p></article>
+          <article><i data-lucide="copy" aria-hidden="true"></i><h3>Bifocal</h3><p>Two-zone correction for near and far vision.</p></article>
+          <article><i data-lucide="layers" aria-hidden="true"></i><h3>Progressive</h3><p>Seamless vision across daily distances.</p></article>
+          <article><i data-lucide="sun" aria-hidden="true"></i><h3>Photochromic</h3><p>Adaptive lenses that respond to outdoor light.</p></article>
+          <article><i data-lucide="sun-medium" aria-hidden="true"></i><h3>Polarized</h3><p>Reduced glare for driving and outdoor comfort.</p></article>
+          <article><i data-lucide="monitor" aria-hidden="true"></i><h3>Blue light blocking</h3><p>Screen-friendly lenses for digital routines.</p></article>
+          <article><i data-lucide="sparkles" aria-hidden="true"></i><h3>Anti-reflective coating</h3><p>Cleaner lens appearance and better night comfort.</p></article>
         </div>
       </div>
-    </div>
-  </div>
-</section>
+    </section>
 
-<!-- REFRACTIVE / LASIK -->
-<section class="refractive" id="lasik">
-  <div class="refr-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">Vision Correction</div>
-      <h2 class="section-title" style="color:white;">Get Rid of Glasses with <span style="color:var(--cyan);">Advanced Laser Surgery</span></h2>
-      <div class="divider center" style="background:linear-gradient(to right, var(--cyan), var(--teal));"></div>
-      <p class="section-sub">Modern, safe, and highly precise vision correction procedures for suitable candidates — evaluated by our experienced eye surgeons after a comprehensive LASIK screening.</p>
-    </div>
+    <section class="section testimonials-section" id="testimonials">
+      <div class="container">
+        <div class="section-heading compact">
+          <p class="section-kicker">Patient Reviews</p>
+          <h2>Short words from real clinic moments.</h2>
+        </div>
 
-    <div class="refr-cats reveal">
-      <div class="refr-cat">
-        <div class="refr-cat-title">🔹 PRK Procedures</div>
-        <ul>
-          <li>Basic PRK</li>
-          <li>TransPRK</li>
-          <li>Smart Pulse PRK</li>
-          <li>Contoura PRK</li>
-        </ul>
+        <div class="testimonial-grid">
+          <figure>
+            <div class="stars" aria-label="5 star review">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote>The doctor explained my eye report clearly and did not rush the consultation.</blockquote>
+            <figcaption>Ramesh K.</figcaption>
+          </figure>
+          <figure>
+            <div class="stars" aria-label="5 star review">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote>The staff helped me book quickly on WhatsApp and guided me through every step.</blockquote>
+            <figcaption>Swathi P.</figcaption>
+          </figure>
+          <figure>
+            <div class="stars" aria-label="5 star review">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote>The clinic felt clean, modern, and very professional from reception to testing.</blockquote>
+            <figcaption>Anita M.</figcaption>
+          </figure>
+          <figure>
+            <div class="stars" aria-label="5 star review">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+            <blockquote>I received clear lens guidance for my work and driving needs. Very smooth experience.</blockquote>
+            <figcaption>Venkatesh T.</figcaption>
+          </figure>
+        </div>
       </div>
-      <div class="refr-cat">
-        <div class="refr-cat-title">🔹 LASIK Procedures</div>
-        <ul>
-          <li>Basic LASIK</li>
-          <li>Femto LASIK</li>
-          <li>Contoura Femto LASIK</li>
-        </ul>
-      </div>
-      <div class="refr-cat">
-        <div class="refr-cat-title">🔹 Advanced Techniques</div>
-        <ul>
-          <li>SMILE</li>
-          <li>SILK</li>
-          <li>WaveLight Plus</li>
-        </ul>
-      </div>
-      <div class="refr-cat">
-        <div class="refr-cat-title">🔹 Lens-Based Correction</div>
-        <ul>
-          <li>ICL (Implantable Collamer Lens)</li>
-          <li>Suitable for high powers</li>
-          <li>Reversible procedure</li>
-        </ul>
-      </div>
-    </div>
+    </section>
 
-    <div class="refr-cta-strip reveal">
-      <p>✨ <span>FREE LASIK Evaluation Scan</span> — Know your eligibility before deciding anything.</p>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book Free Evaluation</button>
-        <a href="tel:7842938316"><button class="btn-gold">📞 Call 7842938316</button></a>
-      </div>
-    </div>
-  </div>
-</section>
+    <section class="section faq-section" id="faq">
+      <div class="container narrow-container">
+        <div class="section-heading compact">
+          <p class="section-kicker">FAQ</p>
+          <h2>Questions patients ask before visiting.</h2>
+        </div>
 
-<!-- RETINA -->
-<section class="retina" id="retina">
-  <div class="retina-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">Retina Services</div>
-      <h2 class="section-title">Specialized <span class="accent">Retina Care</span> &amp; Treatment</h2>
-      <div class="divider center"></div>
-      <p class="section-sub">Retinal conditions need timely diagnosis and expert care. Our clinic offers advanced retinal evaluation, intravitreal treatments, and surgical interventions managed by experienced specialists.</p>
-    </div>
+        <div class="faq-list">
+          <article class="faq-item open">
+            <button type="button" aria-expanded="true">
+              Is consultation available at Vision Vistara?
+              <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="faq-answer">
+              <p>Yes. Free consultation options are available. Call or WhatsApp 7842938316 to confirm your visit.</p>
+            </div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false">
+              When should cataract surgery be considered?
+              <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="faq-answer">
+              <p>When cloudy vision affects reading, driving, work, or daily comfort, a consultation and scans can confirm the right next step.</p>
+            </div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false">
+              How do I know if I am eligible for LASIK?
+              <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="faq-answer">
+              <p>Eligibility depends on prescription stability, corneal shape, thickness, and eye health. A LASIK evaluation is the safest way to decide.</p>
+            </div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false">
+              Why are eye scans needed?
+              <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="faq-answer">
+              <p>Scans help the doctor plan treatment accurately for cataract lenses, LASIK screening, retina checks, and glaucoma monitoring.</p>
+            </div>
+          </article>
+          <article class="faq-item">
+            <button type="button" aria-expanded="false">
+              How can I book an appointment?
+              <i data-lucide="chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="faq-answer">
+              <p>Use the form below, call directly, or message on WhatsApp. The team will help confirm a suitable appointment time.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
 
-    <div class="retina-grid">
-      <div class="retina-card reveal">
-        <div class="rc-icon">👁️</div>
-        <div class="rc-title">Diabetic Retinopathy</div>
-        <div class="rc-desc">Comprehensive evaluation and management of retinal changes caused by diabetes — from early screening to advanced laser and injection treatment.</div>
-      </div>
-      <div class="retina-card reveal">
-        <div class="rc-icon">💉</div>
-        <div class="rc-title">Intravitreal Injections</div>
-        <div class="rc-desc">Anti-VEGF and steroid injections for macular degeneration, diabetic macular edema, and retinal vascular conditions — administered with precision.</div>
-      </div>
-      <div class="retina-card reveal">
-        <div class="rc-icon">🏥</div>
-        <div class="rc-title">Vitrectomy Surgery</div>
-        <div class="rc-desc">Advanced vitreoretinal surgery for conditions like vitreous hemorrhage, epiretinal membrane, and macular hole — restoring retinal function.</div>
-      </div>
-      <div class="retina-card reveal">
-        <div class="rc-icon">🎯</div>
-        <div class="rc-title">Retinal Detachment Treatment</div>
-        <div class="rc-desc">Urgent surgical care for retinal detachment — a time-sensitive condition requiring immediate expert attention to preserve your vision.</div>
-      </div>
-    </div>
+    <section class="section contact-section" id="contact">
+      <div class="container contact-layout">
+        <div class="contact-copy">
+          <p class="section-kicker">Contact & Appointments</p>
+          <h2>Book your visit with Vision Vistara today.</h2>
+          <p>For consultation, LASIK evaluation, cataract guidance, retina care, glaucoma evaluation, scans, or optical lenses, contact the clinic directly.</p>
 
-    <div class="info-box reveal" style="max-width:700px;margin:36px auto 0;text-align:center;">
-      <p><strong>⚠️ When to See a Retina Specialist:</strong> Sudden flashes, floaters, shadow in vision, or blurred sight after trauma — these are warning signs. Visit us immediately for evaluation.</p>
-    </div>
-  </div>
-</section>
-
-<!-- GLAUCOMA -->
-<section class="glaucoma" id="glaucoma">
-  <div class="glaucoma-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">Glaucoma Care</div>
-      <h2 class="section-title">Expert <span class="accent">Glaucoma</span> Evaluation &amp; Treatment</h2>
-      <div class="divider center"></div>
-      <p class="section-sub">Glaucoma — often called the "silent thief of sight" — requires early detection, precise monitoring, and timely intervention. Our clinic offers a complete glaucoma management pathway.</p>
-    </div>
-
-    <div class="glaucoma-content">
-      <div class="reveal">
-        <img src="https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=600&h=380&fit=crop&crop=center" alt="Glaucoma Evaluation" style="width:100%;height:380px;object-fit:cover;border-radius:var(--radius);box-shadow:var(--shadow-lg);">
-      </div>
-      <div class="reveal">
-        <h3 style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;color:var(--navy);margin-bottom:20px;">Glaucoma Management Services</h3>
-        <div class="glaucoma-treatments">
-          <div class="treatment-item">
-            <div class="ti-num">1</div>
-            <div class="ti-content">
-              <div class="ti-name">OCT (Optical Coherence Tomography)</div>
-              <div class="ti-desc">High-resolution imaging of optic nerve and retinal fiber layers</div>
+          <div class="contact-details">
+            <div>
+              <i data-lucide="user-round" aria-hidden="true"></i>
+              <span>Owner</span>
+              <strong>Siddagoni Saidulu</strong>
+            </div>
+            <div>
+              <i data-lucide="phone-call" aria-hidden="true"></i>
+              <span>Phone / WhatsApp</span>
+              <strong>7842938316</strong>
+            </div>
+            <div>
+              <i data-lucide="map-pin" aria-hidden="true"></i>
+              <span>Clinic Location</span>
+              <strong>Vision Vistara Optics & Lasers Eye Care</strong>
+              <small>Call or WhatsApp for directions.</small>
             </div>
           </div>
-          <div class="treatment-item">
-            <div class="ti-num">2</div>
-            <div class="ti-content">
-              <div class="ti-name">Visual Fields Testing</div>
-              <div class="ti-desc">Automated perimetry to map peripheral vision and detect field loss</div>
-            </div>
-          </div>
-          <div class="treatment-item">
-            <div class="ti-num">3</div>
-            <div class="ti-content">
-              <div class="ti-name">Gonioscopy</div>
-              <div class="ti-desc">Evaluation of the drainage angle of the eye to classify glaucoma type</div>
-            </div>
-          </div>
-          <div class="treatment-item">
-            <div class="ti-num">4</div>
-            <div class="ti-content">
-              <div class="ti-name">Trabeculectomy</div>
-              <div class="ti-desc">Surgical procedure to create a new drainage pathway and reduce eye pressure</div>
-            </div>
-          </div>
-          <div class="treatment-item">
-            <div class="ti-num">5</div>
-            <div class="ti-content">
-              <div class="ti-name">Valve Surgeries</div>
-              <div class="ti-desc">Ahmed / Baerveldt implants for complex or refractory glaucoma management</div>
-            </div>
+
+          <div class="contact-buttons">
+            <a class="btn btn-light" href="tel:+917842938316">
+              <i data-lucide="phone-call" aria-hidden="true"></i>
+              Call Now
+            </a>
+            <a class="btn btn-whatsapp" href="https://wa.me/917842938316?text=Hello%2C%20I%20would%20like%20to%20book%20an%20appointment%20at%20Vision%20Vistara." target="_blank" rel="noopener">
+              <i data-lucide="message-circle" aria-hidden="true"></i>
+              WhatsApp Us
+            </a>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
 
-<!-- DIAGNOSTICS / OPD -->
-<section class="diagnostics" id="diagnostics">
-  <div class="diagnostics-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">OPD &amp; Diagnostics</div>
-      <h2 class="section-title">Advanced <span class="accent">Eye Scans</span> &amp; Diagnostic Services</h2>
-      <div class="divider center"></div>
-      <p class="section-sub">Our state-of-the-art diagnostic suite provides precise measurements and imaging used for cataract planning, LASIK screening, and comprehensive eye evaluation.</p>
-    </div>
+        <form class="appointment-form" data-appointment-form>
+          <h3>Request an appointment</h3>
+          <p>Submit your details and the message opens directly in WhatsApp.</p>
 
-    <div class="diag-grid">
-      <div class="diag-card reveal">
-        <div class="diag-icon">🩺</div>
-        <div class="diag-name">Doctor Consultation</div>
-        <div class="diag-desc">Thorough eye examination by an experienced ophthalmologist — first step for all treatments. <strong style="color:var(--cyan);">FREE for new patients.</strong></div>
-      </div>
-      <div class="diag-card reveal">
-        <div class="diag-icon">📏</div>
-        <div class="diag-name">AL / IOL Scan</div>
-        <div class="diag-desc">Axial length and IOL power calculation — essential for precise cataract surgery lens selection and implantation.</div>
-      </div>
-      <div class="diag-card reveal">
-        <div class="diag-icon">🔭</div>
-        <div class="diag-name">Orbscan</div>
-        <div class="diag-desc">Corneal topography scan for refractive surgery screening, assessing corneal thickness and shape for LASIK suitability.</div>
-      </div>
-      <div class="diag-card reveal">
-        <div class="diag-icon">🌐</div>
-        <div class="diag-name">Pentacam</div>
-        <div class="diag-desc">Comprehensive anterior segment 3D imaging — gold standard for corneal analysis in cataract and refractive surgery planning.</div>
-      </div>
-    </div>
-  </div>
-</section>
+          <label>
+            Full name
+            <input type="text" name="name" autocomplete="name" placeholder="Your name" required>
+          </label>
 
-<!-- OPTICALS -->
-<section class="opticals" id="opticals">
-  <div class="opticals-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">Optical Store</div>
-      <h2 class="section-title">Premium <span class="accent">Optical</span> &amp; <span class="gold">Lens Solutions</span></h2>
-      <div class="divider center"></div>
-      <p class="section-sub">Browse our curated collection of prescription lenses, lens materials, and advanced coatings — designed to suit every lifestyle and vision need.</p>
-    </div>
+          <label>
+            Phone number
+            <input type="tel" name="phone" autocomplete="tel" placeholder="Mobile number" required>
+          </label>
 
-    <div class="opt-tabs reveal">
-      <button class="opt-tab active" onclick="switchTab(this,'lenses')">Lens Types</button>
-      <button class="opt-tab" onclick="switchTab(this,'materials')">Lens Materials</button>
-      <button class="opt-tab" onclick="switchTab(this,'coatings')">Special Coatings</button>
-    </div>
-
-    <div class="opt-content opt-lenses active" id="tab-lenses">
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">👓</div>
-        <div class="opt-item-name">Single Vision Lenses</div>
-        <div class="opt-item-desc">Clear distance or reading correction — the most common prescription lens for everyday use.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🔀</div>
-        <div class="opt-item-name">Bifocal Lenses</div>
-        <div class="opt-item-desc">Dual-power lenses offering both near and far vision — ideal for presbyopic patients.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🌈</div>
-        <div class="opt-item-name">Progressive Lenses</div>
-        <div class="opt-item-desc">Smooth, seamless all-distance vision — no visible lines. A modern replacement for bifocals with a natural look.</div>
-      </div>
-    </div>
-
-    <div class="opt-content opt-materials" id="tab-materials" style="display:none;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🧪</div>
-        <div class="opt-item-name">CR-39 Plastic</div>
-        <div class="opt-item-desc">Lightweight, affordable, and optically clear — the standard choice for most prescriptions.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🛡️</div>
-        <div class="opt-item-name">Polycarbonate</div>
-        <div class="opt-item-desc">Impact-resistant and thin — great for active lifestyles, sports, and children's eyewear.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">✨</div>
-        <div class="opt-item-name">High Index Plastic</div>
-        <div class="opt-item-desc">Ultra-thin lenses for high-power prescriptions — aesthetically superior and lightweight.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">💎</div>
-        <div class="opt-item-name">Crown Glass</div>
-        <div class="opt-item-desc">Excellent optical clarity and scratch resistance — a premium traditional material.</div>
-      </div>
-    </div>
-
-    <div class="opt-content opt-coatings" id="tab-coatings" style="display:none;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;">
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🌤️</div>
-        <div class="opt-item-name">Photochromic Lenses</div>
-        <div class="opt-item-desc">Automatically darken outdoors and clear indoors — the perfect all-day adaptive lens.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🕶️</div>
-        <div class="opt-item-name">Polarized Lenses</div>
-        <div class="opt-item-desc">Eliminate glare from reflective surfaces — ideal for driving and outdoor activities.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">💻</div>
-        <div class="opt-item-name">Blue Light Blocking</div>
-        <div class="opt-item-desc">Filters harmful blue light from screens — reduces digital eye strain and improves sleep.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🔮</div>
-        <div class="opt-item-name">Anti-Reflective (AR) Coating</div>
-        <div class="opt-item-desc">Reduces glare, halos, and reflections — makes lenses nearly invisible and enhances clarity.</div>
-      </div>
-      <div class="opt-item reveal">
-        <div class="opt-item-icon">🎯</div>
-        <div class="opt-item-name">Zero Myopia Lenses</div>
-        <div class="opt-item-desc">Specialized lenses designed to slow myopia progression in children and young adults.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- WHY US -->
-<section class="why-us" id="why">
-  <div class="section-header center reveal" style="position:relative;z-index:1;">
-    <div class="section-label">Why Choose Us</div>
-    <h2 class="section-title">Why Patients Trust <span style="color:var(--cyan);">Vision Vistara</span></h2>
-    <div class="divider center"></div>
-    <p class="section-sub">From first consultation to post-treatment follow-up, we deliver a clear, comfortable, and confident eye care experience.</p>
-  </div>
-
-  <div class="why-grid" style="position:relative;z-index:1;">
-    <div class="why-card reveal">
-      <div class="wc-icon">🏆</div>
-      <div class="wc-title">Advanced Eye Technology</div>
-      <div class="wc-desc">We use the latest diagnostic equipment — Pentacam, OCT, Orbscan, AL scan — ensuring precise evaluation for every patient.</div>
-    </div>
-    <div class="why-card reveal">
-      <div class="wc-icon">👨‍⚕️</div>
-      <div class="wc-title">Expert Ophthalmologist</div>
-      <div class="wc-desc">Led by an experienced eye surgeon with expertise in cataract, retina, glaucoma, and refractive procedures.</div>
-    </div>
-    <div class="why-card reveal">
-      <div class="wc-icon">💬</div>
-      <div class="wc-title">Personalized Consultation</div>
-      <div class="wc-desc">Every patient receives dedicated time, clear explanations, and honest guidance — no rush, no confusion.</div>
-    </div>
-    <div class="why-card reveal">
-      <div class="wc-icon">🆓</div>
-      <div class="wc-title">Free Services</div>
-      <div class="wc-desc">We offer free doctor consultation and free LASIK evaluation scan so you can explore your options without financial pressure.</div>
-    </div>
-    <div class="why-card reveal">
-      <div class="wc-icon">🎯</div>
-      <div class="wc-title">Complete Eye Care Under One Roof</div>
-      <div class="wc-desc">From routine check-ups to advanced surgeries and premium optical solutions — everything at one trusted center.</div>
-    </div>
-    <div class="why-card reveal">
-      <div class="wc-icon">❤️</div>
-      <div class="wc-title">Patient-First Approach</div>
-      <div class="wc-desc">Your comfort, safety, and clarity of understanding are our priorities. We believe informed patients make the best decisions.</div>
-    </div>
-  </div>
-</section>
-
-<!-- TESTIMONIALS -->
-<section class="testimonials" id="testimonials">
-  <div class="testimonials-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">Patient Stories</div>
-      <h2 class="section-title">What Our <span class="accent">Patients Say</span></h2>
-      <div class="divider center"></div>
-    </div>
-
-    <div class="testi-grid">
-      <div class="testi-card reveal">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-quote">"The team at Vision Vistara explained every step of my cataract surgery so clearly. I was nervous but they made me feel completely at ease. The trifocal lens has changed my life — I no longer need glasses at all!"</div>
-        <div class="testi-author">
-          <div class="testi-avatar">RK</div>
-          <div>
-            <div class="testi-name">Ramaiah K.</div>
-            <div class="testi-role">Cataract Surgery Patient</div>
-          </div>
-        </div>
-      </div>
-      <div class="testi-card reveal">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-quote">"I came in for the free LASIK evaluation scan and was impressed by how thorough the examination was. The doctor explained exactly why I was suitable for Contoura LASIK. My vision is now 6/6 — incredible results!"</div>
-        <div class="testi-author">
-          <div class="testi-avatar">SP</div>
-          <div>
-            <div class="testi-name">Swathi P.</div>
-            <div class="testi-role">LASIK Patient</div>
-          </div>
-        </div>
-      </div>
-      <div class="testi-card reveal">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-quote">"My father was diagnosed with glaucoma and we were worried. Vision Vistara's team did a complete OCT and visual fields workup and put a clear management plan in place. We finally have confidence in his treatment."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">AM</div>
-          <div>
-            <div class="testi-name">Anita M.</div>
-            <div class="testi-role">Glaucoma Care — Patient's Daughter</div>
-          </div>
-        </div>
-      </div>
-      <div class="testi-card reveal">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-quote">"The optical section is excellent — I found the perfect progressive lenses with blue-light coating. The doctor took extra time to understand my screen usage and prescribed exactly the right lens for my work."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">VT</div>
-          <div>
-            <div class="testi-name">Venkat T.</div>
-            <div class="testi-role">Optical Lens Patient</div>
-          </div>
-        </div>
-      </div>
-      <div class="testi-card reveal">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-quote">"I had sudden flashes and floaters and was terrified. Vision Vistara saw me the same day, ran a full retina assessment, and started injections promptly. Professional, caring, and highly skilled."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">LN</div>
-          <div>
-            <div class="testi-name">Lakshmi N.</div>
-            <div class="testi-role">Retina Care Patient</div>
-          </div>
-        </div>
-      </div>
-      <div class="testi-card reveal">
-        <div class="testi-stars">★★★★★</div>
-        <div class="testi-quote">"The Pentacam scan results clearly showed which cataract lens was best for me. The doctor's explanation was thorough and patient. Surgery went smoothly and my recovery has been very fast."</div>
-        <div class="testi-author">
-          <div class="testi-avatar">GR</div>
-          <div>
-            <div class="testi-name">Govind R.</div>
-            <div class="testi-role">Cataract &amp; Diagnostics Patient</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section class="faq" id="faq">
-  <div class="faq-inner">
-    <div class="section-header center reveal">
-      <div class="section-label">FAQs</div>
-      <h2 class="section-title">Frequently Asked <span class="accent">Questions</span></h2>
-      <div class="divider center"></div>
-      <p class="section-sub">Answers to the most common questions about our services, procedures, and what to expect.</p>
-    </div>
-
-    <div id="faqList">
-      <div class="faq-item reveal">
-        <button class="faq-q" onclick="toggleFAQ(this)">
-          Who needs cataract surgery?
-          <span class="faq-arrow">▼</span>
-        </button>
-        <div class="faq-a">Cataract surgery is recommended when the lens cloudiness significantly affects your daily vision — difficulty reading, driving, or recognizing faces. A consultation and scan will confirm whether surgery is the right next step for you.</div>
-      </div>
-      <div class="faq-item reveal">
-        <button class="faq-q" onclick="toggleFAQ(this)">
-          What is the difference between monofocal and multifocal lenses?
-          <span class="faq-arrow">▼</span>
-        </button>
-        <div class="faq-a">A monofocal lens provides clear vision at one distance (usually far), meaning you may still need reading glasses. A multifocal or trifocal lens provides vision at multiple distances, significantly reducing or eliminating dependence on glasses. The right choice depends on your lifestyle, retina health, and doctor evaluation.</div>
-      </div>
-      <div class="faq-item reveal">
-        <button class="faq-q" onclick="toggleFAQ(this)">
-          What is a LASIK evaluation scan and is it free?
-          <span class="faq-arrow">▼</span>
-        </button>
-        <div class="faq-a">A LASIK evaluation includes corneal topography (Orbscan/Pentacam), corneal thickness measurement, pupil assessment, and a detailed prescription check to determine if you are a suitable candidate for laser vision correction. Yes — we offer this evaluation completely FREE at Vision Vistara.</div>
-      </div>
-      <div class="faq-item reveal">
-        <button class="faq-q" onclick="toggleFAQ(this)">
-          What scans are used for glaucoma evaluation?
-          <span class="faq-arrow">▼</span>
-        </button>
-        <div class="faq-a">Our glaucoma evaluation includes OCT (Optical Coherence Tomography) for optic nerve imaging, automated visual fields testing, gonioscopy for drainage angle assessment, and intraocular pressure measurement. These together give us a complete picture of your glaucoma status.</div>
-      </div>
-      <div class="faq-item reveal">
-        <button class="faq-q" onclick="toggleFAQ(this)">
-          When should retina symptoms be checked urgently?
-          <span class="faq-arrow">▼</span>
-        </button>
-        <div class="faq-a">Seek immediate evaluation if you experience sudden flashes of light, a significant increase in floaters, a shadow or curtain across your vision, or sudden loss of central or peripheral vision. These could indicate retinal detachment or other urgent conditions that require prompt treatment.</div>
-      </div>
-      <div class="faq-item reveal">
-        <button class="faq-q" onclick="toggleFAQ(this)">
-          Do you offer free doctor consultation?
-          <span class="faq-arrow">▼</span>
-        </button>
-        <div class="faq-a">Yes! We offer free initial doctor consultation for all new patients. Our goal is to make quality eye care accessible — so you can walk in, get evaluated, and understand your options without any upfront cost. Call 7842938316 or visit us directly.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CONTACT & APPOINTMENT -->
-<section class="contact" id="contact">
-  <div class="contact-inner">
-    <div class="contact-info reveal">
-      <div class="section-label">Contact Us</div>
-      <h2 class="section-title">Book Your <span style="color:var(--cyan);">Appointment</span> Today</h2>
-      <div class="divider"></div>
-      <p class="section-sub">Reach out to us for a consultation, appointment booking, or any queries about our services. We're here to help.</p>
-
-      <div class="contact-detail">
-        <div class="cd-icon">👤</div>
-        <div class="cd-text">
-          <div class="cd-label">Eye Specialist</div>
-          <div class="cd-value">Siddagoni Saidulu</div>
-        </div>
-      </div>
-
-      <div class="contact-detail">
-        <div class="cd-icon">📞</div>
-        <div class="cd-text">
-          <div class="cd-label">Phone / WhatsApp</div>
-          <div class="cd-value" style="color:var(--cyan);">7842938316</div>
-        </div>
-      </div>
-
-      <div class="contact-detail">
-        <div class="cd-icon">🕐</div>
-        <div class="cd-text">
-          <div class="cd-label">Working Hours</div>
-          <div class="cd-value">Mon–Sat: 9 AM – 7 PM</div>
-        </div>
-      </div>
-
-      <div class="contact-detail">
-        <div class="cd-icon">🏥</div>
-        <div class="cd-text">
-          <div class="cd-label">Clinic</div>
-          <div class="cd-value">Vision Vistara Optics &amp; Lasers Eye Care</div>
-        </div>
-      </div>
-
-      <div class="contact-action-btns">
-        <a href="https://wa.me/917842938316?text=Hello,%20I%20would%20like%20to%20book%20an%20appointment%20at%20Vision%20Vistara%20Eye%20Care." target="_blank">
-          <button class="btn-whatsapp">💬 Chat on WhatsApp</button>
-        </a>
-        <a href="tel:7842938316">
-          <button class="btn-call">📞 Call Now</button>
-        </a>
-      </div>
-
-      <div class="info-box" style="margin-top:28px;background:rgba(29,188,212,0.08);border-color:rgba(29,188,212,0.2);">
-        <p style="color:rgba(255,255,255,0.75);"><strong style="color:var(--cyan);">✨ FREE Services Available:</strong> Walk in for a free doctor consultation or call to schedule your free LASIK evaluation scan — no obligation, no hidden charges.</p>
-      </div>
-    </div>
-
-    <div class="reveal">
-      <div class="appt-form">
-        <h3>📅 Request an Appointment</h3>
-        <div id="apptForm">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Your Name</label>
-              <input type="text" id="fname" placeholder="Full name">
-            </div>
-            <div class="form-group">
-              <label>Phone Number</label>
-              <input type="tel" id="fphone" placeholder="Mobile number">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Service Required</label>
-            <select id="fservice">
-              <option value="">— Select a Service —</option>
+          <label>
+            Service required
+            <select name="service" required>
+              <option value="">Select a service</option>
               <option>Free Doctor Consultation</option>
               <option>Free LASIK Evaluation</option>
-              <option>Cataract Surgery Consultation</option>
-              <option>Retina Evaluation</option>
-              <option>Glaucoma Check</option>
-              <option>Diagnostics / Eye Scan</option>
-              <option>Optical / Spectacle Lenses</option>
-              <option>Other</option>
+              <option>Cataract Consultation</option>
+              <option>Retina Care</option>
+              <option>Glaucoma Evaluation</option>
+              <option>Eye Scans / Diagnostics</option>
+              <option>Optical Lenses and Frames</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label>Preferred Date</label>
-            <input type="date" id="fdate">
-          </div>
-          <div class="form-group">
-            <label>Any Message (Optional)</label>
-            <textarea id="fmsg" placeholder="Tell us about your concern or eye complaint..."></textarea>
-          </div>
-          <button class="btn-submit" onclick="submitForm()">📅 Request Appointment</button>
-        </div>
-        <div class="form-success" id="formSuccess">
-          <div class="check">✅</div>
-          <h4>Appointment Request Sent!</h4>
-          <p>Thank you! Our team will contact you shortly at your provided number to confirm your appointment.</p>
-          <p style="margin-top:12px;">For immediate help, call <strong style="color:var(--cyan);">7842938316</strong></p>
-        </div>
+          </label>
+
+          <label>
+            Preferred date
+            <input type="date" name="date">
+          </label>
+
+          <label>
+            Message
+            <textarea name="message" placeholder="Tell us your concern or preferred time"></textarea>
+          </label>
+
+          <button class="btn btn-primary form-submit" type="submit">
+            <i data-lucide="send" aria-hidden="true"></i>
+            Send Appointment Request
+          </button>
+          <p class="form-note" data-form-note aria-live="polite"></p>
+        </form>
       </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a class="brand" href="#top" aria-label="Vision Vistara home">
+        <span class="brand-mark">
+          <img src="assets/vision-vistara-eye-logo.png" alt="">
+        </span>
+        <span class="brand-text">
+          <strong>Vision Vistara</strong>
+          <span>Optics & Lasers Eye Care</span>
+        </span>
+      </a>
+      <p>&copy; 2026 Vision Vistara Optics & Lasers Eye Care. Owner: Siddagoni Saidulu. Phone: 7842938316.</p>
     </div>
+  </footer>
+
+  <div class="floating-actions" aria-label="Quick actions">
+    <a href="tel:+917842938316" aria-label="Call Vision Vistara" title="Call Now">
+      <i data-lucide="phone-call" aria-hidden="true"></i>
+    </a>
+    <a href="https://wa.me/917842938316?text=Hello%2C%20I%20need%20an%20eye%20care%20appointment%20at%20Vision%20Vistara." target="_blank" rel="noopener" aria-label="WhatsApp Vision Vistara" title="WhatsApp Us">
+      <i data-lucide="message-circle" aria-hidden="true"></i>
+    </a>
   </div>
-</section>
 
-<!-- FOOTER -->
-<footer>
-  <p>© 2025 <span>Vision Vistara Optics &amp; Lasers Eye Care</span> | Dr. Siddagoni Saidulu | 📞 <span>7842938316</span></p>
-  <p style="margin-top:6px;">Advanced Cataract Surgery · LASIK · Retina Care · Glaucoma · Premium Opticals</p>
-</footer>
+  <div class="mobile-sticky-actions" aria-label="Mobile quick actions">
+    <a href="tel:+917842938316">
+      <i data-lucide="phone-call" aria-hidden="true"></i>
+      Call
+    </a>
+    <a href="https://wa.me/917842938316?text=Hello%2C%20I%20would%20like%20to%20book%20an%20appointment%20at%20Vision%20Vistara." target="_blank" rel="noopener">
+      <i data-lucide="message-circle" aria-hidden="true"></i>
+      WhatsApp
+    </a>
+    <a href="#contact">
+      <i data-lucide="calendar-check" aria-hidden="true"></i>
+      Book
+    </a>
+  </div>
 
-<!-- FLOATING BUTTONS -->
-<div class="float-btns">
-  <a href="https://wa.me/917842938316?text=Hello,%20I%20need%20eye%20care%20information." target="_blank">
-    <button class="float-btn float-wa" title="WhatsApp">💬</button>
-  </a>
-  <a href="tel:7842938316">
-    <button class="float-btn float-call" title="Call Us">📞</button>
-  </a>
-</div>
-
-<script src="script.js"></script>
-
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
