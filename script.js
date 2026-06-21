@@ -2,6 +2,8 @@ const header = document.querySelector("[data-header]");
 const menuToggle = document.querySelector("[data-menu-toggle]");
 const mobileMenu = document.querySelector("[data-mobile-menu]");
 const appointmentForm = document.querySelector("[data-appointment-form]");
+const hero = document.querySelector(".hero");
+const mobileStickyActions = document.querySelector(".mobile-sticky-actions");
 
 function refreshIcons() {
   if (window.lucide) {
@@ -45,6 +47,14 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("scroll", updateHeader, { passive: true });
 updateHeader();
+
+if (hero && mobileStickyActions) {
+  const stickyObserver = new IntersectionObserver(([entry]) => {
+    mobileStickyActions.classList.toggle("is-visible", !entry.isIntersecting);
+  }, { threshold: 0.12 });
+
+  stickyObserver.observe(hero);
+}
 
 document.querySelectorAll(".faq-item button").forEach((button) => {
   button.addEventListener("click", () => {
@@ -107,11 +117,12 @@ if (appointmentForm) {
     ];
 
     const whatsappUrl = `https://wa.me/917842938316?text=${encodeURIComponent(lines.join("\n"))}`;
-    window.open(whatsappUrl, "_blank", "noopener");
 
     if (note) {
-      note.textContent = "Your WhatsApp appointment message is ready. Please send it to confirm your request.";
+      note.textContent = "Opening WhatsApp with your appointment request...";
     }
+
+    window.location.assign(whatsappUrl);
   });
 }
 

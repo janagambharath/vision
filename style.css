@@ -86,9 +86,8 @@ button {
   justify-content: space-between;
   gap: 24px;
   padding: 0 max(20px, calc((100% - 1160px) / 2));
-  background: rgba(255, 255, 255, 0.92);
+  background: #ffffff;
   border-bottom: 1px solid rgba(219, 231, 245, 0.85);
-  backdrop-filter: blur(18px);
   transition: box-shadow 180ms ease, background 180ms ease;
 }
 
@@ -385,7 +384,6 @@ button {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  backdrop-filter: blur(12px);
 }
 
 .trust-line svg {
@@ -1081,9 +1079,8 @@ button {
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  background: #ffffff;
   box-shadow: 0 18px 44px rgba(6, 19, 47, 0.2);
-  backdrop-filter: blur(16px);
 }
 
 .mobile-sticky-actions a {
@@ -1291,13 +1288,22 @@ button {
   }
 
   .lead-strip-inner {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 16px 0;
+    display: block;
+    padding: 10px 0;
   }
 
   .lead-point {
-    min-height: 52px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 4px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .lead-point:last-child {
+    border-bottom: 0;
   }
 
   .section {
@@ -1354,6 +1360,10 @@ button {
   }
 
   .mobile-sticky-actions {
+    display: none;
+  }
+
+  .mobile-sticky-actions.is-visible {
     display: grid;
   }
 }
@@ -1370,7 +1380,8 @@ button {
   }
 
   .hero h1 {
-    font-size: 1.92rem;
+    font-size: 1.72rem;
+    line-height: 1.1;
   }
 
   .hero-actions .btn {
