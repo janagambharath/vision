@@ -1037,36 +1037,6 @@ button {
   font-size: 0.9rem;
 }
 
-.floating-actions {
-  position: fixed;
-  right: 22px;
-  bottom: 24px;
-  z-index: 40;
-  display: grid;
-  gap: 10px;
-}
-
-.floating-actions a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 54px;
-  height: 54px;
-  color: white;
-  border-radius: 50%;
-  background: var(--blue-700);
-  box-shadow: var(--shadow-strong);
-}
-
-.floating-actions a:last-child {
-  background: #19b65f;
-}
-
-.floating-actions svg {
-  width: 23px;
-  height: 23px;
-}
-
 .mobile-sticky-actions {
   position: fixed;
   left: 12px;
@@ -1353,10 +1323,6 @@ button {
 
   .contact-buttons .btn {
     width: 100%;
-  }
-
-  .floating-actions {
-    display: none;
   }
 
   .mobile-sticky-actions {
