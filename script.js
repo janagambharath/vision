@@ -409,8 +409,13 @@ function setStoredJson(key, value) {
 }
 
 function scrollToSection(sel) {
+  // Close mobile menu first so it doesn't obscure scroll destination
+  setMenu(false);
   const t = document.querySelector(sel);
-  if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!t) return;
+  const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--header-height")) || 76;
+  const offset  = t.getBoundingClientRect().top + window.scrollY - headerH - 16;
+  window.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
 }
 
 function blobToDataUrl(blob) {
@@ -1019,6 +1024,9 @@ async function handleSelfieInput(event) {
     event.currentTarget.value = "";
     return;
   }
+  // Fix: close camera if open when uploading file
+  if (cam.stream) closeCamera(false);
+
   state.selfieFile    = file;
   state.selfieDataUrl = await fileToDataUrl(file);
   state.capturedBlob  = null;
@@ -1412,14 +1420,29 @@ function setupNavigation() {
   if (mobileMenu) {
     mobileMenu.addEventListener("click", e => { if (e.target.closest("a")) setMenu(false); });
   }
+
+  // Fix: close mobile menu when tapping outside of it
+  document.addEventListener("click", e => {
+    if (
+      mobileMenu &&
+      mobileMenu.classList.contains("open") &&
+      !mobileMenu.contains(e.target) &&
+      menuToggle &&
+      !menuToggle.contains(e.target)
+    ) {
+      setMenu(false);
+    }
+  }, { passive: true });
+
   document.addEventListener("keydown", e => { if (e.key === "Escape") setMenu(false); });
   window.addEventListener("scroll", updateHeader, { passive: true });
   updateHeader();
 
+  // Fix: use a lower threshold so sticky bar appears sooner on mobile
   if (hero && mobileStickyActions && "IntersectionObserver" in window) {
     new IntersectionObserver(([e]) => {
       mobileStickyActions.classList.toggle("is-visible", !e.isIntersecting);
-    }, { threshold: 0.12 }).observe(hero);
+    }, { threshold: 0.05 }).observe(hero);
   }
 }
 
