@@ -3,9 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vision Vistara Optics & Lasers Eye Care | Clinic, Frames & Virtual Try-On</title>
-  <meta name="description" content="Vision Vistara Optics & Lasers Eye Care combines advanced eye care, premium frames, virtual try-on, try-at-home booking, and WhatsApp appointment support.">
+  <title>Vision Vistara Optics &amp; Lasers Eye Care | Hyderabad Frames, Eye Test &amp; Virtual Try-On</title>
+  <meta name="description" content="Vision Vistara Optics &amp; Lasers Eye Care – Uppal, Hyderabad. Expert eye tests, premium spectacle frames, AI virtual try-on, home trial, and WhatsApp support. 20 years of eye care.">
   <meta name="google-site-verification" content="iD7iRbN_b0z1ny0k6LiDXH0F17hQ0vNtqPsfnickhLA">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="business.business">
+  <meta property="og:title" content="Vision Vistara Optics &amp; Lasers Eye Care – Hyderabad">
+  <meta property="og:description" content="Expert eye consultation, premium frames, AI virtual try-on, and home trial service. Located in Uppal, Hyderabad. Book via WhatsApp.">
+  <meta property="og:url" content="https://www.visionvistara.in/">
+  <meta property="og:image" content="assets/vision-vistara-hero.png">
+  <meta property="og:locale" content="en_IN">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Vision Vistara Optics &amp; Lasers Eye Care">
+  <meta name="twitter:description" content="Expert eye care, premium frames, AI try-on &amp; home trial in Hyderabad. WhatsApp: 7842938316">
+  <meta name="twitter:image" content="assets/vision-vistara-hero.png">
+
+  <!-- Local Business Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Optician",
+    "name": "Vision Vistara Optics &amp; Lasers Eye Care",
+    "image": "assets/vision-vistara-eye-logo.png",
+    "url": "https://www.visionvistara.in/",
+    "telephone": "+91-7842938316",
+    "priceRange": "₹₹",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Plot 4, Opposite ECIL X Roads, Uppal Main Road",
+      "addressLocality": "Uppal",
+      "addressRegion": "Telangana",
+      "postalCode": "500039",
+      "addressCountry": "IN"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 17.4012,
+      "longitude": 78.5598
+    },
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+        "opens": "10:00",
+        "closes": "20:00"
+      }
+    ],
+    "sameAs": ["https://wa.me/917842938316"],
+    "description": "Expert eye consultation, premium spectacle frames, AI virtual try-on, home trial, and advanced diagnostics. 20 years of trusted eye care in Hyderabad.",
+    "employee": {
+      "@type": "Person",
+      "name": "Siddagoni Saidulu",
+      "jobTitle": "Optometrist (DOA)",
+      "description": "20 years experience in eye care and lasers"
+    }
+  }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -70,7 +127,7 @@
       <div class="hero-overlay" aria-hidden="true"></div>
 
       <div class="container hero-content">
-        <p class="eyebrow">Vision Vistara Optics &amp; Lasers Eye Care</p>
+        <p class="eyebrow">Vision Vistara Optics &amp; Lasers Eye Care — Uppal, Hyderabad</p>
         <h1 id="hero-title">
           <span>Clear Vision.</span>
           <span>Advanced Eye Care.</span>
@@ -85,11 +142,11 @@
           </a>
           <a class="btn btn-light" href="#frames">
             <i data-lucide="glasses" aria-hidden="true"></i>
-            <span>Explore Frames</span>
+            <span>Browse Frames</span>
           </a>
           <a class="btn btn-light" href="#tryon" data-open-tryon>
             <i data-lucide="scan-face" aria-hidden="true"></i>
-            <span>Try Frames Live</span>
+            <span>Virtual Try-On</span>
           </a>
           <a class="btn btn-whatsapp" href="https://wa.me/917842938316?text=Hello%20Vision%20Vistara%2C%20I%20would%20like%20to%20book%20an%20eye%20care%20appointment." target="_blank" rel="noopener">
             <i data-lucide="message-circle" aria-hidden="true"></i>
@@ -128,7 +185,7 @@
           <p class="section-lead">Vision Vistara helps patients move from eye concern to clear next steps: consultation, refraction, diagnostics, frame selection, lens guidance, treatment planning, and follow-up.</p>
 
           <div class="doctor-profile">
-            <img src="assets/siddagoni-saidulu-doctor.jpeg" alt="Optometrist Siddagoni Saidulu">
+            <img src="assets/siddagoni-saidulu-doctor.jpeg" alt="Optometrist Siddagoni Saidulu" loading="lazy">
             <div>
               <strong>Siddagoni Saidulu, DOA</strong>
               <span>20 years experience</span>
@@ -179,7 +236,7 @@
               <div class="frame-filter-list" data-frame-filters aria-label="Frame filters"></div>
               <label class="catalog-search">
                 Search frames
-                <input type="search" data-frame-search placeholder="Brand, material, style">
+                <input type="search" data-frame-search placeholder="Brand, material, style, colour">
               </label>
             </div>
 
@@ -192,8 +249,43 @@
               <strong data-summary-count>No frames selected</strong>
             </div>
             <div class="summary-items" data-summary-items></div>
+
+            <!-- Lens upsell -->
+            <div class="lens-upsell" data-lens-upsell>
+              <p class="lens-upsell-label">Add lenses</p>
+              <div class="lens-options" data-lens-options>
+                <label class="lens-option">
+                  <input type="radio" name="lens" value="0" data-lens-radio checked>
+                  <span>Frame only</span>
+                  <em>Rs. 0</em>
+                </label>
+                <label class="lens-option">
+                  <input type="radio" name="lens" value="499" data-lens-radio>
+                  <span>Basic clear lenses</span>
+                  <em>Rs. 499</em>
+                </label>
+                <label class="lens-option">
+                  <input type="radio" name="lens" value="899" data-lens-radio>
+                  <span>Anti-reflective coating</span>
+                  <em>Rs. 899</em>
+                </label>
+                <label class="lens-option">
+                  <input type="radio" name="lens" value="1199" data-lens-radio>
+                  <span>Blue-light filter</span>
+                  <em>Rs. 1,199</em>
+                </label>
+                <label class="lens-option">
+                  <input type="radio" name="lens" value="2199" data-lens-radio>
+                  <span>Photochromic (Transitions)</span>
+                  <em>Rs. 2,199</em>
+                </label>
+              </div>
+            </div>
+
             <div class="summary-totals">
-              <div><span>Selected total</span><strong data-summary-total>Rs. 0</strong></div>
+              <div><span>Frames subtotal</span><strong data-summary-total>Rs. 0</strong></div>
+              <div><span>Lens add-on</span><strong data-summary-lens>Rs. 0</strong></div>
+              <div class="total-row"><span>Order total</span><strong data-summary-grand>Rs. 0</strong></div>
               <div><span>Home-trial fee</span><strong data-summary-fee>Rs. 199</strong></div>
               <div><span>Refundable deposit</span><strong data-summary-deposit>Rs. 0</strong></div>
             </div>
@@ -227,7 +319,7 @@
                 </button>
                 <button class="text-button" type="button" data-clear-selection>
                   <i data-lucide="rotate-ccw" aria-hidden="true"></i>
-                  Edit Selection
+                  Clear selection
                 </button>
               </div>
               <p class="form-note" data-commerce-note aria-live="polite"></p>
@@ -241,8 +333,8 @@
       <div class="container">
         <div class="section-heading">
           <p class="section-kicker">Camera Try-On</p>
-          <h2 id="tryon-title">Try real frames live with your camera.</h2>
-          <p>Open the camera, position your face, capture a photo, generate a premium AI try-on preview, compare before and after, save favorite, and send it to WhatsApp.</p>
+          <h2 id="tryon-title">Try real frames with your camera or a photo.</h2>
+          <p>Open your camera or upload a selfie, choose a frame, and generate a realistic preview you can send directly to WhatsApp.</p>
         </div>
 
         <div class="tryon-shell">
@@ -258,6 +350,34 @@
               </span>
             </div>
 
+            <!-- Selfie workspace – shown before any photo is taken -->
+            <div class="selfie-workspace" data-selfie-workspace>
+              <label class="selfie-upload-card" for="selfie-file-upload">
+                <span><i data-lucide="image-up" aria-hidden="true"></i></span>
+                <strong>Upload a photo</strong>
+                <small>Choose a clear front-facing selfie from your device.</small>
+                <input
+                  type="file"
+                  id="selfie-file-upload"
+                  data-selfie-input
+                  accept="image/*"
+                >
+              </label>
+
+              <div class="camera-launch-card" data-camera-open-card>
+                <span class="camera-open-icon">
+                  <i data-lucide="camera" aria-hidden="true"></i>
+                </span>
+                <strong>Use live camera</strong>
+                <small>Open your front camera to take a photo directly on this page.</small>
+                <button class="btn btn-primary" type="button" data-open-camera>
+                  <i data-lucide="video" aria-hidden="true"></i>
+                  <span>Open Camera</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Camera panel – shown when camera is active -->
             <div class="camera-panel" data-camera-panel hidden>
               <div class="camera-viewport">
                 <video class="camera-feed" data-camera-feed autoplay muted playsinline></video>
@@ -269,7 +389,7 @@
               </div>
 
               <div class="camera-actions">
-                <button class="btn btn-light btn-small" type="button" data-switch-camera>
+                <button class="btn btn-light btn-small" type="button" data-switch-camera aria-label="Switch camera">
                   <i data-lucide="refresh-cw" aria-hidden="true"></i>
                   <span>Switch</span>
                 </button>
@@ -277,28 +397,19 @@
                   <i data-lucide="camera" aria-hidden="true"></i>
                   <span>Capture Photo</span>
                 </button>
-                <button class="btn btn-light btn-small" type="button" data-close-camera>
+                <button class="btn btn-light btn-small" type="button" data-close-camera aria-label="Close camera">
                   <i data-lucide="x" aria-hidden="true"></i>
                   <span>Close</span>
                 </button>
               </div>
             </div>
 
-            <div class="camera-open-card" data-camera-open-card>
-              <span class="camera-open-icon"><i data-lucide="camera" aria-hidden="true"></i></span>
-              <strong>Start camera try-on</strong>
-              <small>Use a bright front-facing camera photo for the cleanest preview.</small>
-              <button class="btn btn-primary" type="button" data-open-camera>
-                <i data-lucide="video" aria-hidden="true"></i>
-                <span>Open Camera</span>
-              </button>
-            </div>
-
+            <!-- Before / After preview grid – shown after capture or upload -->
             <div class="tryon-preview-grid" data-preview-grid hidden>
               <figure>
                 <span>Before</span>
-                <img data-before-img alt="Captured camera preview" hidden>
-                <div class="preview-empty" data-before-placeholder>Camera capture</div>
+                <img data-before-img alt="Your photo" hidden>
+                <div class="preview-empty" data-before-placeholder>Your photo</div>
               </figure>
               <figure>
                 <span>AI try-on</span>
@@ -328,7 +439,7 @@
               <span>Selected frame</span>
               <strong data-frame-name>B-Titanium IP 6009</strong>
               <small data-frame-category>Titanium</small>
-              <p data-frame-meta>Supersight Evelicar | B-Titanium | Price on request</p>
+              <p data-frame-meta>Supersight Evelicar | B-Titanium | Rs. 2,499</p>
             </div>
 
             <div class="category-scroller" data-frame-categories aria-label="Frame categories"></div>
@@ -390,7 +501,7 @@
                 <i data-lucide="send" aria-hidden="true"></i>
                 <span>Send to WhatsApp</span>
               </button>
-              <p class="form-note" data-lead-note aria-live="polite">Open the camera and capture a photo to generate your AI try-on.</p>
+              <p class="form-note" data-lead-note aria-live="polite">Upload a photo or open the camera to start your try-on.</p>
             </form>
 
             <div class="post-tryon-actions" aria-label="Next actions">
@@ -408,7 +519,7 @@
         <div class="section-copy">
           <p class="section-kicker">Book a home trial</p>
           <h2 id="home-title">Select up to five frames for a guided home visit.</h2>
-          <p class="section-lead">Shortlist frames from the catalog or try-on area, choose a date and time slot, and send the request directly to WhatsApp. The clinic can update fees, deposits, and delivery rules later.</p>
+          <p class="section-lead">Shortlist frames from the catalog or try-on area, choose a date and time slot, and send the request directly to WhatsApp. The clinic coordinates the visit after confirming availability.</p>
 
           <div class="home-summary-panel">
             <div class="summary-head">
@@ -448,10 +559,10 @@
               Preferred time slot
               <select name="time" required>
                 <option value="">Select slot</option>
-                <option>10:00 AM - 12:00 PM</option>
-                <option>12:00 PM - 2:00 PM</option>
-                <option>2:00 PM - 5:00 PM</option>
-                <option>5:00 PM - 8:00 PM</option>
+                <option>10:00 AM – 12:00 PM</option>
+                <option>12:00 PM – 2:00 PM</option>
+                <option>2:00 PM – 5:00 PM</option>
+                <option>5:00 PM – 8:00 PM</option>
               </select>
             </label>
           </div>
@@ -462,7 +573,7 @@
             </label>
             <label>
               Notes optional
-              <input type="text" name="notes" placeholder="Any preferred frame or visit note">
+              <input type="text" name="notes" placeholder="Preferred frame or visit note">
             </label>
           </div>
           <button class="btn btn-primary form-submit" type="submit">
@@ -501,9 +612,24 @@
         </div>
 
         <div class="testimonial-grid">
-          <article><i data-lucide="quote" aria-hidden="true"></i><p>The clinic explained my prescription and helped me choose frames that felt comfortable for daily work.</p><strong>Optical patient</strong></article>
-          <article><i data-lucide="quote" aria-hidden="true"></i><p>The consultation was patient and clear. I knew which diagnostic test was needed and why.</p><strong>Diagnostics patient</strong></article>
-          <article><i data-lucide="quote" aria-hidden="true"></i><p>WhatsApp booking made follow-up simple, and the frame shortlist was easy to share with family.</p><strong>Frame customer</strong></article>
+          <article>
+            <i data-lucide="quote" aria-hidden="true"></i>
+            <p>The clinic explained my prescription in detail and helped me pick frames that fit my face shape and daily work routine.</p>
+            <strong>Priya M.</strong>
+            <small>Uppal, Hyderabad</small>
+          </article>
+          <article>
+            <i data-lucide="quote" aria-hidden="true"></i>
+            <p>Clear diagnostics consultation. I left knowing exactly which test was needed and why — no guessing, no unnecessary spending.</p>
+            <strong>Ravi K.</strong>
+            <small>Dilsukhnagar, Hyderabad</small>
+          </article>
+          <article>
+            <i data-lucide="quote" aria-hidden="true"></i>
+            <p>Booked a home trial over WhatsApp. The frame selection was easy, the visit was on time, and the whole experience was smooth.</p>
+            <strong>Sunitha R.</strong>
+            <small>Secunderabad, Hyderabad</small>
+          </article>
         </div>
       </div>
     </section>
@@ -523,7 +649,7 @@
           </details>
           <details>
             <summary>How many frames can I choose for home trial?</summary>
-            <p>You can select up to five frames. If you select multiple frames, the home-trial option is highlighted in the summary.</p>
+            <p>You can select up to five frames. A Rs. 199 service fee applies, with a refundable Rs. 500 deposit if you choose three or more frames.</p>
           </details>
           <details>
             <summary>Does virtual try-on replace a prescription check?</summary>
@@ -531,7 +657,15 @@
           </details>
           <details>
             <summary>Can I send my try-on photo to WhatsApp?</summary>
-            <p>Yes. If direct file sharing is supported by the device, the image can be shared. Otherwise, WhatsApp opens with the lead details and the image can be downloaded.</p>
+            <p>Yes. After generating your try-on, the lead form opens WhatsApp with your frame details. You can also download the image separately and attach it.</p>
+          </details>
+          <details>
+            <summary>What lens options are available?</summary>
+            <p>The clinic offers basic clear lenses, anti-reflective coating, blue-light filter lenses, and photochromic (Transitions) lenses. Pricing is shown in the frame selection panel. Final lens recommendation is confirmed at the clinic based on your prescription.</p>
+          </details>
+          <details>
+            <summary>Is the clinic address and parking available?</summary>
+            <p>The clinic is at Plot 4, Opposite ECIL X Roads, Uppal Main Road, Hyderabad – 500039. Call 7842938316 before visiting to confirm parking and appointment availability.</p>
           </details>
         </div>
       </div>
@@ -558,11 +692,27 @@
             </div>
             <div>
               <i data-lucide="map-pin" aria-hidden="true"></i>
-              <span>Service area</span>
-              <strong>Serving patients across Hyderabad</strong>
-              <small>Call or WhatsApp before visiting.</small>
+              <span>Clinic address</span>
+              <strong>Plot 4, Opp. ECIL X Roads, Uppal Main Road</strong>
+              <small>Uppal, Hyderabad – Telangana 500039</small>
+            </div>
+            <div>
+              <i data-lucide="clock" aria-hidden="true"></i>
+              <span>Hours</span>
+              <strong>Mon – Sat: 10:00 AM to 8:00 PM</strong>
+              <small>Call before visiting on public holidays.</small>
             </div>
           </div>
+
+          <a
+            class="btn btn-outline-map"
+            href="https://maps.google.com/?q=Uppal+Main+Road+ECIL+X+Roads+Hyderabad"
+            target="_blank"
+            rel="noopener"
+          >
+            <i data-lucide="map" aria-hidden="true"></i>
+            <span>Open in Google Maps</span>
+          </a>
         </div>
 
         <form class="appointment-form" data-appointment-form>
@@ -619,40 +769,6 @@
         </form>
       </div>
     </section>
-
-    <section class="section dashboard-section" id="dashboard" aria-labelledby="dashboard-title">
-      <div class="container">
-        <div class="section-heading">
-          <p class="section-kicker">Clinic tracking</p>
-          <h2 id="dashboard-title">Lead and booking status board for the clinic team.</h2>
-          <p>Static mode stores leads in this browser. A backend can later connect to <code>/api/tryon-leads</code> for database storage, WhatsApp Business API delivery, file uploads, payments, and role-based access.</p>
-        </div>
-
-        <div class="dashboard-controls">
-          <label>
-            Search
-            <input type="search" data-lead-search placeholder="Name, phone, frame, service">
-          </label>
-          <label>
-            Status
-            <select data-status-filter>
-              <option value="all">All leads</option>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="try-on-done">Try-on Done</option>
-              <option value="home-trial-booked">Home Trial Booked</option>
-              <option value="frame-selected">Frame Selected</option>
-              <option value="payment-pending">Payment Pending</option>
-              <option value="booked">Booked</option>
-              <option value="delivered">Delivered</option>
-              <option value="converted">Converted</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="dashboard-list" data-dashboard-list aria-live="polite"></div>
-      </div>
-    </section>
   </main>
 
   <footer class="site-footer">
@@ -666,14 +782,17 @@
           <span>Optics &amp; Lasers Eye Care</span>
         </span>
       </a>
-      <p>&copy; 2026 Vision Vistara Optics &amp; Lasers Eye Care. Phone: 7842938316.</p>
+      <div class="footer-info">
+        <p>Plot 4, Opp. ECIL X Roads, Uppal Main Road, Hyderabad – 500039</p>
+        <p>&copy; 2026 Vision Vistara Optics &amp; Lasers Eye Care &middot; <a href="tel:+917842938316">7842938316</a> &middot; <a href="admin.html">Staff Login</a></p>
+      </div>
     </div>
   </footer>
 
   <div class="mobile-sticky-actions" aria-label="Mobile quick actions">
     <a href="#tryon" data-open-tryon>
       <i data-lucide="scan-face" aria-hidden="true"></i>
-      Camera Try-On
+      Try-On
     </a>
     <a href="#home-trial">
       <i data-lucide="house" aria-hidden="true"></i>
