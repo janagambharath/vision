@@ -1,41 +1,35 @@
 /* ─────────────────────────────────────────────
    Vision Vistara Optics & Lasers Eye Care
-   style.css — v2.0
+   style.css — v3.0 (Mobile-Fixed)
    ───────────────────────────────────────────── */
 
 /* ── 1. Design Tokens ─────────────────────── */
 :root {
-  /* Ink palette */
   --ink-980: #050913;
   --ink-950: #07101d;
   --ink-900: #0b1728;
   --ink-850: #101e31;
 
-  /* Brand blues */
   --blue-800: #1550b8;
   --blue-700: #2468e8;
   --blue-600: #2d77ff;
   --blue-100: #eaf3ff;
 
-  /* Accent palette */
   --aqua: #42c8e8;
   --mint: #28c58a;
   --gold: #c9a85f;
   --rose: #d99bb1;
 
-  /* Light surface */
   --paper: #f6f9fd;
   --surface: #ffffff;
   --surface-soft: #eef6ff;
   --paper-text: #142033;
   --paper-muted: #5e6d82;
 
-  /* Dark surface */
   --text: #eef5ff;
   --soft-text: #b8c6dc;
   --muted: #8593a8;
 
-  /* Borders & shadows */
   --line: rgba(20, 32, 51, 0.12);
   --line-strong: rgba(20, 32, 51, 0.20);
   --line-light: rgba(255, 255, 255, 0.14);
@@ -43,11 +37,8 @@
   --shadow-soft: 0 18px 46px rgba(20, 32, 51, 0.12);
   --shadow-strong: 0 32px 90px rgba(5, 9, 19, 0.32);
 
-  /* Layout */
   --radius: 8px;
   --header-height: 76px;
-
-  /* Focus ring */
   --focus-color: rgba(45, 119, 255, 0.70);
 }
 
@@ -73,6 +64,9 @@ body {
   background: var(--paper);
   line-height: 1.6;
   overflow-x: hidden;
+  /* Prevent horizontal scroll glitches */
+  width: 100%;
+  max-width: 100vw;
 }
 
 body.menu-open {
@@ -269,6 +263,7 @@ code {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   transition: background 160ms ease;
+  flex-shrink: 0;
 }
 
 .menu-toggle:hover {
@@ -295,6 +290,9 @@ code {
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  /* Fix: prevent overflow issues */
+  overflow-y: auto;
+  max-height: calc(100dvh - var(--header-height));
 }
 
 .mobile-menu.open {
@@ -306,6 +304,10 @@ code {
   color: var(--text);
   font-weight: 750;
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+  /* Fix: ensure tap targets are big enough */
+  min-height: 48px;
+  display: flex;
+  align-items: center;
 }
 
 .mobile-menu a:last-child {
@@ -317,6 +319,7 @@ code {
   padding: 14px 18px !important;
   color: #04110b !important;
   text-align: center;
+  justify-content: center;
   border-radius: 999px;
   background: var(--mint);
 }
@@ -401,6 +404,32 @@ code {
 
 .btn-whatsapp:hover {
   box-shadow: 0 20px 40px rgba(40, 197, 138, 0.34);
+}
+
+.btn-outline-map {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 20px;
+  border-radius: 999px;
+  color: var(--aqua);
+  border: 1px solid rgba(66, 200, 232, 0.36);
+  background: rgba(66, 200, 232, 0.07);
+  font-weight: 800;
+  margin-top: 22px;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.btn-outline-map:hover {
+  background: rgba(66, 200, 232, 0.14);
+  transform: translateY(-2px);
+}
+
+.btn-outline-map svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .icon-button {
@@ -505,6 +534,7 @@ code {
   position: relative;
   z-index: 2;
   min-width: 0;
+  width: 100%;
 }
 
 .hero-content > * {
@@ -903,6 +933,8 @@ code {
   padding-bottom: 4px;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
+  /* Fix: prevent scroll chaining on mobile */
+  -webkit-overflow-scrolling: touch;
 }
 
 .frame-filter-list::-webkit-scrollbar,
@@ -2208,6 +2240,140 @@ code {
   transform: none;
 }
 
+/* ── Camera panel styles ──────────────────── */
+.camera-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.camera-viewport {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 4 / 3;
+}
+
+.camera-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-guide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  pointer-events: none;
+}
+
+.camera-oval {
+  display: block;
+  width: min(55%, 200px);
+  aspect-ratio: 3 / 4;
+  border: 2px solid rgba(66, 200, 232, 0.58);
+  border-radius: 50%;
+}
+
+.camera-guide span:not(.camera-oval) {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.camera-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: #ffffff;
+  font-weight: 800;
+  text-align: center;
+  background: rgba(5, 9, 19, 0.86);
+}
+
+.camera-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.camera-capture-btn {
+  flex: 1 1 auto;
+  max-width: 220px;
+}
+
+/* ── Lens upsell ──────────────────────────── */
+.lens-upsell {
+  display: grid;
+  gap: 10px;
+}
+
+.lens-upsell-label {
+  color: var(--paper-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lens-options {
+  display: grid;
+  gap: 6px;
+}
+
+.lens-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.lens-option:has(input:checked) {
+  border-color: rgba(45, 119, 255, 0.40);
+  background: rgba(45, 119, 255, 0.05);
+}
+
+.lens-option input {
+  flex-shrink: 0;
+  min-height: 16px;
+  width: 16px;
+  accent-color: var(--blue-700);
+}
+
+.lens-option span {
+  flex: 1;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--paper-text);
+}
+
+.lens-option em {
+  font-style: normal;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--blue-800);
+}
+
+/* ── Home trial section ───────────────────── */
+.home-trial-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
 /* ── 53. Responsive — 1180px ──────────────── */
 @media (max-width: 1180px) {
   .desktop-nav {
@@ -2254,6 +2420,8 @@ code {
 
   .site-header {
     padding: 0 20px;
+    /* Fix: tighter gap on tablet */
+    gap: 12px;
   }
 
   .desktop-nav,
@@ -2319,116 +2487,175 @@ code {
   .site-footer p {
     text-align: left;
   }
-}
 
-/* ── 55. Responsive — 680px ───────────────── */
-@media (max-width: 680px) {
-  body {
-    padding-bottom: 74px;
+  /* Fix tablet tryon shell */
+  .tryon-shell {
+    grid-template-columns: 1fr;
   }
 
+  .home-trial-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── 55. Responsive — 680px (Mobile) ─────── */
+@media (max-width: 680px) {
+  :root {
+    --header-height: 64px;
+  }
+
+  /* Fix: extra bottom padding for sticky bar */
+  body {
+    padding-bottom: 80px;
+  }
+
+  /* Fix: tighten container on narrow screens */
   .container {
-    width: min(100% - 32px, 1180px);
+    width: calc(100% - 32px);
+  }
+
+  /* ─ Header fixes ─ */
+  .site-header {
+    padding: 0 16px;
+    gap: 10px;
+  }
+
+  .brand {
+    gap: 9px;
+    /* Fix: allow brand to shrink if needed */
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
   }
 
   .brand-text strong {
     font-size: 0.8rem;
+    /* Fix: truncate on very small screens */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .brand-text span {
     font-size: 0.68rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .brand-mark {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
   }
 
+  /* ─ Hero fixes ─ */
   .hero {
     min-height: auto;
-    padding: 102px 0 38px;
+    /* Fix: ensure proper padding with smaller header */
+    padding: 88px 0 44px;
+    align-items: flex-start;
+  }
+
+  .hero-content {
+    padding-top: 12px;
   }
 
   .eyebrow,
   .section-kicker {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
   }
 
   .hero h1 {
-    font-size: 2.05rem;
-    line-height: 1.08;
+    font-size: 2rem;
+    line-height: 1.1;
     text-wrap: wrap;
+    /* Fix: prevent text from overflowing */
+    word-break: break-word;
   }
 
   .hero-subtext {
-    font-size: 1rem;
-    max-width: 35ch;
+    font-size: 0.96rem;
+    max-width: 100%;
+    margin-top: 14px;
   }
 
+  /* Fix: hero action buttons - full width stack on mobile */
   .hero-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-    width: min(100%, calc(100vw - 48px));
-    max-width: 370px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
     gap: 10px;
-    margin-top: 26px;
+    margin-top: 22px;
   }
 
   .hero-actions .btn {
-    min-height: 48px;
-    padding: 0 14px;
-    font-size: 0.88rem;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 0.92rem;
+    justify-content: center;
   }
 
+  /* ─ Lead strip fixes ─ */
   .lead-strip-inner {
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding: 12px 0;
+    padding: 8px 0;
   }
 
   .lead-point {
     width: 100%;
     min-height: auto;
-    padding: 13px 0;
+    padding: 12px 4px;
     border: 0;
     border-bottom: 1px solid var(--line);
     border-radius: 0;
     background: transparent;
+    font-size: 0.9rem;
   }
 
   .lead-point:last-child {
     border-bottom: 0;
   }
 
+  /* ─ Section fixes ─ */
   .section {
-    padding: 58px 0;
+    padding: 52px 0;
   }
 
   .section-heading {
-    margin-bottom: 30px;
+    margin-bottom: 26px;
   }
 
   .section-heading h2,
   .section-copy h2,
   .contact-copy h2 {
-    font-size: 1.58rem;
-    line-height: 1.14;
+    font-size: 1.54rem;
+    line-height: 1.16;
+    /* Fix: balance doesn't work well on mobile, use normal wrap */
+    text-wrap: wrap;
   }
 
   .section-heading p:not(.section-kicker),
   .section-lead,
   .contact-copy p {
-    max-width: 35ch;
+    font-size: 0.96rem;
+    max-width: 100%;
+    margin-top: 12px;
   }
 
+  /* ─ Grids to single column ─ */
   .trust-grid,
   .service-grid,
   .diagnostic-grid,
   .testimonial-grid,
   .product-grid,
   .dashboard-controls,
-  .form-row {
+  .form-row,
+  .home-trial-layout {
     grid-template-columns: 1fr;
   }
 
@@ -2437,7 +2664,18 @@ code {
   .diagnostic-grid article,
   .testimonial-grid article {
     min-height: auto;
-    padding: 22px;
+    padding: 20px;
+  }
+
+  /* ─ Commerce layout fix ─ */
+  .commerce-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* Fix: selection summary not sticky on mobile - causes layout issues */
+  .selection-summary {
+    position: static;
+    margin-top: 0;
   }
 
   .product-copy,
@@ -2449,22 +2687,41 @@ code {
   }
 
   .product-title-row {
-    display: grid;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .product-commercials {
     justify-items: start;
   }
 
-  .product-specs,
+  .product-specs {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .detail-gallery,
   .detail-specs div {
     grid-template-columns: 1fr;
   }
 
+  .detail-specs div {
+    grid-template-columns: 120px 1fr;
+  }
+
+  .product-actions {
+    flex-direction: column;
+  }
+
   .product-actions .btn-small,
   .product-actions .text-button {
-    flex-basis: 100%;
+    flex-basis: auto;
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* ─ Try-On fixes ─ */
+  .tryon-shell {
+    grid-template-columns: 1fr;
   }
 
   .tryon-stage,
@@ -2472,19 +2729,30 @@ code {
     padding: 12px;
   }
 
-  .selfie-workspace,
-  .tryon-preview-grid {
+  /* Fix: selfie workspace stacks on mobile */
+  .selfie-workspace {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .selfie-upload-card,
   .tryon-preview-grid figure {
-    min-height: 240px;
+    min-height: 200px;
+  }
+
+  /* Fix: try-on preview side by side but smaller */
+  .tryon-preview-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .tryon-preview-grid figure {
+    min-height: 160px;
   }
 
   .tryon-controls {
     grid-template-columns: 44px minmax(0, 1fr) 44px;
-    gap: 9px;
+    gap: 8px;
   }
 
   .tryon-controls .icon-button {
@@ -2494,36 +2762,101 @@ code {
 
   .tryon-controls .btn {
     min-height: 46px;
-    padding: 0 12px;
-    font-size: 0.86rem;
+    padding: 0 10px;
+    font-size: 0.84rem;
   }
 
-  .frame-thumbs,
+  /* Fix: frame thumbs grid */
+  .frame-thumbs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .frame-thumb {
+    min-height: 90px;
+    padding: 8px;
+  }
+
   .tryon-choice-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
+  .tryon-choice-actions .btn {
+    font-size: 0.8rem;
+    padding: 0 8px;
+    min-height: 42px;
+  }
+
+  /* ─ Doctor profile fix ─ */
   .doctor-profile {
-    grid-template-columns: 82px 1fr;
+    grid-template-columns: 72px 1fr;
+    gap: 12px;
   }
 
   .doctor-profile img {
-    width: 82px;
-    height: 104px;
+    width: 72px;
+    height: 90px;
   }
 
+  /* ─ Split layout fix ─ */
+  .split-layout,
+  .contact-layout {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  /* ─ Contact section fix ─ */
+  .contact-details {
+    margin-top: 24px;
+  }
+
+  .contact-details div {
+    grid-template-columns: 36px 1fr;
+    gap: 2px 10px;
+    padding: 14px;
+  }
+
+  .appointment-form {
+    padding: 20px;
+  }
+
+  /* Fix: form row (date/time) to single column on mobile */
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  /* ─ Dashboard fixes ─ */
   .dashboard-card {
     grid-template-columns: 1fr;
   }
 
   .dashboard-card img {
     width: 100%;
+    aspect-ratio: 16 / 9;
   }
 
   .lead-actions {
+    grid-column: unset;
     grid-template-columns: 1fr;
   }
 
+  /* ─ FAQ fixes ─ */
+  .faq-list details {
+    padding: 16px;
+  }
+
+  /* ─ Footer fixes ─ */
+  .site-footer {
+    padding: 28px 0 90px;
+  }
+
+  .site-footer p {
+    text-align: left;
+    font-size: 0.84rem;
+  }
+
+  /* ─ Mobile sticky actions ─ */
   .mobile-sticky-actions {
     display: none;
   }
@@ -2531,26 +2864,111 @@ code {
   .mobile-sticky-actions.is-visible {
     display: grid;
   }
+
+  /* ─ Camera panel fixes ─ */
+  .camera-viewport {
+    aspect-ratio: 3 / 4;
+  }
+
+  .camera-actions {
+    gap: 8px;
+  }
+
+  .camera-capture-btn {
+    max-width: none;
+    flex: 1;
+  }
+
+  /* ─ Stage toolbar wraps ─ */
+  .stage-toolbar {
+    gap: 8px;
+  }
+
+  .status-pill {
+    font-size: 0.78rem;
+    padding: 0 10px;
+    min-height: 30px;
+  }
 }
 
-/* ── 56. Responsive — 390px ───────────────── */
-@media (max-width: 390px) {
-  .brand {
-    gap: 9px;
+/* ── 56. Responsive — 420px (Small phones) ── */
+@media (max-width: 420px) {
+  :root {
+    --header-height: 60px;
+  }
+
+  .container {
+    width: calc(100% - 24px);
+  }
+
+  .brand-text {
+    /* Fix: hide subtitle on very small screens */
+    display: none;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .hero {
+    padding: 80px 0 40px;
   }
 
   .hero h1 {
-    font-size: 1.76rem;
+    font-size: 1.72rem;
+    line-height: 1.12;
   }
 
-  .btn,
-  .tryon-controls .btn {
-    font-size: 0.8rem;
+  .hero-subtext {
+    font-size: 0.9rem;
+  }
+
+  .hero-actions .btn {
+    font-size: 0.86rem;
+    min-height: 48px;
   }
 
   .btn svg {
     width: 17px;
     height: 17px;
+  }
+
+  .section {
+    padding: 44px 0;
+  }
+
+  .section-heading h2,
+  .section-copy h2,
+  .contact-copy h2 {
+    font-size: 1.4rem;
+  }
+
+  /* Fix: tryon preview on smallest screens */
+  .tryon-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tryon-preview-grid figure {
+    min-height: 220px;
+  }
+
+  /* Fix: frame thumbs 1 column on tiny screens */
+  .frame-thumbs {
+    grid-template-columns: 1fr;
+  }
+
+  .tryon-choice-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .product-specs {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-item {
+    grid-template-columns: 50px 1fr 28px;
+    gap: 8px;
   }
 }
 
@@ -2589,5 +3007,57 @@ code {
 
   .section {
     padding: 24px 0;
+  }
+}
+
+/* ── Camera launch card ───────────────────── */
+.camera-launch-card {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  min-height: 310px;
+  padding: 22px;
+  color: var(--text);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.camera-open-icon {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  color: var(--aqua);
+  border: 1px solid rgba(66, 200, 232, 0.30);
+  border-radius: 50%;
+  background: rgba(66, 200, 232, 0.10);
+  margin: 0 auto;
+}
+
+.camera-open-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.camera-launch-card strong {
+  color: #ffffff;
+  font-size: 1.08rem;
+  display: block;
+}
+
+.camera-launch-card small {
+  max-width: 24ch;
+  color: var(--soft-text);
+  font-weight: 700;
+  display: block;
+}
+
+/* ── Mobile: camera launch card fix ─────── */
+@media (max-width: 680px) {
+  .camera-launch-card {
+    min-height: 200px;
   }
 }
