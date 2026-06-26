@@ -28,7 +28,7 @@
       <a href="#about">About</a>
       <a href="#services">Services</a>
       <a href="#frames">Frames</a>
-      <a href="#tryon">Virtual Try-On</a>
+      <a href="#tryon">AI Try-On</a>
       <a href="#home-trial">Try At Home</a>
       <a href="#diagnostics">Diagnostics</a>
       <a href="#contact">Contact</a>
@@ -55,7 +55,7 @@
     <a href="#about">About</a>
     <a href="#services">Services</a>
     <a href="#frames">Frames</a>
-    <a href="#tryon">Virtual Try-On</a>
+    <a href="#tryon">AI Try-On</a>
     <a href="#home-trial">Try At Home</a>
     <a href="#diagnostics">Diagnostics</a>
     <a href="#contact">Contact</a>
@@ -89,7 +89,7 @@
           </a>
           <a class="btn btn-light" href="#tryon" data-open-tryon>
             <i data-lucide="scan-face" aria-hidden="true"></i>
-            <span>Try Frames Live</span>
+            <span>Upload Selfie</span>
           </a>
           <a class="btn btn-whatsapp" href="https://wa.me/917842938316?text=Hello%20Vision%20Vistara%2C%20I%20would%20like%20to%20book%20an%20eye%20care%20appointment." target="_blank" rel="noopener">
             <i data-lucide="message-circle" aria-hidden="true"></i>
@@ -100,14 +100,10 @@
 
       <div class="hero-preview" aria-hidden="true">
         <div class="preview-card">
-          <span class="preview-label">Clinic + Optics</span>
-          <strong>Eye care first, frame choice with guidance.</strong>
+          <span class="preview-label">Real inventory</span>
+          <strong>Authentic Vision Vistara frames only.</strong>
           <div class="preview-face">
-            <span></span>
-            <svg viewBox="0 0 340 128" role="img" aria-hidden="true">
-              <path d="M43 65c8-25 30-38 66-38 32 0 51 12 57 35h18c7-23 26-35 57-35 37 0 59 13 66 38 3 11 1 25-7 37-12 16-33 23-60 20-31-3-50-17-58-40h-14c-8 23-27 37-58 40-28 3-49-4-60-20-8-12-10-26-7-37Z" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M162 65c6-6 17-6 24 0" fill="none" stroke="currentColor" stroke-width="10" stroke-linecap="round"/>
-            </svg>
+            <img src="assets/inventory/suphous-pink-96409/front.png" alt="">
           </div>
         </div>
       </div>
@@ -163,7 +159,7 @@
           <article><i data-lucide="zap" aria-hidden="true"></i><h3>Laser eye care guidance</h3><p>LASIK and laser suitability discussions with clear eligibility next steps.</p></article>
           <article><i data-lucide="sparkles" aria-hidden="true"></i><h3>Cataract consultation</h3><p>Assessment support and guidance for lens planning and surgical referral needs.</p></article>
           <article><i data-lucide="activity" aria-hidden="true"></i><h3>Retina and glaucoma care</h3><p>Screening-oriented guidance supported by diagnostics when clinically required.</p></article>
-          <article><i data-lucide="glasses" aria-hidden="true"></i><h3>Optical frames and lenses</h3><p>Premium frames, blue-light options, rimless, titanium, kids, and daily-wear collections.</p></article>
+          <article><i data-lucide="glasses" aria-hidden="true"></i><h3>Optical frames and lenses</h3><p>Real inventory frames, lens guidance, and fit support for available in-clinic products.</p></article>
           <article><i data-lucide="house" aria-hidden="true"></i><h3>Try at home</h3><p>Select up to five frames and request a guided home trial with a practical booking flow.</p></article>
         </div>
       </div>
@@ -172,9 +168,9 @@
     <section class="section frames-section" id="frames" aria-labelledby="frames-title">
       <div class="container">
         <div class="section-heading">
-          <p class="section-kicker">Explore premium frames</p>
-          <h2 id="frames-title">A curated optical catalog inside your clinic website.</h2>
-          <p>Choose from men, women, kids, premium, titanium, blue-light, rimless, full-rim, and half-rim styles. Select one frame or build a home-trial shortlist.</p>
+          <p class="section-kicker">Explore real inventory</p>
+          <h2 id="frames-title">Only physically available Vision Vistara frames.</h2>
+          <p>Browse authentic product photos with real markings, measurements, availability, and WhatsApp booking support.</p>
         </div>
 
         <div class="commerce-layout">
@@ -244,36 +240,43 @@
     <section class="section tryon-section" id="tryon" aria-labelledby="tryon-title">
       <div class="container">
         <div class="section-heading">
-          <p class="section-kicker">Try frames live</p>
-          <h2 id="tryon-title">Virtual try-on with the exact selected frame asset.</h2>
-          <p>Open the camera, align the selected frame, capture a preview, save a favorite, and send the result to WhatsApp for clinic follow-up.</p>
+          <p class="section-kicker">AI try-on</p>
+          <h2 id="tryon-title">Try real frames with a selfie upload.</h2>
+          <p>Upload a selfie, select a real inventory frame, generate a premium try-on preview, compare before and after, and send the result to WhatsApp for clinic follow-up.</p>
         </div>
 
         <div class="tryon-shell">
           <div class="tryon-stage">
             <div class="stage-toolbar">
-              <span class="status-pill" data-camera-state>
-                <i data-lucide="camera" aria-hidden="true"></i>
-                Camera ready
+              <span class="status-pill" data-ai-state>
+                <i data-lucide="sparkles" aria-hidden="true"></i>
+                AI try-on ready
               </span>
-              <span class="status-pill muted" data-tracking-state>
-                <i data-lucide="scan-face" aria-hidden="true"></i>
-                Tracking standby
+              <span class="status-pill muted" data-upload-state>
+                <i data-lucide="image-up" aria-hidden="true"></i>
+                Upload selfie
               </span>
             </div>
 
-            <div class="camera-viewport" data-tryon-view>
-              <video data-video playsinline muted autoplay></video>
-              <canvas data-tryon-canvas width="1280" height="900"></canvas>
-              <div class="permission-state" data-camera-panel>
-                <div class="permission-icon"><i data-lucide="scan-face" aria-hidden="true"></i></div>
-                <h3>Start live frame try-on</h3>
-                <p>Your camera opens in the browser. The image stays on this device unless you choose to send it.</p>
-                <button class="btn btn-primary" type="button" data-start-camera>
-                  <i data-lucide="camera" aria-hidden="true"></i>
-                  <span>Open Camera</span>
-                </button>
-                <small data-camera-help>Allow camera permission when your browser asks.</small>
+            <div class="selfie-workspace">
+              <label class="selfie-upload-card">
+                <input type="file" data-selfie-input accept="image/*">
+                <span><i data-lucide="image-up" aria-hidden="true"></i></span>
+                <strong>Upload selfie</strong>
+                <small>Use a clear front-facing photo without heavy filters.</small>
+              </label>
+
+              <div class="tryon-preview-grid">
+                <figure>
+                  <span>Before</span>
+                  <img data-before-img alt="Uploaded selfie preview" hidden>
+                  <div class="preview-empty" data-before-placeholder>Selfie preview</div>
+                </figure>
+                <figure>
+                  <span>AI try-on</span>
+                  <img data-preview-img alt="Generated AI try-on preview" hidden>
+                  <div class="preview-empty" data-result-placeholder>Generated preview</div>
+                </figure>
               </div>
             </div>
 
@@ -281,9 +284,9 @@
               <button class="icon-button" type="button" data-prev-frame aria-label="Previous frame">
                 <i data-lucide="chevron-left" aria-hidden="true"></i>
               </button>
-              <button class="btn btn-primary" type="button" data-capture disabled>
-                <i data-lucide="camera" aria-hidden="true"></i>
-                <span>Capture Photo</span>
+              <button class="btn btn-primary" type="button" data-generate-tryon disabled>
+                <i data-lucide="sparkles" aria-hidden="true"></i>
+                <span>Generate Try-On</span>
               </button>
               <button class="icon-button" type="button" data-next-frame aria-label="Next frame">
                 <i data-lucide="chevron-right" aria-hidden="true"></i>
@@ -294,9 +297,9 @@
           <aside class="frame-panel" aria-label="Frame selection and lead capture">
             <div class="selected-frame">
               <span>Selected frame</span>
-              <strong data-frame-name>Aurora Full Rim</strong>
-              <small data-frame-category>Full Rim</small>
-              <p data-frame-meta>Vistara Studio | Acetate | Rs. 2,950</p>
+              <strong data-frame-name>B-Titanium IP 6009</strong>
+              <small data-frame-category>Titanium</small>
+              <p data-frame-meta>Supersight Evelicar | B-Titanium | Price on request</p>
             </div>
 
             <div class="category-scroller" data-frame-categories aria-label="Frame categories"></div>
@@ -316,7 +319,7 @@
             <div class="preview-panel" data-preview-panel hidden>
               <div class="preview-head">
                 <div>
-                  <span>Captured look</span>
+                  <span>Generated look</span>
                   <strong>Ready to send</strong>
                 </div>
                 <button class="text-button" type="button" data-retake>
@@ -324,7 +327,6 @@
                   Retake
                 </button>
               </div>
-              <img data-preview-img alt="Captured try-on preview">
               <div class="preview-actions">
                 <button class="btn btn-light" type="button" data-download disabled>
                   <i data-lucide="download" aria-hidden="true"></i>
@@ -359,7 +361,7 @@
                 <i data-lucide="send" aria-hidden="true"></i>
                 <span>Send to WhatsApp</span>
               </button>
-              <p class="form-note" data-lead-note aria-live="polite">Capture a photo to include your try-on result.</p>
+              <p class="form-note" data-lead-note aria-live="polite">Upload a selfie to generate your AI try-on result.</p>
             </form>
 
             <div class="post-tryon-actions" aria-label="Next actions">
@@ -386,7 +388,7 @@
             </div>
             <div class="summary-items compact" data-home-selected></div>
             <div class="summary-totals">
-              <div><span>Frame total</span><strong data-home-frame-total>Rs. 0</strong></div>
+              <div><span>Frame total</span><strong data-home-frame-total>Price on request</strong></div>
               <div><span>Service fee</span><strong data-home-fee>Rs. 199</strong></div>
               <div><span>Refundable deposit</span><strong data-home-deposit>Rs. 0</strong></div>
               <div class="total-row"><span>Booking estimate</span><strong data-home-total>Rs. 199</strong></div>
@@ -654,7 +656,6 @@
     </a>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script src="script.js"></script>
 </body>

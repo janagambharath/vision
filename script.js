@@ -7,17 +7,18 @@ const MAX_HOME_TRIAL_FRAMES = 5;
 const HOME_TRIAL_BASE_FEE = 199;
 const HOME_TRIAL_FREE_THRESHOLD = 7000;
 const HOME_TRIAL_DEPOSIT = 500;
+const AI_TRYON_ENDPOINT = "/api/ai-tryon";
+const FREE_AI_IMAGE_MODEL = "free-stable-diffusion-inpaint";
 
 const FRAME_CATEGORY_OPTIONS = [
   "Men",
   "Women",
-  "Kids",
   "Premium",
   "Titanium",
-  "Blue Light",
-  "Rimless",
-  "Full Rim",
-  "Half Rim"
+  "Transparent",
+  "Round",
+  "Square",
+  "Full Rim"
 ];
 
 const STATUS_OPTIONS = [
@@ -34,124 +35,56 @@ const STATUS_OPTIONS = [
 
 const FRAME_CATALOG = [
   {
-    id: "aurora-full-rim",
-    name: "Aurora Full Rim",
-    brand: "Vistara Studio",
-    category: "Full Rim",
-    categories: ["Men", "Women", "Premium", "Full Rim"],
-    material: "Italian acetate",
-    price: 2950,
-    description: "A confident full-rim frame with a polished clinic-to-workday finish.",
-    file: "assets/frames/aurora-full-rim.png",
-    style: "full",
-    rim: "#111827",
-    accent: "#d7bb77",
-    lens: "rgba(214, 244, 255, 0.18)"
-  },
-  {
-    id: "vista-half-rim",
-    name: "Vista Half Rim",
-    brand: "Vistara Studio",
-    category: "Half Rim",
-    categories: ["Men", "Half Rim", "Blue Light"],
-    material: "Stainless steel",
-    price: 2650,
-    description: "Lightweight office styling with a clean upper-rim profile.",
-    file: "assets/frames/vista-half-rim.png",
-    style: "half",
-    rim: "#263348",
-    accent: "#56d8f5",
-    lens: "rgba(214, 244, 255, 0.14)"
-  },
-  {
-    id: "clear-rimless",
-    name: "Clear Rimless",
-    brand: "Clarity",
-    category: "Rimless",
-    categories: ["Women", "Premium", "Rimless"],
-    material: "Memory alloy",
-    price: 4200,
-    description: "Minimal, elegant, and nearly invisible for a soft professional look.",
-    file: "assets/frames/clear-rimless.png",
-    style: "rimless",
-    rim: "#d8e8ff",
-    accent: "#9bb2cb",
-    lens: "rgba(233, 250, 255, 0.22)"
-  },
-  {
-    id: "titanium-line",
-    name: "Titanium Line",
-    brand: "Aero Ti",
+    id: "supersight-b-titanium-6009",
+    sku: "6009",
+    name: "B-Titanium IP 6009",
+    brand: "Supersight Evelicar",
     category: "Titanium",
-    categories: ["Men", "Women", "Premium", "Titanium"],
-    material: "Pure titanium",
-    price: 5400,
-    description: "Premium comfort, corrosion resistance, and a refined metal finish.",
-    file: "assets/frames/titanium-line.png",
-    style: "titanium",
-    rim: "#c7a96a",
-    accent: "#f0dca5",
-    lens: "rgba(236, 248, 255, 0.15)"
+    categories: ["Men", "Women", "Premium", "Titanium", "Round", "Full Rim"],
+    material: "B-Titanium",
+    shape: "Round",
+    size: "46-21-140",
+    colour: "Gloss Black",
+    availability: "In stock",
+    price: null,
+    priceLabel: "Price on request",
+    description: "Real Vision Vistara inventory frame with black B-Titanium styling, visible nose pads, printed lens markings, and Supersight branding.",
+    file: "assets/inventory/supersight-b-titanium-6009/front.png",
+    arFile: "assets/inventory/supersight-b-titanium-6009/ar-front.png",
+    detailImages: [
+      { label: "Front View", file: "assets/inventory/supersight-b-titanium-6009/front.png" }
+    ],
+    pendingViews: ["45 deg Left", "45 deg Right", "Left Side", "Right Side", "Close-up Hinge", "Brand Logo Detail"],
+    measurements: "46-21-140",
+    suitableFaceShapes: "Oval, square, heart, and smaller round face shapes after in-clinic fit check.",
+    lensCompatibility: "Prescription lenses, anti-reflective coating, photochromic lenses, and blue-light lenses after prescription verification."
   },
   {
-    id: "noir-fashion",
-    name: "Noir Fashion",
-    brand: "Maison Noir",
-    category: "Premium",
-    categories: ["Women", "Premium", "Full Rim"],
-    material: "High-density acetate",
-    price: 4850,
-    description: "A showroom statement frame with a graceful premium edge.",
-    file: "assets/frames/noir-fashion.png",
-    style: "fashion",
-    rim: "#090b12",
-    accent: "#d99bb1",
-    lens: "rgba(231, 242, 255, 0.13)"
-  },
-  {
-    id: "blue-light-focus",
-    name: "Blue Light Focus",
-    brand: "ScreenGuard",
-    category: "Blue Light",
-    categories: ["Men", "Women", "Blue Light", "Full Rim"],
-    material: "TR90 polymer",
-    price: 2200,
-    description: "Screen-friendly daily wear for study, office work, and long calls.",
-    file: "assets/frames/blue-light-focus.png",
-    style: "blue",
-    rim: "#1d4ed8",
-    accent: "#56d8f5",
-    lens: "rgba(104, 210, 255, 0.2)"
-  },
-  {
-    id: "junior-soft",
-    name: "Junior Soft",
-    brand: "Little Vista",
-    category: "Kids",
-    categories: ["Kids", "Full Rim"],
-    material: "Flexible silicone",
-    price: 1800,
-    description: "Soft, durable, and practical for young wearers and active days.",
-    file: "assets/frames/junior-soft.png",
-    style: "kids",
-    rim: "#2563eb",
-    accent: "#28c58a",
-    lens: "rgba(240, 248, 255, 0.16)"
-  },
-  {
-    id: "airflex-half-rim",
-    name: "AirFlex Half Rim",
-    brand: "Aero Lite",
-    category: "Half Rim",
-    categories: ["Men", "Women", "Half Rim", "Titanium"],
-    material: "Beta titanium",
-    price: 3650,
-    description: "A low-weight half-rim frame for crisp, understated daily wear.",
-    file: "assets/frames/airflex-half-rim.png",
-    style: "half",
-    rim: "#334155",
-    accent: "#d7bb77",
-    lens: "rgba(222, 245, 255, 0.15)"
+    id: "suphous-pink-96409",
+    sku: "96409",
+    name: "Suphous 96409",
+    brand: "Suphous Eyewear",
+    category: "Full Rim",
+    categories: ["Women", "Premium", "Transparent", "Square", "Full Rim"],
+    material: "Material to confirm in clinic",
+    shape: "Square",
+    size: "49D17-142",
+    colour: "Transparent Pink",
+    availability: "In stock",
+    price: null,
+    priceLabel: "Price on request",
+    description: "Real Vision Vistara inventory frame with transparent pink full-rim styling, visible 96409 49D17-142 marking, and Suphous Eyewear logo.",
+    file: "assets/inventory/suphous-pink-96409/front.png",
+    arFile: "assets/inventory/suphous-pink-96409/ar-front.png",
+    hoverFile: "assets/inventory/suphous-pink-96409/left45.png",
+    detailImages: [
+      { label: "Front View", file: "assets/inventory/suphous-pink-96409/front.png" },
+      { label: "45 deg Left", file: "assets/inventory/suphous-pink-96409/left45.png" }
+    ],
+    pendingViews: ["45 deg Right", "Left Side", "Right Side", "Close-up Hinge", "Brand Logo Detail"],
+    measurements: "49D17-142",
+    suitableFaceShapes: "Oval, round, and heart face shapes after in-clinic fit check.",
+    lensCompatibility: "Prescription lenses, anti-reflective coating, photochromic lenses, and blue-light lenses after prescription verification."
   }
 ];
 
@@ -164,14 +97,14 @@ const mobileStickyActions = document.querySelector(".mobile-sticky-actions");
 
 const tryOn = {
   section: document.querySelector("#tryon"),
-  canvas: document.querySelector("[data-tryon-canvas]"),
-  video: document.querySelector("[data-video]"),
-  viewport: document.querySelector("[data-tryon-view]"),
-  cameraPanel: document.querySelector("[data-camera-panel]"),
-  cameraHelp: document.querySelector("[data-camera-help]"),
-  startButtons: document.querySelectorAll("[data-start-camera], [data-open-tryon]"),
-  cameraState: document.querySelector("[data-camera-state]"),
-  trackingState: document.querySelector("[data-tracking-state]"),
+  openButtons: document.querySelectorAll("[data-open-tryon]"),
+  selfieInput: document.querySelector("[data-selfie-input]"),
+  generateButton: document.querySelector("[data-generate-tryon]"),
+  aiState: document.querySelector("[data-ai-state]"),
+  uploadState: document.querySelector("[data-upload-state]"),
+  beforeImage: document.querySelector("[data-before-img]"),
+  beforePlaceholder: document.querySelector("[data-before-placeholder]"),
+  resultPlaceholder: document.querySelector("[data-result-placeholder]"),
   frameName: document.querySelector("[data-frame-name]"),
   frameCategory: document.querySelector("[data-frame-category]"),
   frameMeta: document.querySelector("[data-frame-meta]"),
@@ -179,7 +112,6 @@ const tryOn = {
   thumbs: document.querySelector("[data-frame-thumbs]"),
   prevButton: document.querySelector("[data-prev-frame]"),
   nextButton: document.querySelector("[data-next-frame]"),
-  captureButton: document.querySelector("[data-capture]"),
   retakeButton: document.querySelector("[data-retake]"),
   downloadButton: document.querySelector("[data-download]"),
   previewPanel: document.querySelector("[data-preview-panel]"),
@@ -227,16 +159,9 @@ const state = {
   selectedCategory: "All",
   selectedFrameIds: new Set(),
   favoriteFrameIds: new Set(),
-  frameImages: new Map(),
-  stream: null,
-  faceMesh: null,
-  faceMeshUnavailable: false,
-  active: false,
-  rendering: false,
-  analyzing: false,
-  analysisRunning: false,
-  trackingFailures: 0,
-  lastLandmarks: null,
+  selfieFile: null,
+  selfieDataUrl: "",
+  aiBusy: false,
   capturedBlob: null,
   capturedFile: null,
   capturedDataUrl: "",
@@ -283,6 +208,35 @@ function formatCurrency(value) {
   return `Rs. ${Number(value || 0).toLocaleString("en-IN")}`;
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function lerp(start, end, amount) {
+  return start + (end - start) * amount;
+}
+
+function hasNumericPrice(frame) {
+  return frame && typeof frame.price === "number" && Number.isFinite(frame.price);
+}
+
+function getFramePrice(frame) {
+  return hasNumericPrice(frame) ? frame.price : 0;
+}
+
+function getFramePriceLabel(frame) {
+  return hasNumericPrice(frame) ? formatCurrency(frame.price) : frame.priceLabel || "Price on request";
+}
+
+function getFrameTotalLabel(frames = getSelectedFrames()) {
+  if (!frames.length) return formatCurrency(0);
+  const total = frames.reduce((sum, frame) => sum + getFramePrice(frame), 0);
+  const hasUnknownPrice = frames.some((frame) => !hasNumericPrice(frame));
+  if (hasUnknownPrice && total === 0) return "Price on request";
+  if (hasUnknownPrice) return `${formatCurrency(total)} + on request`;
+  return formatCurrency(total);
+}
+
 function getStoredJson(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -315,7 +269,7 @@ function getSelectedFrames() {
 }
 
 function getSelectionTotal() {
-  return getSelectedFrames().reduce((sum, frame) => sum + frame.price, 0);
+  return getSelectedFrames().reduce((sum, frame) => sum + getFramePrice(frame), 0);
 }
 
 function getTrialCosts() {
@@ -336,96 +290,25 @@ function getStatusLabel(value) {
   return match ? match[1] : "New";
 }
 
-function makeFrameSvg(frame) {
-  const rim = frame.rim;
-  const accent = frame.accent;
-  const lens = frame.lens;
-  const stroke = frame.style === "kids" ? 24 : frame.style === "rimless" ? 6 : frame.style === "titanium" ? 10 : 18;
-  let body = "";
+function getImageSrc(frame, purpose = "catalog") {
+  if (!frame) return "";
+  if (purpose === "ar") return frame.arFile || "";
+  if (purpose === "hover") return frame.hoverFile || frame.file || "";
+  return frame.file || "";
+}
 
-  if (frame.style === "half") {
-    body = `
-      <path d="M78 128c9-48 49-73 122-73 68 0 108 22 119 67" fill="none" stroke="${rim}" stroke-width="${stroke}" stroke-linecap="round"/>
-      <path d="M520 122c11-45 51-67 119-67 73 0 113 25 122 73" fill="none" stroke="${rim}" stroke-width="${stroke}" stroke-linecap="round"/>
-      <path d="M90 132c8 58 48 88 116 88 68 0 107-30 116-88" fill="${lens}" stroke="${accent}" stroke-width="5" opacity="0.9"/>
-      <path d="M506 132c9 58 48 88 116 88 68 0 108-30 116-88" fill="${lens}" stroke="${accent}" stroke-width="5" opacity="0.9"/>
-      <path d="M319 126c35-22 72-22 108 0" fill="none" stroke="${rim}" stroke-width="9" stroke-linecap="round"/>`;
-  } else if (frame.style === "rimless") {
-    body = `
-      <path d="M86 133c7-50 48-77 119-77s112 27 119 77c-8 57-48 86-119 86s-111-29-119-86Z" fill="${lens}" stroke="${rim}" stroke-width="${stroke}"/>
-      <path d="M514 133c7-50 48-77 119-77s112 27 119 77c-8 57-48 86-119 86s-111-29-119-86Z" fill="${lens}" stroke="${rim}" stroke-width="${stroke}"/>
-      <circle cx="307" cy="128" r="8" fill="${accent}"/>
-      <circle cx="531" cy="128" r="8" fill="${accent}"/>
-      <path d="M316 128c37-23 76-23 113 0" fill="none" stroke="${accent}" stroke-width="8" stroke-linecap="round"/>`;
-  } else if (frame.style === "fashion") {
-    body = `
-      <path d="M58 126c24-58 76-82 151-69 72 12 112 37 122 77-18 57-66 84-143 78-78-7-122-35-130-86Z" fill="${lens}" stroke="${rim}" stroke-width="${stroke}" stroke-linejoin="round"/>
-      <path d="M508 134c10-40 50-65 122-77 75-13 127 11 151 69-8 51-52 79-130 86-77 6-125-21-143-78Z" fill="${lens}" stroke="${rim}" stroke-width="${stroke}" stroke-linejoin="round"/>
-      <path d="M331 132c30-18 70-18 101 0" fill="none" stroke="${rim}" stroke-width="12" stroke-linecap="round"/>
-      <path d="M69 112c-20-8-34-8-48 3M770 112c20-8 34-8 48 3" fill="none" stroke="${accent}" stroke-width="10" stroke-linecap="round"/>`;
-  } else {
-    const rx = frame.style === "kids" ? 58 : frame.style === "blue" ? 48 : 54;
-    body = `
-      <rect x="78" y="58" width="250" height="154" rx="${rx}" fill="${lens}" stroke="${rim}" stroke-width="${stroke}"/>
-      <rect x="512" y="58" width="250" height="154" rx="${rx}" fill="${lens}" stroke="${rim}" stroke-width="${stroke}"/>
-      <path d="M328 134c33-22 72-22 105 0" fill="none" stroke="${rim}" stroke-width="${Math.max(8, stroke - 6)}" stroke-linecap="round"/>
-      <path d="M73 132H23M767 132h50" fill="none" stroke="${accent}" stroke-width="${Math.max(8, stroke - 8)}" stroke-linecap="round"/>`;
+function assignFrameImage(img, frame, purpose = "catalog") {
+  const src = getImageSrc(frame, purpose);
+  if (!src) {
+    img.hidden = true;
+    return;
   }
-
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 270">
-      <defs>
-        <filter id="shadow" x="-15%" y="-25%" width="130%" height="160%">
-          <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.22"/>
-        </filter>
-      </defs>
-      <g filter="url(#shadow)">${body}</g>
-    </svg>`;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
-function getImageSrc(frame) {
-  return frame.file || makeFrameSvg(frame);
-}
-
-function assignFrameImage(img, frame) {
-  img.src = getImageSrc(frame);
+  img.hidden = false;
+  img.src = src;
   img.onerror = () => {
-    img.onerror = null;
-    img.src = makeFrameSvg(frame);
+    img.hidden = true;
+    img.removeAttribute("src");
   };
-}
-
-function getFrameImage(frame) {
-  if (state.frameImages.has(frame.id)) {
-    return state.frameImages.get(frame.id);
-  }
-
-  const image = new Image();
-  const entry = { image, loaded: false, failed: false };
-  let usingFallback = false;
-
-  image.onload = () => {
-    entry.loaded = true;
-    if (getSelectedFrame().id === frame.id) {
-      requestAnimationFrame(drawTryOnFrame);
-    }
-  };
-
-  image.onerror = () => {
-    if (!usingFallback) {
-      usingFallback = true;
-      image.src = makeFrameSvg(frame);
-      return;
-    }
-    entry.failed = true;
-  };
-
-  image.decoding = "async";
-  image.src = getImageSrc(frame);
-  state.frameImages.set(frame.id, entry);
-  return entry;
 }
 
 function getFilteredFrames() {
@@ -437,16 +320,34 @@ function getFilteredFrames() {
   return FRAME_CATALOG.filter(categoryMatch);
 }
 
+function getAvailableCategories() {
+  const available = new Set();
+  FRAME_CATALOG.forEach((frame) => {
+    frame.categories.forEach((category) => available.add(category));
+  });
+  return FRAME_CATEGORY_OPTIONS
+    .filter((category) => available.has(category))
+    .concat(Array.from(available).filter((category) => !FRAME_CATEGORY_OPTIONS.includes(category)));
+}
+
 function getCatalogFrames() {
   const query = (commerce.search && commerce.search.value ? commerce.search.value : "").trim().toLowerCase();
   return getFilteredFrames().filter((frame) => {
     if (!query) return true;
     return [
+      frame.sku,
       frame.name,
       frame.brand,
       frame.category,
       frame.material,
+      frame.shape,
+      frame.size,
+      frame.colour,
+      frame.availability,
       frame.description,
+      frame.measurements,
+      frame.lensCompatibility,
+      frame.suitableFaceShapes,
       ...frame.categories
     ].join(" ").toLowerCase().includes(query);
   });
@@ -454,7 +355,7 @@ function getCatalogFrames() {
 
 function renderTryOnCategories() {
   if (!tryOn.categoryList) return;
-  const categories = ["All", ...FRAME_CATEGORY_OPTIONS];
+  const categories = ["All", ...getAvailableCategories()];
   tryOn.categoryList.innerHTML = "";
 
   categories.forEach((category) => {
@@ -472,7 +373,7 @@ function renderTryOnCategories() {
 
 function renderCatalogFilters() {
   if (!commerce.filters) return;
-  const categories = ["All", ...FRAME_CATEGORY_OPTIONS];
+  const categories = ["All", ...getAvailableCategories()];
   commerce.filters.innerHTML = "";
 
   categories.forEach((category) => {
@@ -510,7 +411,7 @@ function renderFrameThumbs() {
     assignFrameImage(image, frame);
 
     name.textContent = frame.name;
-    meta.textContent = `${frame.category} | ${formatCurrency(frame.price)}`;
+    meta.textContent = `${frame.category} | ${getFramePriceLabel(frame)}`;
 
     button.append(image, name, meta);
     button.addEventListener("click", () => selectFrame(originalIndex));
@@ -534,14 +435,24 @@ function renderProductGrid() {
   frames.forEach((frame) => {
     const card = document.createElement("article");
     const image = document.createElement("img");
+    const hoverImage = frame.hoverFile ? document.createElement("img") : null;
     const selected = state.selectedFrameIds.has(frame.id);
     const favorite = state.favoriteFrameIds.has(frame.id);
+    const detailImages = frame.detailImages || [];
+    const pendingViews = frame.pendingViews || [];
 
     card.className = "product-card";
+    if (hoverImage) card.classList.add("has-hover");
     card.dataset.frameId = frame.id;
 
-    image.alt = `${frame.name} spectacle frame`;
+    image.alt = `${frame.brand} ${frame.name} front view`;
+    image.className = "product-main-image";
     assignFrameImage(image, frame);
+    if (hoverImage) {
+      hoverImage.alt = `${frame.brand} ${frame.name} 45 degree view`;
+      hoverImage.className = "product-hover-image";
+      assignFrameImage(hoverImage, frame, "hover");
+    }
 
     card.innerHTML = `
       <div class="product-media"></div>
@@ -551,24 +462,45 @@ function renderProductGrid() {
             <span>${escapeHtml(frame.brand)}</span>
             <h3>${escapeHtml(frame.name)}</h3>
           </div>
-          <strong>${formatCurrency(frame.price)}</strong>
+          <div class="product-commercials">
+            <strong>${escapeHtml(getFramePriceLabel(frame))}</strong>
+            <em>${escapeHtml(frame.availability || "Availability on request")}</em>
+          </div>
         </div>
         <div class="product-tags">
           ${frame.categories.slice(0, 4).map((category) => `<span>${escapeHtml(category)}</span>`).join("")}
         </div>
         <p>${escapeHtml(frame.description)}</p>
         <dl class="product-specs">
-          <div><dt>Category</dt><dd>${escapeHtml(frame.category)}</dd></div>
+          <div><dt>Brand</dt><dd>${escapeHtml(frame.brand)}</dd></div>
           <div><dt>Material</dt><dd>${escapeHtml(frame.material)}</dd></div>
+          <div><dt>Shape</dt><dd>${escapeHtml(frame.shape || frame.category)}</dd></div>
+          <div><dt>Size</dt><dd>${escapeHtml(frame.size || frame.measurements || "Fit check required")}</dd></div>
+          <div><dt>Colour</dt><dd>${escapeHtml(frame.colour || "As photographed")}</dd></div>
+          <div><dt>Availability</dt><dd>${escapeHtml(frame.availability || "On request")}</dd></div>
         </dl>
         <details class="frame-detail">
-          <summary>Frame details</summary>
-          <p>${escapeHtml(frame.brand)} ${escapeHtml(frame.name)} is a ${escapeHtml(frame.material.toLowerCase())} frame for ${escapeHtml(frame.categories.join(", ").toLowerCase())} use.</p>
+          <summary>Product details</summary>
+          <div class="detail-gallery">
+            ${detailImages.map((item) => `
+              <figure>
+                <img src="${escapeHtml(item.file)}" alt="${escapeHtml(frame.brand)} ${escapeHtml(frame.name)} ${escapeHtml(item.label)}">
+                <figcaption>${escapeHtml(item.label)}</figcaption>
+              </figure>
+            `).join("")}
+          </div>
+          <dl class="detail-specs">
+            <div><dt>SKU</dt><dd>${escapeHtml(frame.sku || frame.id)}</dd></div>
+            <div><dt>Measurements</dt><dd>${escapeHtml(frame.measurements || frame.size || "Fit check required")}</dd></div>
+            <div><dt>Suitable face shapes</dt><dd>${escapeHtml(frame.suitableFaceShapes || "Confirm during clinic fitting")}</dd></div>
+            <div><dt>Lens compatibility</dt><dd>${escapeHtml(frame.lensCompatibility || "Confirm during prescription check")}</dd></div>
+          </dl>
+          ${pendingViews.length ? `<p class="detail-note">Pending real inventory photos: ${pendingViews.map(escapeHtml).join(", ")}.</p>` : ""}
         </details>
         <div class="product-actions">
           <button class="btn btn-primary btn-small" type="button" data-frame-action="try-live">
             <i data-lucide="scan-face" aria-hidden="true"></i>
-            <span>Try Live</span>
+            <span>Try with Selfie</span>
           </button>
           <button class="btn btn-light btn-small" type="button" data-frame-action="try-home">
             <i data-lucide="house" aria-hidden="true"></i>
@@ -580,7 +512,7 @@ function renderProductGrid() {
           </button>
           <button class="btn btn-whatsapp btn-small" type="button" data-frame-action="whatsapp">
             <i data-lucide="message-circle" aria-hidden="true"></i>
-            <span>WhatsApp Enquiry</span>
+            <span>WhatsApp</span>
           </button>
           <button class="text-button product-select ${selected ? "active" : ""}" type="button" data-frame-action="select">
             <i data-lucide="${selected ? "check-circle-2" : favorite ? "bookmark" : "plus"}" aria-hidden="true"></i>
@@ -590,7 +522,7 @@ function renderProductGrid() {
       </div>
     `;
 
-    card.querySelector(".product-media").appendChild(image);
+    card.querySelector(".product-media").append(image, ...(hoverImage ? [hoverImage] : []));
     commerce.grid.appendChild(card);
   });
 
@@ -609,7 +541,7 @@ function makeSummaryItem(frame, compact = false) {
 
   copy.innerHTML = `
     <strong>${escapeHtml(frame.name)}</strong>
-    <span>${escapeHtml(frame.brand)} | ${formatCurrency(frame.price)}</span>
+    <span>${escapeHtml(frame.brand)} | ${escapeHtml(getFramePriceLabel(frame))}</span>
   `;
 
   remove.type = "button";
@@ -635,7 +567,7 @@ function renderFrameSummary() {
 
   if (commerce.summary) commerce.summary.classList.toggle("home-highlight", frames.length > 1);
   if (commerce.summaryCount) commerce.summaryCount.textContent = countText;
-  if (commerce.summaryTotal) commerce.summaryTotal.textContent = formatCurrency(costs.frameTotal);
+  if (commerce.summaryTotal) commerce.summaryTotal.textContent = getFrameTotalLabel(frames);
   if (commerce.summaryFee) commerce.summaryFee.textContent = formatCurrency(costs.serviceFee);
   if (commerce.summaryDeposit) commerce.summaryDeposit.textContent = formatCurrency(costs.deposit);
 
@@ -652,7 +584,7 @@ function renderFrameSummary() {
   }
 
   if (homeTrial.count) homeTrial.count.textContent = countText;
-  if (homeTrial.frameTotal) homeTrial.frameTotal.textContent = formatCurrency(costs.frameTotal);
+  if (homeTrial.frameTotal) homeTrial.frameTotal.textContent = getFrameTotalLabel(frames);
   if (homeTrial.fee) homeTrial.fee.textContent = formatCurrency(costs.serviceFee);
   if (homeTrial.deposit) homeTrial.deposit.textContent = formatCurrency(costs.deposit);
   if (homeTrial.total) homeTrial.total.textContent = formatCurrency(costs.estimate);
@@ -683,17 +615,19 @@ function renderAllFrameSurfaces() {
 function selectFrame(index) {
   state.selectedIndex = (index + FRAME_CATALOG.length) % FRAME_CATALOG.length;
   const frame = getSelectedFrame();
+  state.smoothedPlacement = null;
 
   if (tryOn.frameName) tryOn.frameName.textContent = frame.name;
   if (tryOn.frameCategory) tryOn.frameCategory.textContent = frame.category;
   if (tryOn.frameMeta) {
-    tryOn.frameMeta.textContent = `${frame.brand} | ${frame.material} | ${formatCurrency(frame.price)}`;
+    tryOn.frameMeta.textContent = `${frame.brand} | ${frame.material} | ${getFramePriceLabel(frame)}`;
   }
 
-  getFrameImage(frame);
   renderFrameThumbs();
   renderProductGrid();
-  drawTryOnFrame();
+  if (tryOn.leadNote && state.selfieFile && !state.capturedDataUrl) {
+    tryOn.leadNote.textContent = `${frame.name} selected. Generate the AI try-on when ready.`;
+  }
 }
 
 function stepFrame(direction) {
@@ -749,315 +683,21 @@ function scrollToSection(selector) {
   if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function resizeTryOnCanvas() {
-  if (!tryOn.canvas) return;
-  const rect = tryOn.canvas.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
-
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-  const nextWidth = Math.round(rect.width * pixelRatio);
-  const nextHeight = Math.round(rect.height * pixelRatio);
-
-  if (tryOn.canvas.width !== nextWidth || tryOn.canvas.height !== nextHeight) {
-    tryOn.canvas.width = nextWidth;
-    tryOn.canvas.height = nextHeight;
-  }
-}
-
-function getVideoDrawRect() {
-  const canvas = tryOn.canvas;
-  const video = tryOn.video;
-  const canvasRatio = canvas.width / canvas.height;
-  const videoRatio = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : canvasRatio;
-
-  if (videoRatio > canvasRatio) {
-    const height = canvas.height;
-    const width = height * videoRatio;
-    return { x: (canvas.width - width) / 2, y: 0, width, height };
-  }
-
-  const width = canvas.width;
-  const height = width / videoRatio;
-  return { x: 0, y: (canvas.height - height) / 2, width, height };
-}
-
-function drawIdleCanvas(context, width, height) {
-  const gradient = context.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, "#edf7ff");
-  gradient.addColorStop(0.58, "#dbeafe");
-  gradient.addColorStop(1, "#eff6ff");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
-
-  context.save();
-  context.globalAlpha = 0.72;
-  context.strokeStyle = "rgba(45, 119, 255, 0.22)";
-  context.lineWidth = Math.max(2, width * 0.003);
-  context.strokeRect(width * 0.08, height * 0.1, width * 0.84, height * 0.78);
-  context.restore();
-}
-
-function normalizedLandmarkToCanvas(landmark, rect) {
-  return {
-    x: rect.x + (1 - landmark.x) * rect.width,
-    y: rect.y + landmark.y * rect.height
-  };
-}
-
-function getLandmarkPlacement(rect, image) {
-  const landmarks = state.lastLandmarks;
-  if (!landmarks || landmarks.length < 468) return null;
-
-  const leftOuter = normalizedLandmarkToCanvas(landmarks[33], rect);
-  const rightOuter = normalizedLandmarkToCanvas(landmarks[263], rect);
-  const leftTemple = normalizedLandmarkToCanvas(landmarks[234] || landmarks[127], rect);
-  const rightTemple = normalizedLandmarkToCanvas(landmarks[454] || landmarks[356], rect);
-  const leftIris = normalizedLandmarkToCanvas(landmarks[468] || landmarks[33], rect);
-  const rightIris = normalizedLandmarkToCanvas(landmarks[473] || landmarks[263], rect);
-
-  const eyeCenter = {
-    x: (leftIris.x + rightIris.x) / 2,
-    y: (leftIris.y + rightIris.y) / 2
-  };
-  const eyeDistance = Math.hypot(rightOuter.x - leftOuter.x, rightOuter.y - leftOuter.y);
-  const templeDistance = Math.hypot(rightTemple.x - leftTemple.x, rightTemple.y - leftTemple.y);
-  const frameWidth = Math.max(eyeDistance * 2.2, templeDistance * 1.08);
-  const frameHeight = frameWidth * (image.naturalHeight / image.naturalWidth);
-  const angle = Math.atan2(rightOuter.y - leftOuter.y, rightOuter.x - leftOuter.x);
-
-  return {
-    x: eyeCenter.x,
-    y: eyeCenter.y + frameHeight * 0.04,
-    width: frameWidth,
-    height: frameHeight,
-    angle
-  };
-}
-
-function getManualPlacement(image) {
-  const canvas = tryOn.canvas;
-  const portrait = canvas.height > canvas.width;
-  const width = canvas.width * (portrait ? 0.72 : 0.46);
-  return {
-    x: canvas.width / 2,
-    y: canvas.height * (portrait ? 0.38 : 0.42),
-    width,
-    height: width * (image.naturalHeight / image.naturalWidth),
-    angle: 0
-  };
-}
-
-function drawFrameImage(context, image, placement) {
-  context.save();
-  context.translate(placement.x, placement.y);
-  context.rotate(placement.angle);
-  context.drawImage(
-    image,
-    -placement.width / 2,
-    -placement.height / 2,
-    placement.width,
-    placement.height
-  );
-  context.restore();
-}
-
-function drawTryOnFrame() {
-  if (!tryOn.canvas) return;
-  resizeTryOnCanvas();
-
-  const canvas = tryOn.canvas;
-  const context = canvas.getContext("2d");
-  const width = canvas.width;
-  const height = canvas.height;
-
-  context.clearRect(0, 0, width, height);
-
-  const hasVideo = tryOn.video && tryOn.video.readyState >= 2 && tryOn.video.videoWidth;
-  const rect = hasVideo ? getVideoDrawRect() : null;
-
-  if (hasVideo) {
-    context.save();
-    context.translate(rect.x + rect.width, rect.y);
-    context.scale(-1, 1);
-    context.drawImage(
-      tryOn.video,
-      0,
-      0,
-      tryOn.video.videoWidth,
-      tryOn.video.videoHeight,
-      0,
-      0,
-      rect.width,
-      rect.height
-    );
-    context.restore();
-  } else {
-    drawIdleCanvas(context, width, height);
-  }
-
-  const frame = getSelectedFrame();
-  const entry = getFrameImage(frame);
-  if (!entry.loaded || entry.failed) return;
-
-  const placement = rect && state.lastLandmarks
-    ? getLandmarkPlacement(rect, entry.image)
-    : getManualPlacement(entry.image);
-
-  if (placement) {
-    drawFrameImage(context, entry.image, placement);
-  }
-}
-
-function startRenderLoop() {
-  if (state.rendering) return;
-  state.rendering = true;
-
-  const render = () => {
-    drawTryOnFrame();
-    if (state.active) {
-      requestAnimationFrame(render);
-      return;
-    }
-    state.rendering = false;
-  };
-
-  requestAnimationFrame(render);
-}
-
-async function setupFaceMesh() {
-  if (state.faceMesh || state.faceMeshUnavailable) return;
-
-  if (!window.FaceMesh) {
-    state.faceMeshUnavailable = true;
-    setPill(tryOn.trackingState, "move", "Manual overlay active", true);
-    return;
-  }
-
-  try {
-    const faceMesh = new window.FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
-
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.55,
-      minTrackingConfidence: 0.55
-    });
-
-    faceMesh.onResults((results) => {
-      const landmarks = results.multiFaceLandmarks && results.multiFaceLandmarks[0];
-      state.lastLandmarks = landmarks || null;
-      setPill(
-        tryOn.trackingState,
-        landmarks ? "badge-check" : "scan-face",
-        landmarks ? "Face locked" : "Position face in frame",
-        !landmarks
-      );
-    });
-
-    state.faceMesh = faceMesh;
-    setPill(tryOn.trackingState, "scan-face", "Face tracking loading", true);
-  } catch (error) {
-    state.faceMeshUnavailable = true;
-    setPill(tryOn.trackingState, "move", "Manual overlay active", true);
-  }
-}
-
-function startAnalysisLoop() {
-  if (state.analysisRunning) return;
-  state.analysisRunning = true;
-
-  const analyze = async () => {
-    if (!state.active) {
-      state.analysisRunning = false;
-      return;
-    }
-
-    if (state.faceMesh && !state.analyzing && tryOn.video.readyState >= 2) {
-      state.analyzing = true;
-      try {
-        await state.faceMesh.send({ image: tryOn.video });
-        state.trackingFailures = 0;
-      } catch (error) {
-        state.trackingFailures += 1;
-        if (state.trackingFailures > 5) {
-          state.faceMesh = null;
-          state.faceMeshUnavailable = true;
-          state.lastLandmarks = null;
-          setPill(tryOn.trackingState, "move", "Manual overlay active", true);
-        }
-      } finally {
-        state.analyzing = false;
-      }
-    }
-
-    requestAnimationFrame(analyze);
-  };
-
-  requestAnimationFrame(analyze);
-}
-
-async function startCamera() {
-  if (!tryOn.video || !tryOn.canvas) return;
-
-  setPill(tryOn.cameraState, "loader", "Opening camera", true);
-  setPill(tryOn.trackingState, "scan-face", "Tracking standby", true);
-
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error("Camera access is not available in this browser.");
-    }
-
-    if (state.stream) {
-      state.stream.getTracks().forEach((track) => track.stop());
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user",
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      audio: false
-    });
-
-    state.stream = stream;
-    tryOn.video.srcObject = stream;
-    await tryOn.video.play();
-
-    state.active = true;
-    state.lastLandmarks = null;
-    if (tryOn.cameraPanel) tryOn.cameraPanel.hidden = true;
-    if (tryOn.captureButton) tryOn.captureButton.disabled = false;
-
-    setPill(tryOn.cameraState, "camera", "Camera live");
-    await setupFaceMesh();
-    startRenderLoop();
-    startAnalysisLoop();
-  } catch (error) {
-    state.active = false;
-    drawTryOnFrame();
-    setPill(tryOn.cameraState, "circle-alert", "Camera unavailable", true);
-    setPill(tryOn.trackingState, "scan-face", "Tracking paused", true);
-
-    if (tryOn.cameraPanel) {
-      const title = tryOn.cameraPanel.querySelector("h3");
-      const copy = tryOn.cameraPanel.querySelector("p");
-      if (title) title.textContent = "Camera permission needed";
-      if (copy) copy.textContent = "Enable camera permission in your browser, then try again. You can still book or WhatsApp the clinic below.";
-      if (tryOn.cameraHelp) tryOn.cameraHelp.textContent = error.message || "Camera access was blocked.";
-      tryOn.cameraPanel.hidden = false;
-    }
-  }
-}
-
 function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
     reader.onerror = reject;
     reader.readAsDataURL(blob);
+  });
+}
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1073,49 +713,202 @@ function canvasToJpegBlob(canvas, quality = 0.86) {
   });
 }
 
-async function capturePhoto() {
-  if (!tryOn.canvas) return;
-  if (!state.active) {
-    if (tryOn.leadNote) tryOn.leadNote.textContent = "Open the camera before capturing your try-on.";
-    return;
-  }
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.crossOrigin = "anonymous";
+    image.src = src;
+  });
+}
 
-  drawTryOnFrame();
-
-  try {
-    const blob = await canvasToJpegBlob(tryOn.canvas, 0.86);
-    const timestamp = new Date();
-    const safeStamp = timestamp.toISOString().replace(/[:.]/g, "-");
-    const filename = `vision-vistara-tryon-${safeStamp}.jpg`;
-
-    if (state.capturedObjectUrl) {
-      URL.revokeObjectURL(state.capturedObjectUrl);
-    }
-
-    state.capturedBlob = blob;
-    state.capturedFile = new File([blob], filename, { type: "image/jpeg" });
-    state.capturedDataUrl = await blobToDataUrl(blob);
-    state.capturedObjectUrl = URL.createObjectURL(blob);
-    state.lastCaptureName = filename;
-
-    if (tryOn.previewImage) tryOn.previewImage.src = state.capturedDataUrl;
-    if (tryOn.previewPanel) tryOn.previewPanel.hidden = false;
-    if (tryOn.downloadButton) tryOn.downloadButton.disabled = false;
-    if (tryOn.leadNote) tryOn.leadNote.textContent = "Photo captured. Add your details and send it to WhatsApp.";
-  } catch (error) {
-    if (tryOn.leadNote) tryOn.leadNote.textContent = "Photo capture failed. Please try again.";
+function setTryOnBusy(busy, message = "") {
+  state.aiBusy = busy;
+  if (tryOn.generateButton) tryOn.generateButton.disabled = busy || !state.selfieFile;
+  if (tryOn.aiState) {
+    setPill(tryOn.aiState, busy ? "loader" : "sparkles", message || (busy ? "Generating preview" : "AI try-on ready"), busy);
   }
 }
 
+function buildTryOnPrompt(frame) {
+  return [
+    "Create a realistic optical eyewear try-on image from the uploaded selfie.",
+    "Preserve the person's identity, face shape, skin tone, hair, age, expression, beard or makeup, and natural proportions.",
+    `Apply the exact real inventory frame: ${frame.brand} ${frame.name}.`,
+    `Frame details: ${frame.colour}, ${frame.shape}, ${frame.material}, size ${frame.size || frame.measurements}.`,
+    "Preserve exact frame geometry, color, thickness, lens opening, markings, and branding from the provided frame image.",
+    "Do not redesign the frame. Do not invent a new eyewear product. Do not beautify or change the person.",
+    "Place the frame naturally on the face as a premium optical ecommerce try-on preview."
+  ].join(" ");
+}
+
+async function submitAiTryOnToFreeModel(frame) {
+  const formData = new FormData();
+  formData.append("model", FREE_AI_IMAGE_MODEL);
+  formData.append("prompt", buildTryOnPrompt(frame));
+  formData.append("selfie", state.selfieFile, state.selfieFile.name || "selfie.jpg");
+  formData.append("frameId", frame.id);
+  formData.append("frameName", frame.name);
+  formData.append("frameImageUrl", new URL(frame.file, window.location.href).href);
+  formData.append("frameArUrl", new URL(frame.arFile || frame.file, window.location.href).href);
+
+  const response = await fetch(AI_TRYON_ENDPOINT, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI try-on endpoint returned ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json();
+    if (payload.dataUrl) return payload.dataUrl;
+    if (payload.imageUrl) return payload.imageUrl;
+    throw new Error("AI try-on response did not include an image.");
+  }
+
+  const blob = await response.blob();
+  return await blobToDataUrl(blob);
+}
+
+async function createLocalTryOnPreview(frame) {
+  const selfie = await loadImage(state.selfieDataUrl);
+  const frameImage = await loadImage(frame.arFile || frame.file);
+  const canvas = document.createElement("canvas");
+  const maxWidth = 1200;
+  const ratio = Math.min(1, maxWidth / selfie.naturalWidth);
+  canvas.width = Math.round(selfie.naturalWidth * ratio);
+  canvas.height = Math.round(selfie.naturalHeight * ratio);
+  const context = canvas.getContext("2d");
+  context.drawImage(selfie, 0, 0, canvas.width, canvas.height);
+
+  const portrait = canvas.height >= canvas.width;
+  const frameWidth = canvas.width * (portrait ? 0.54 : 0.4);
+  const frameHeight = frameWidth * (frameImage.naturalHeight / frameImage.naturalWidth);
+  const x = (canvas.width - frameWidth) / 2;
+  const y = canvas.height * (portrait ? 0.31 : 0.34);
+
+  context.save();
+  context.globalAlpha = 0.96;
+  context.shadowColor = "rgba(0, 0, 0, 0.22)";
+  context.shadowBlur = Math.max(6, frameWidth * 0.018);
+  context.shadowOffsetY = Math.max(2, frameHeight * 0.02);
+  context.drawImage(frameImage, x, y, frameWidth, frameHeight);
+  context.restore();
+
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        reject(new Error("Local try-on preview failed."));
+        return;
+      }
+      resolve({
+        blob,
+        dataUrl: await blobToDataUrl(blob)
+      });
+    }, "image/jpeg", 0.9);
+  });
+}
+
+function showTryOnResult(dataUrl, blob = null, source = "ai") {
+  const timestamp = new Date();
+  const safeStamp = timestamp.toISOString().replace(/[:.]/g, "-");
+  const filename = `vision-vistara-ai-tryon-${safeStamp}.jpg`;
+
+  if (state.capturedObjectUrl) {
+    URL.revokeObjectURL(state.capturedObjectUrl);
+  }
+
+  state.capturedBlob = blob;
+  state.capturedDataUrl = dataUrl;
+  state.capturedObjectUrl = blob ? URL.createObjectURL(blob) : "";
+  state.capturedFile = blob ? new File([blob], filename, { type: "image/jpeg" }) : null;
+  state.lastCaptureName = filename;
+
+  if (tryOn.previewImage) {
+    tryOn.previewImage.hidden = false;
+    tryOn.previewImage.src = dataUrl;
+  }
+  if (tryOn.resultPlaceholder) tryOn.resultPlaceholder.hidden = true;
+  if (tryOn.previewPanel) tryOn.previewPanel.hidden = false;
+  if (tryOn.downloadButton) tryOn.downloadButton.disabled = !dataUrl;
+  if (tryOn.leadNote) {
+    tryOn.leadNote.textContent = source === "ai"
+      ? "AI try-on generated. Add your details and send it to WhatsApp."
+      : "AI endpoint is not connected, so a local exact-frame preview was created.";
+  }
+}
+
+async function generateSelfieTryOn() {
+  if (!state.selfieFile || !state.selfieDataUrl) {
+    if (tryOn.leadNote) tryOn.leadNote.textContent = "Upload a selfie before generating try-on.";
+    return;
+  }
+
+  const frame = getSelectedFrame();
+  addFrameToSelection(frame.id, false);
+  setTryOnBusy(true, "Generating AI try-on");
+
+  try {
+    const aiDataUrl = await submitAiTryOnToFreeModel(frame);
+    const blob = aiDataUrl.startsWith("data:")
+      ? await (await fetch(aiDataUrl)).blob()
+      : null;
+    showTryOnResult(aiDataUrl, blob, "ai");
+  } catch (error) {
+    const local = await createLocalTryOnPreview(frame);
+    showTryOnResult(local.dataUrl, local.blob, "local");
+  }
+
+  setTryOnBusy(false);
+}
+
+async function handleSelfieInput(event) {
+  const file = event.currentTarget.files && event.currentTarget.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    if (tryOn.leadNote) tryOn.leadNote.textContent = "Please upload a selfie image file.";
+    event.currentTarget.value = "";
+    return;
+  }
+
+  state.selfieFile = file;
+  state.selfieDataUrl = await fileToDataUrl(file);
+  state.capturedBlob = null;
+  state.capturedFile = null;
+  state.capturedDataUrl = "";
+
+  if (tryOn.beforeImage) {
+    tryOn.beforeImage.hidden = false;
+    tryOn.beforeImage.src = state.selfieDataUrl;
+  }
+  if (tryOn.beforePlaceholder) tryOn.beforePlaceholder.hidden = true;
+  if (tryOn.previewImage) {
+    tryOn.previewImage.hidden = true;
+    tryOn.previewImage.removeAttribute("src");
+  }
+  if (tryOn.resultPlaceholder) tryOn.resultPlaceholder.hidden = false;
+  if (tryOn.previewPanel) tryOn.previewPanel.hidden = true;
+  if (tryOn.uploadState) setPill(tryOn.uploadState, "badge-check", "Selfie uploaded");
+  if (tryOn.leadNote) tryOn.leadNote.textContent = "Selfie ready. Generate your AI try-on preview.";
+  setTryOnBusy(false);
+}
+
 function downloadCapture() {
-  if (!state.capturedBlob) return;
+  if (!state.capturedBlob && !state.capturedDataUrl) return;
   const link = document.createElement("a");
-  link.href = state.capturedObjectUrl || URL.createObjectURL(state.capturedBlob);
+  link.href = state.capturedObjectUrl || state.capturedDataUrl || URL.createObjectURL(state.capturedBlob);
   link.download = state.lastCaptureName || "vision-vistara-tryon.jpg";
   link.click();
 }
 
 function retakeCapture() {
+  state.selfieFile = null;
+  state.selfieDataUrl = "";
   state.capturedBlob = null;
   state.capturedFile = null;
   state.capturedDataUrl = "";
@@ -1127,9 +920,18 @@ function retakeCapture() {
   }
 
   if (tryOn.previewPanel) tryOn.previewPanel.hidden = true;
+  if (tryOn.beforeImage) {
+    tryOn.beforeImage.hidden = true;
+    tryOn.beforeImage.removeAttribute("src");
+  }
+  if (tryOn.beforePlaceholder) tryOn.beforePlaceholder.hidden = false;
   if (tryOn.previewImage) tryOn.previewImage.removeAttribute("src");
+  if (tryOn.resultPlaceholder) tryOn.resultPlaceholder.hidden = false;
   if (tryOn.downloadButton) tryOn.downloadButton.disabled = true;
-  if (tryOn.leadNote) tryOn.leadNote.textContent = "Ready for another capture.";
+  if (tryOn.selfieInput) tryOn.selfieInput.value = "";
+  if (tryOn.uploadState) setPill(tryOn.uploadState, "image-up", "Upload selfie", true);
+  if (tryOn.leadNote) tryOn.leadNote.textContent = "Upload a selfie to generate your AI try-on.";
+  setTryOnBusy(false);
 }
 
 function normalizePhone(value) {
@@ -1149,7 +951,7 @@ function getFrameSummaryLines(frames) {
   if (!frames.length) return ["Selected frames: Not selected"];
   return [
     "Selected frames:",
-    ...frames.map((frame, index) => `${index + 1}. ${frame.name} - ${frame.brand} - ${formatCurrency(frame.price)}`)
+    ...frames.map((frame, index) => `${index + 1}. ${frame.name} - ${frame.brand} - ${getFramePriceLabel(frame)}`)
   ];
 }
 
@@ -1167,7 +969,7 @@ function buildWhatsAppText(lead) {
     lead.bookingTime ? `Preferred time: ${lead.bookingTime}` : "",
     "",
     ...getFrameSummaryLines(frames),
-    frames.length ? `Frame total: ${formatCurrency(lead.frameTotal)}` : "",
+    frames.length ? `Frame total: ${lead.frameTotalLabel || getFrameTotalLabel(frames)}` : "",
     lead.serviceFee !== undefined ? `Try-at-home fee: ${formatCurrency(lead.serviceFee)}` : "",
     lead.deposit !== undefined ? `Refundable deposit: ${formatCurrency(lead.deposit)}` : "",
     lead.photoIncluded ? "Photo preview: Captured in browser. I can attach or share it from my phone." : "",
@@ -1211,7 +1013,7 @@ function updateLeadStatus(id, status) {
 
 function makeLead(payload) {
   const frames = payload.selectedFrames || getSelectedFrames();
-  const frameTotal = frames.reduce((sum, frame) => sum + frame.price, 0);
+  const frameTotal = frames.reduce((sum, frame) => sum + getFramePrice(frame), 0);
   return {
     id: `vv-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     timestamp: new Date().toISOString(),
@@ -1222,10 +1024,16 @@ function makeLead(payload) {
       brand: frame.brand,
       category: frame.category,
       material: frame.material,
+      shape: frame.shape,
+      size: frame.size,
+      colour: frame.colour,
+      availability: frame.availability,
       price: frame.price,
+      priceLabel: getFramePriceLabel(frame),
       file: frame.file
     })),
     frameTotal,
+    frameTotalLabel: getFrameTotalLabel(frames),
     ...payload
   };
 }
@@ -1237,6 +1045,7 @@ async function submitLeadToBackend(lead, blob) {
   formData.append("location", lead.location || "");
   formData.append("selectedFrames", JSON.stringify(lead.selectedFrames || []));
   formData.append("frameTotal", String(lead.frameTotal || 0));
+  formData.append("frameTotalLabel", lead.frameTotalLabel || "");
   formData.append("timestamp", lead.timestamp);
   formData.append("source", lead.source || "website");
   formData.append("service", lead.service || "");
@@ -1338,8 +1147,8 @@ async function handleLeadSubmit(event) {
     return;
   }
 
-  if (!state.capturedBlob || !state.capturedDataUrl) {
-    if (tryOn.leadNote) tryOn.leadNote.textContent = "Capture your try-on photo before sending.";
+  if (!state.capturedDataUrl) {
+    if (tryOn.leadNote) tryOn.leadNote.textContent = "Generate your AI try-on before sending.";
     return;
   }
 
@@ -1363,8 +1172,8 @@ async function handleLeadSubmit(event) {
     location,
     selectedFrames: [frame],
     intent: "Virtual try-on follow-up",
-    service: "Virtual Try-On",
-    source: "virtual try-on",
+    service: "AI Try-On",
+    source: "selfie AI try-on",
     status: "try-on-done",
     imageUrl: state.capturedDataUrl,
     photoIncluded: true,
@@ -1563,7 +1372,7 @@ function renderDashboard() {
     }
 
     const frameLabel = frames.length
-      ? frames.map((frame) => `${frame.name} (${formatCurrency(frame.price)})`).join(", ")
+      ? frames.map((frame) => `${frame.name} (${getFramePriceLabel(frame)})`).join(", ")
       : "No frame selected";
 
     meta.className = "lead-meta";
@@ -1744,33 +1553,21 @@ function setupNavigation() {
 }
 
 function setupTryOn() {
-  if (!tryOn.canvas) return;
-
   renderAllFrameSurfaces();
   selectFrame(0);
-  drawTryOnFrame();
 
-  if ("ResizeObserver" in window) {
-    const resizeObserver = new ResizeObserver(drawTryOnFrame);
-    resizeObserver.observe(tryOn.canvas);
-  } else {
-    window.addEventListener("resize", drawTryOnFrame);
-  }
-
-  tryOn.startButtons.forEach((button) => {
+  tryOn.openButtons.forEach((button) => {
     button.addEventListener("click", (event) => {
-      const target = event.currentTarget;
-      if (target.matches("[data-open-tryon]")) {
-        event.preventDefault();
-        scrollToSection("#tryon");
-      }
-      startCamera();
+      event.preventDefault();
+      scrollToSection("#tryon");
+      if (tryOn.selfieInput) window.setTimeout(() => tryOn.selfieInput.focus(), 350);
     });
   });
 
   if (tryOn.prevButton) tryOn.prevButton.addEventListener("click", () => stepFrame(-1));
   if (tryOn.nextButton) tryOn.nextButton.addEventListener("click", () => stepFrame(1));
-  if (tryOn.captureButton) tryOn.captureButton.addEventListener("click", capturePhoto);
+  if (tryOn.selfieInput) tryOn.selfieInput.addEventListener("change", handleSelfieInput);
+  if (tryOn.generateButton) tryOn.generateButton.addEventListener("click", generateSelfieTryOn);
   if (tryOn.retakeButton) tryOn.retakeButton.addEventListener("click", retakeCapture);
   if (tryOn.downloadButton) tryOn.downloadButton.addEventListener("click", downloadCapture);
   if (tryOn.saveFavoriteButton) {
@@ -1794,6 +1591,7 @@ function setupTryOn() {
   }
 
   setupTouchFrameSwipe();
+  setTryOnBusy(false);
 }
 
 function setupCommerce() {
@@ -1816,7 +1614,8 @@ function setupCommerce() {
         selectFrame(index);
         addFrameToSelection(frame.id, false);
         scrollToSection("#tryon");
-        startCamera();
+        if (tryOn.leadNote) tryOn.leadNote.textContent = `${frame.name} selected. Upload a selfie to generate AI try-on.`;
+        if (tryOn.selfieInput) window.setTimeout(() => tryOn.selfieInput.focus(), 350);
       } else if (action === "try-home") {
         addFrameToSelection(frame.id);
         scrollToSection("#home-trial");
