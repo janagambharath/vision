@@ -89,7 +89,7 @@
           </a>
           <a class="btn btn-light" href="#tryon" data-open-tryon>
             <i data-lucide="scan-face" aria-hidden="true"></i>
-            <span>Upload Selfie</span>
+            <span>Try Frames Live</span>
           </a>
           <a class="btn btn-whatsapp" href="https://wa.me/917842938316?text=Hello%20Vision%20Vistara%2C%20I%20would%20like%20to%20book%20an%20eye%20care%20appointment." target="_blank" rel="noopener">
             <i data-lucide="message-circle" aria-hidden="true"></i>
@@ -240,9 +240,9 @@
     <section class="section tryon-section" id="tryon" aria-labelledby="tryon-title">
       <div class="container">
         <div class="section-heading">
-          <p class="section-kicker">AI try-on</p>
-          <h2 id="tryon-title">Try real frames with a selfie upload.</h2>
-          <p>Upload a selfie, select a real inventory frame, generate a premium try-on preview, compare before and after, and send the result to WhatsApp for clinic follow-up.</p>
+          <p class="section-kicker">Camera Try-On</p>
+          <h2 id="tryon-title">Try real frames live with your camera.</h2>
+          <p>Open the camera, position your face, capture a photo, generate a premium AI try-on preview, compare before and after, save favorite, and send it to WhatsApp.</p>
         </div>
 
         <div class="tryon-shell">
@@ -253,32 +253,61 @@
                 AI try-on ready
               </span>
               <span class="status-pill muted" data-upload-state>
-                <i data-lucide="image-up" aria-hidden="true"></i>
-                Upload selfie
+                <i data-lucide="camera" aria-hidden="true"></i>
+                Open camera to start
               </span>
             </div>
 
-            <div class="selfie-workspace">
-              <label class="selfie-upload-card">
-                <input type="file" data-selfie-input accept="image/*">
-                <span><i data-lucide="image-up" aria-hidden="true"></i></span>
-                <strong>Upload selfie</strong>
-                <small>Use a clear front-facing photo without heavy filters.</small>
-              </label>
+            <div class="camera-panel" data-camera-panel hidden>
+              <div class="camera-viewport">
+                <video class="camera-feed" data-camera-feed autoplay muted playsinline></video>
+                <div class="camera-guide" aria-hidden="true">
+                  <span class="camera-oval"></span>
+                  <span>Align your face inside the guide</span>
+                </div>
+                <div class="camera-error-overlay" data-camera-error hidden></div>
+              </div>
 
-              <div class="tryon-preview-grid">
-                <figure>
-                  <span>Before</span>
-                  <img data-before-img alt="Uploaded selfie preview" hidden>
-                  <div class="preview-empty" data-before-placeholder>Selfie preview</div>
-                </figure>
-                <figure>
-                  <span>AI try-on</span>
-                  <img data-preview-img alt="Generated AI try-on preview" hidden>
-                  <div class="preview-empty" data-result-placeholder>Generated preview</div>
-                </figure>
+              <div class="camera-actions">
+                <button class="btn btn-light btn-small" type="button" data-switch-camera>
+                  <i data-lucide="refresh-cw" aria-hidden="true"></i>
+                  <span>Switch</span>
+                </button>
+                <button class="btn btn-primary camera-capture-btn" type="button" data-capture-photo>
+                  <i data-lucide="camera" aria-hidden="true"></i>
+                  <span>Capture Photo</span>
+                </button>
+                <button class="btn btn-light btn-small" type="button" data-close-camera>
+                  <i data-lucide="x" aria-hidden="true"></i>
+                  <span>Close</span>
+                </button>
               </div>
             </div>
+
+            <div class="camera-open-card" data-camera-open-card>
+              <span class="camera-open-icon"><i data-lucide="camera" aria-hidden="true"></i></span>
+              <strong>Start camera try-on</strong>
+              <small>Use a bright front-facing camera photo for the cleanest preview.</small>
+              <button class="btn btn-primary" type="button" data-open-camera>
+                <i data-lucide="video" aria-hidden="true"></i>
+                <span>Open Camera</span>
+              </button>
+            </div>
+
+            <div class="tryon-preview-grid" data-preview-grid hidden>
+              <figure>
+                <span>Before</span>
+                <img data-before-img alt="Captured camera preview" hidden>
+                <div class="preview-empty" data-before-placeholder>Camera capture</div>
+              </figure>
+              <figure>
+                <span>AI try-on</span>
+                <img data-preview-img alt="Generated AI try-on preview" hidden>
+                <div class="preview-empty" data-result-placeholder>Generated preview</div>
+              </figure>
+            </div>
+
+            <canvas data-capture-canvas hidden></canvas>
 
             <div class="tryon-controls" aria-label="Try-on controls">
               <button class="icon-button" type="button" data-prev-frame aria-label="Previous frame">
@@ -361,7 +390,7 @@
                 <i data-lucide="send" aria-hidden="true"></i>
                 <span>Send to WhatsApp</span>
               </button>
-              <p class="form-note" data-lead-note aria-live="polite">Upload a selfie to generate your AI try-on result.</p>
+              <p class="form-note" data-lead-note aria-live="polite">Open the camera and capture a photo to generate your AI try-on.</p>
             </form>
 
             <div class="post-tryon-actions" aria-label="Next actions">
@@ -428,12 +457,12 @@
           </div>
           <div class="form-row">
             <label>
-              Selfie optional
-              <input type="file" name="selfie" accept="image/*">
-            </label>
-            <label>
               Prescription optional
               <input type="file" name="prescription" accept="image/*,.pdf">
+            </label>
+            <label>
+              Notes optional
+              <input type="text" name="notes" placeholder="Any preferred frame or visit note">
             </label>
           </div>
           <button class="btn btn-primary form-submit" type="submit">
@@ -644,7 +673,7 @@
   <div class="mobile-sticky-actions" aria-label="Mobile quick actions">
     <a href="#tryon" data-open-tryon>
       <i data-lucide="scan-face" aria-hidden="true"></i>
-      Try
+      Camera Try-On
     </a>
     <a href="#home-trial">
       <i data-lucide="house" aria-hidden="true"></i>
