@@ -1616,10 +1616,24 @@ function setupRevealAnimations() {
     items.forEach(el => el.classList.add("revealed")); return;
   }
   items.forEach(el => el.setAttribute("data-reveal", ""));
+  // threshold: 0 fires as soon as a single pixel of the element is visible.
+  // Using a percentage threshold (e.g. 0.12) breaks for tall sections like the
+  // frame catalog grid, which can be many viewport-heights tall — a ratio-based
+  // threshold can mathematically never be satisfied for those, so the section
+  // stays at opacity:0 forever. rootMargin nudges the trigger point up slightly
+  // so content still feels intentional rather than appearing right at the edge.
   const obs = new IntersectionObserver((entries) => {
     entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("revealed"); obs.unobserve(e.target); } });
-  }, { threshold: 0.12 });
+  }, { threshold: 0, rootMargin: "0px 0px -5% 0px" });
   items.forEach(el => obs.observe(el));
+
+  // Safety net: if anything was missed (e.g. already in view before the
+  // observer attached, or an element taller than the viewport never crosses
+  // the root margin), force-reveal everything shortly after load so content
+  // can never be stuck invisible.
+  window.setTimeout(() => {
+    items.forEach(el => el.classList.add("revealed"));
+  }, 2500);
 }
 
 /* ─── Init ──────────────────────────────────────────── */
