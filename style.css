@@ -1,39 +1,63 @@
+/* ─────────────────────────────────────────────
+   Vision Vistara Optics & Lasers Eye Care
+   style.css — v2.0
+   ───────────────────────────────────────────── */
+
+/* ── 1. Design Tokens ─────────────────────── */
 :root {
+  /* Ink palette */
   --ink-980: #050913;
   --ink-950: #07101d;
   --ink-900: #0b1728;
   --ink-850: #101e31;
+
+  /* Brand blues */
   --blue-800: #1550b8;
   --blue-700: #2468e8;
   --blue-600: #2d77ff;
   --blue-100: #eaf3ff;
+
+  /* Accent palette */
   --aqua: #42c8e8;
   --mint: #28c58a;
   --gold: #c9a85f;
   --rose: #d99bb1;
+
+  /* Light surface */
   --paper: #f6f9fd;
   --surface: #ffffff;
   --surface-soft: #eef6ff;
   --paper-text: #142033;
   --paper-muted: #5e6d82;
+
+  /* Dark surface */
   --text: #eef5ff;
   --soft-text: #b8c6dc;
   --muted: #8593a8;
+
+  /* Borders & shadows */
   --line: rgba(20, 32, 51, 0.12);
-  --line-strong: rgba(20, 32, 51, 0.2);
+  --line-strong: rgba(20, 32, 51, 0.20);
   --line-light: rgba(255, 255, 255, 0.14);
   --glass: rgba(255, 255, 255, 0.08);
   --shadow-soft: 0 18px 46px rgba(20, 32, 51, 0.12);
   --shadow-strong: 0 32px 90px rgba(5, 9, 19, 0.32);
+
+  /* Layout */
   --radius: 8px;
   --header-height: 76px;
+
+  /* Focus ring */
+  --focus-color: rgba(45, 119, 255, 0.70);
 }
 
+/* ── 2. Reset & Base ──────────────────────── */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  letter-spacing: 0;
+  margin: 0;
+  padding: 0;
 }
 
 html {
@@ -44,7 +68,6 @@ html {
 }
 
 body {
-  margin: 0;
   font-family: "Inter", Arial, sans-serif;
   color: var(--paper-text);
   background: var(--paper);
@@ -61,11 +84,20 @@ a {
   text-decoration: none;
 }
 
+a:focus-visible,
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-color);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
 img,
 svg,
 canvas,
 video {
   display: block;
+  max-width: 100%;
 }
 
 button,
@@ -77,6 +109,8 @@ textarea {
 
 button {
   cursor: pointer;
+  border: none;
+  background: none;
 }
 
 button:disabled {
@@ -87,6 +121,7 @@ button:disabled {
   display: none !important;
 }
 
+/* ── 3. Layout Utilities ──────────────────── */
 .container {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
@@ -97,6 +132,7 @@ code {
   font-size: 0.93em;
 }
 
+/* ── 4. Site Header ───────────────────────── */
 .site-header {
   position: fixed;
   inset: 0 0 auto;
@@ -110,7 +146,11 @@ code {
   background: rgba(5, 9, 19, 0.74);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(18px);
-  transition: background 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  -webkit-backdrop-filter: blur(18px);
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
 }
 
 .site-header.scrolled {
@@ -119,11 +159,13 @@ code {
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.24);
 }
 
+/* ── 5. Brand / Logo ──────────────────────── */
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .brand-mark {
@@ -166,6 +208,7 @@ code {
   font-weight: 650;
 }
 
+/* ── 6. Desktop Navigation ────────────────── */
 .desktop-nav {
   display: flex;
   align-items: center;
@@ -180,13 +223,16 @@ code {
   font-weight: 750;
   white-space: nowrap;
   transition: color 160ms ease;
+  padding: 4px 0;
 }
 
 .desktop-nav a:hover,
 .desktop-nav a:focus-visible {
   color: var(--aqua);
+  outline: none;
 }
 
+/* ── 7. Header Actions ────────────────────── */
 .header-actions {
   display: flex;
   align-items: center;
@@ -198,6 +244,7 @@ code {
   align-items: center;
   gap: 8px;
   min-height: 42px;
+  padding: 0 6px;
   color: #ffffff;
   font-size: 0.86rem;
   font-weight: 800;
@@ -207,8 +254,10 @@ code {
   width: 18px;
   height: 18px;
   color: var(--aqua);
+  flex-shrink: 0;
 }
 
+/* ── 8. Mobile Menu Toggle ────────────────── */
 .menu-toggle {
   display: none;
   align-items: center;
@@ -219,13 +268,20 @@ code {
   border: 1px solid var(--line-light);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
+  transition: background 160ms ease;
+}
+
+.menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .menu-toggle svg {
   width: 22px;
   height: 22px;
+  pointer-events: none;
 }
 
+/* ── 9. Mobile Menu ───────────────────────── */
 .mobile-menu {
   position: fixed;
   z-index: 62;
@@ -237,6 +293,8 @@ code {
   background: rgba(7, 16, 29, 0.98);
   border-bottom: 1px solid var(--line-light);
   box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .mobile-menu.open {
@@ -263,6 +321,7 @@ code {
   background: var(--mint);
 }
 
+/* ── 10. Button System ────────────────────── */
 .btn,
 .icon-button,
 .text-button {
@@ -281,13 +340,19 @@ code {
   font-size: 0.95rem;
   font-weight: 800;
   white-space: nowrap;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
 }
 
 .btn svg {
   width: 19px;
   height: 19px;
   flex: 0 0 auto;
+  pointer-events: none;
 }
 
 .btn:hover,
@@ -302,6 +367,7 @@ code {
 .btn:disabled {
   opacity: 0.48;
   transform: none;
+  pointer-events: none;
 }
 
 .btn-small {
@@ -314,6 +380,10 @@ code {
   color: #ffffff;
   background: linear-gradient(135deg, var(--blue-800), var(--blue-600) 70%, var(--aqua));
   box-shadow: 0 16px 34px rgba(45, 119, 255, 0.28);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 20px 40px rgba(45, 119, 255, 0.38);
 }
 
 .btn-light {
@@ -329,6 +399,10 @@ code {
   box-shadow: 0 16px 34px rgba(40, 197, 138, 0.24);
 }
 
+.btn-whatsapp:hover {
+  box-shadow: 0 20px 40px rgba(40, 197, 138, 0.34);
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -339,12 +413,16 @@ code {
   border: 1px solid var(--line);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.78);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .icon-button svg {
   width: 22px;
   height: 22px;
+  pointer-events: none;
 }
 
 .icon-button.mini {
@@ -377,6 +455,7 @@ code {
 .text-button svg {
   width: 16px;
   height: 16px;
+  pointer-events: none;
 }
 
 .text-button.active {
@@ -385,6 +464,7 @@ code {
   background: rgba(40, 197, 138, 0.13);
 }
 
+/* ── 11. Hero Section ─────────────────────── */
 .hero {
   position: relative;
   min-height: 88svh;
@@ -411,8 +491,14 @@ code {
 .hero-overlay {
   z-index: 1;
   background:
-    linear-gradient(90deg, rgba(5, 9, 19, 0.97) 0%, rgba(7, 16, 29, 0.88) 44%, rgba(15, 35, 60, 0.48) 76%, rgba(15, 35, 60, 0.18) 100%),
-    linear-gradient(180deg, rgba(5, 9, 19, 0.22), rgba(5, 9, 19, 0.78));
+    linear-gradient(90deg,
+      rgba(5, 9, 19, 0.97) 0%,
+      rgba(7, 16, 29, 0.88) 44%,
+      rgba(15, 35, 60, 0.48) 76%,
+      rgba(15, 35, 60, 0.18) 100%),
+    linear-gradient(180deg,
+      rgba(5, 9, 19, 0.22),
+      rgba(5, 9, 19, 0.78));
 }
 
 .hero-content {
@@ -427,6 +513,7 @@ code {
   min-width: 0;
 }
 
+/* ── 12. Eyebrow / Kicker ─────────────────── */
 .eyebrow,
 .section-kicker {
   margin: 0 0 12px;
@@ -434,6 +521,7 @@ code {
   font-size: 0.8rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .hero .eyebrow,
@@ -442,6 +530,7 @@ code {
   color: var(--aqua);
 }
 
+/* ── 13. Hero Typography ──────────────────── */
 .hero h1 {
   margin: 0;
   color: #ffffff;
@@ -471,6 +560,7 @@ code {
   margin-top: 34px;
 }
 
+/* ── 14. Hero Preview Card ────────────────── */
 .hero-preview {
   position: absolute;
   z-index: 2;
@@ -483,9 +573,10 @@ code {
   padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.10);
   box-shadow: var(--shadow-strong);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .preview-label {
@@ -494,6 +585,7 @@ code {
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .preview-card > strong {
@@ -520,6 +612,7 @@ code {
   object-fit: contain;
 }
 
+/* ── 15. Lead Strip ───────────────────────── */
 .lead-strip {
   position: relative;
   z-index: 3;
@@ -558,8 +651,10 @@ code {
 
 .lead-point span {
   line-height: 1.25;
+  font-size: 0.86rem;
 }
 
+/* ── 16. Section Base ─────────────────────── */
 .section {
   padding: 92px 0;
 }
@@ -611,6 +706,7 @@ code {
   color: var(--soft-text);
 }
 
+/* ── 17. Section Backgrounds ──────────────── */
 .about-section,
 .frames-section,
 .diagnostics-section,
@@ -624,6 +720,7 @@ code {
   background: linear-gradient(180deg, #f4f9ff 0%, #edf6fb 100%);
 }
 
+/* ── 18. Split / Contact Layout ───────────── */
 .split-layout,
 .contact-layout {
   display: grid;
@@ -632,6 +729,7 @@ code {
   align-items: start;
 }
 
+/* ── 19. Card Grids ───────────────────────── */
 .trust-grid,
 .service-grid,
 .diagnostic-grid,
@@ -640,14 +738,13 @@ code {
   gap: 16px;
 }
 
-.trust-grid,
+.trust-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .service-grid,
 .diagnostic-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.trust-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .testimonial-grid {
@@ -680,7 +777,10 @@ code {
 .testimonial-grid article {
   min-height: 188px;
   padding: 24px;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .trust-grid article:hover,
@@ -695,14 +795,14 @@ code {
 
 .trust-grid svg,
 .service-grid svg,
-.diagnostic-grid svg,
-.testimonial-grid svg {
+.diagnostic-grid svg {
   width: 38px;
   height: 38px;
   padding: 8px;
   color: var(--blue-700);
   border-radius: var(--radius);
   background: var(--blue-100);
+  flex-shrink: 0;
 }
 
 .trust-grid h3,
@@ -735,6 +835,7 @@ code {
   font-size: 0.9rem;
 }
 
+/* ── 20. Doctor Profile ───────────────────── */
 .doctor-profile {
   display: grid;
   grid-template-columns: 92px 1fr;
@@ -777,6 +878,7 @@ code {
   overflow-wrap: anywhere;
 }
 
+/* ── 21. Frames Commerce Layout ───────────── */
 .commerce-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(330px, 380px);
@@ -784,6 +886,7 @@ code {
   align-items: start;
 }
 
+/* ── 22. Catalog Toolbar ──────────────────── */
 .catalog-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 260px;
@@ -797,8 +900,25 @@ code {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
   scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.frame-filter-list::-webkit-scrollbar,
+.category-scroller::-webkit-scrollbar {
+  height: 3px;
+}
+
+.frame-filter-list::-webkit-scrollbar-track,
+.category-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.frame-filter-list::-webkit-scrollbar-thumb,
+.category-scroller::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
 }
 
 .frame-filter-list button,
@@ -812,6 +932,7 @@ code {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #ffffff;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
 }
 
 .category-scroller button {
@@ -832,6 +953,7 @@ code {
   background: var(--aqua);
 }
 
+/* ── 23. Form Labels & Inputs ─────────────── */
 .catalog-search,
 .selection-lead-form label,
 .home-trial-form label,
@@ -871,12 +993,14 @@ code {
   border-radius: var(--radius);
   background: #ffffff;
   outline: none;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .home-trial-form textarea {
   min-height: 92px;
-  padding-top: 12px;
+  padding: 12px 14px;
   resize: vertical;
 }
 
@@ -893,12 +1017,15 @@ code {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.075);
   outline: none;
-  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .appointment-form textarea {
   min-height: 96px;
-  padding-top: 12px;
+  padding: 12px 14px;
   resize: vertical;
 }
 
@@ -922,13 +1049,9 @@ code {
 .home-trial-form select:focus,
 .home-trial-form textarea:focus,
 .dashboard-controls input:focus,
-.dashboard-controls select:focus,
-.lead-form input:focus,
-.appointment-form input:focus,
-.appointment-form select:focus,
-.appointment-form textarea:focus {
+.dashboard-controls select:focus {
   border-color: rgba(45, 119, 255, 0.68);
-  box-shadow: 0 0 0 3px rgba(45, 119, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(45, 119, 255, 0.10);
 }
 
 .lead-form input:focus,
@@ -937,7 +1060,7 @@ code {
 .appointment-form textarea:focus {
   background: rgba(255, 255, 255, 0.11);
   border-color: rgba(66, 200, 232, 0.72);
-  box-shadow: 0 0 0 3px rgba(66, 200, 232, 0.1);
+  box-shadow: 0 0 0 3px rgba(66, 200, 232, 0.10);
 }
 
 .appointment-form option,
@@ -948,6 +1071,7 @@ code {
   background: #ffffff;
 }
 
+/* ── 24. Product Grid & Cards ─────────────── */
 .product-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -967,7 +1091,10 @@ code {
   display: grid;
   grid-template-rows: minmax(360px, auto) 1fr;
   overflow: hidden;
-  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .product-media {
@@ -1015,6 +1142,7 @@ code {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .product-title-row span {
@@ -1022,6 +1150,7 @@ code {
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .product-title-row h3 {
@@ -1074,6 +1203,7 @@ code {
   font-size: 0.92rem;
 }
 
+/* ── 25. Product Specs ────────────────────── */
 .product-specs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1092,6 +1222,7 @@ code {
   font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .product-specs dd {
@@ -1101,6 +1232,7 @@ code {
   font-weight: 800;
 }
 
+/* ── 26. Frame Detail / Accordion ─────────── */
 .frame-detail {
   color: var(--paper-muted);
   font-size: 0.9rem;
@@ -1110,12 +1242,19 @@ code {
   color: var(--blue-800);
   font-weight: 800;
   cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.frame-detail summary::-webkit-details-marker {
+  display: none;
 }
 
 .frame-detail p {
   margin: 8px 0 0;
 }
 
+/* ── 27. Detail Gallery ───────────────────── */
 .detail-gallery {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1143,8 +1282,10 @@ code {
   font-size: 0.74rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
+/* ── 28. Detail Specs Table ───────────────── */
 .detail-specs {
   display: grid;
   gap: 8px;
@@ -1162,6 +1303,7 @@ code {
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .detail-specs dd {
@@ -1175,6 +1317,7 @@ code {
   font-size: 0.84rem;
 }
 
+/* ── 29. Product Actions ──────────────────── */
 .product-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1186,6 +1329,7 @@ code {
   flex: 1 1 132px;
 }
 
+/* ── 30. Selection Summary Sidebar ───────── */
 .selection-summary,
 .home-summary-panel,
 .home-trial-form {
@@ -1216,6 +1360,7 @@ code {
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .summary-head strong {
@@ -1303,6 +1448,7 @@ code {
   color: var(--paper-text);
 }
 
+/* ── 31. Forms (Generic) ──────────────────── */
 .selection-lead-form,
 .home-trial-form,
 .lead-form,
@@ -1330,6 +1476,7 @@ code {
   gap: 8px;
 }
 
+/* ── 32. Try-On Section ───────────────────── */
 .tryon-section {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 34%),
@@ -1362,6 +1509,7 @@ code {
   margin-bottom: 14px;
 }
 
+/* ── 33. Status Pill ──────────────────────── */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -1373,7 +1521,7 @@ code {
   font-weight: 800;
   border: 1px solid rgba(66, 200, 232, 0.24);
   border-radius: 999px;
-  background: rgba(66, 200, 232, 0.1);
+  background: rgba(66, 200, 232, 0.10);
 }
 
 .status-pill.muted {
@@ -1385,8 +1533,10 @@ code {
 .status-pill svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
 }
 
+/* ── 34. Selfie / Try-On Workspace ───────── */
 .selfie-workspace {
   display: grid;
   grid-template-columns: minmax(220px, 0.36fr) minmax(0, 0.64fr);
@@ -1411,17 +1561,20 @@ code {
   color: var(--text);
   text-align: center;
   cursor: pointer;
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .selfie-upload-card:hover,
 .selfie-upload-card:focus-within {
   transform: translateY(-2px);
   border-color: rgba(66, 200, 232, 0.36);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.10);
 }
 
-.selfie-upload-card input {
+.selfie-upload-card input[type="file"] {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
@@ -1435,9 +1588,9 @@ code {
   width: 62px;
   height: 62px;
   color: var(--aqua);
-  border: 1px solid rgba(66, 200, 232, 0.3);
+  border: 1px solid rgba(66, 200, 232, 0.30);
   border-radius: 50%;
-  background: rgba(66, 200, 232, 0.1);
+  background: rgba(66, 200, 232, 0.10);
 }
 
 .selfie-upload-card svg {
@@ -1456,6 +1609,7 @@ code {
   font-weight: 700;
 }
 
+/* ── 35. Try-On Preview Grid ──────────────── */
 .tryon-preview-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1480,6 +1634,7 @@ code {
   font-size: 0.72rem;
   font-weight: 850;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
 }
@@ -1497,10 +1652,11 @@ code {
   height: calc(100% - 28px);
   color: var(--paper-muted);
   font-weight: 800;
-  border: 1px dashed rgba(20, 32, 51, 0.2);
+  border: 1px dashed rgba(20, 32, 51, 0.20);
   border-radius: var(--radius);
 }
 
+/* ── 36. Try-On Controls ──────────────────── */
 .tryon-controls {
   display: grid;
   grid-template-columns: 50px minmax(0, 1fr) 50px;
@@ -1515,6 +1671,7 @@ code {
   background: rgba(255, 255, 255, 0.08);
 }
 
+/* ── 37. Frame Panel ──────────────────────── */
 .frame-panel {
   display: grid;
   gap: 16px;
@@ -1537,6 +1694,7 @@ code {
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .selected-frame strong,
@@ -1557,6 +1715,7 @@ code {
   font-size: 0.86rem;
 }
 
+/* ── 38. Frame Thumbnails ─────────────────── */
 .frame-thumbs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1571,7 +1730,10 @@ code {
   border: 1px solid var(--line-light);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.055);
-  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
 }
 
 .frame-thumb:hover,
@@ -1610,6 +1772,7 @@ code {
   font-weight: 750;
 }
 
+/* ── 39. Try-On Choice Actions ────────────── */
 .tryon-choice-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1622,6 +1785,7 @@ code {
   font-size: 0.84rem;
 }
 
+/* ── 40. Preview Panel ────────────────────── */
 .preview-panel {
   display: grid;
   gap: 12px;
@@ -1636,6 +1800,7 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .preview-head div {
@@ -1655,6 +1820,7 @@ code {
   display: grid;
 }
 
+/* ── 41. Lead / Appointment Form ──────────── */
 .lead-form {
   padding-top: 2px;
 }
@@ -1665,6 +1831,7 @@ code {
 }
 
 .consent-row {
+  display: grid;
   grid-template-columns: 18px 1fr;
   align-items: start;
   gap: 10px !important;
@@ -1703,6 +1870,7 @@ code {
   color: var(--soft-text);
 }
 
+/* ── 42. Post Try-On Actions ──────────────── */
 .post-tryon-actions {
   display: grid;
   gap: 8px;
@@ -1728,18 +1896,22 @@ code {
   width: 18px;
   height: 18px;
   color: var(--gold);
+  flex-shrink: 0;
 }
 
+/* ── 43. Home Summary Panel ───────────────── */
 .home-summary-panel {
   display: grid;
   gap: 14px;
   margin-top: 28px;
 }
 
+/* ── 44. Diagnostics Grid ─────────────────── */
 .diagnostic-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* ── 45. FAQ Section ──────────────────────── */
 .faq-list {
   display: grid;
   gap: 12px;
@@ -1747,12 +1919,23 @@ code {
 
 .faq-list details {
   padding: 18px 20px;
+  transition: box-shadow 160ms ease;
+}
+
+.faq-list details[open] {
+  box-shadow: 0 12px 30px rgba(20, 32, 51, 0.10);
 }
 
 .faq-list summary {
   color: var(--paper-text);
   font-weight: 800;
   cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.faq-list summary::-webkit-details-marker {
+  display: none;
 }
 
 .faq-list p {
@@ -1760,9 +1943,9 @@ code {
   color: var(--paper-muted);
 }
 
+/* ── 46. Contact Section ──────────────────── */
 .contact-section {
-  background:
-    linear-gradient(135deg, #050913 0%, #0d2038 58%, #142b46 100%);
+  background: linear-gradient(135deg, #050913 0%, #0d2038 58%, #142b46 100%);
 }
 
 .contact-copy p {
@@ -1791,6 +1974,7 @@ code {
   height: 24px;
   align-self: center;
   color: var(--aqua);
+  flex-shrink: 0;
 }
 
 .contact-details span {
@@ -1798,6 +1982,7 @@ code {
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .contact-details strong {
@@ -1809,6 +1994,7 @@ code {
   color: var(--soft-text);
 }
 
+/* ── 47. Appointment Form ─────────────────── */
 .appointment-form {
   padding: 28px;
   border-color: var(--line-light);
@@ -1820,6 +2006,7 @@ code {
   color: var(--soft-text);
 }
 
+/* ── 48. Dashboard Section ────────────────── */
 .dashboard-section {
   background: var(--ink-950);
 }
@@ -1840,7 +2027,7 @@ code {
 .dashboard-empty {
   padding: 26px;
   color: var(--soft-text);
-  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.20);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.045);
 }
@@ -1863,6 +2050,7 @@ code {
   background: #ffffff;
 }
 
+/* ── 49. Lead Meta (Dashboard Row) ───────── */
 .lead-meta {
   min-width: 0;
 }
@@ -1888,6 +2076,7 @@ code {
   font-weight: 800;
   border-radius: 999px;
   background: var(--mint);
+  white-space: nowrap;
 }
 
 .lead-meta p {
@@ -1936,8 +2125,10 @@ code {
 .lead-actions svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
 }
 
+/* ── 50. Site Footer ──────────────────────── */
 .site-footer {
   padding: 30px 0 110px;
   color: rgba(238, 245, 255, 0.58);
@@ -1949,6 +2140,7 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 28px;
+  flex-wrap: wrap;
 }
 
 .site-footer p {
@@ -1957,6 +2149,7 @@ code {
   font-size: 0.9rem;
 }
 
+/* ── 51. Mobile Sticky Actions ────────────── */
 .mobile-sticky-actions {
   position: fixed;
   left: 12px;
@@ -1972,6 +2165,7 @@ code {
   background: rgba(7, 16, 29, 0.94);
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .mobile-sticky-actions a {
@@ -1983,6 +2177,12 @@ code {
   color: #ffffff;
   font-size: 0.82rem;
   font-weight: 800;
+  border-radius: 999px;
+  transition: background 160ms ease;
+}
+
+.mobile-sticky-actions a:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .mobile-sticky-actions a:nth-child(3) {
@@ -1992,8 +2192,10 @@ code {
 .mobile-sticky-actions svg {
   width: 17px;
   height: 17px;
+  flex-shrink: 0;
 }
 
+/* ── 52. Scroll Reveal ────────────────────── */
 [data-reveal] {
   opacity: 0;
   transform: translateY(18px);
@@ -2006,6 +2208,7 @@ code {
   transform: none;
 }
 
+/* ── 53. Responsive — 1180px ──────────────── */
 @media (max-width: 1180px) {
   .desktop-nav {
     gap: 12px;
@@ -2043,6 +2246,7 @@ code {
   }
 }
 
+/* ── 54. Responsive — 980px ───────────────── */
 @media (max-width: 980px) {
   :root {
     --header-height: 70px;
@@ -2069,7 +2273,7 @@ code {
   .hero-overlay {
     background:
       linear-gradient(90deg, rgba(5, 9, 19, 0.95), rgba(7, 16, 29, 0.76)),
-      linear-gradient(180deg, rgba(5, 9, 19, 0.3), rgba(5, 9, 19, 0.88));
+      linear-gradient(180deg, rgba(5, 9, 19, 0.30), rgba(5, 9, 19, 0.88));
   }
 
   .hero h1 {
@@ -2118,6 +2322,7 @@ code {
   }
 }
 
+/* ── 55. Responsive — 680px ───────────────── */
 @media (max-width: 680px) {
   body {
     padding-bottom: 74px;
@@ -2329,6 +2534,7 @@ code {
   }
 }
 
+/* ── 56. Responsive — 390px ───────────────── */
 @media (max-width: 390px) {
   .brand {
     gap: 9px;
@@ -2349,11 +2555,40 @@ code {
   }
 }
 
+/* ── 57. Accessibility — Reduced Motion ───── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
-    transition: none !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ── 58. Print Styles ─────────────────────── */
+@media print {
+  .site-header,
+  .mobile-menu,
+  .mobile-sticky-actions,
+  .hero-actions,
+  .summary-actions,
+  .product-actions {
+    display: none !important;
+  }
+
+  body {
+    color: #000;
+    background: #fff;
+  }
+
+  .hero {
+    min-height: auto;
+    padding: 24px 0;
+  }
+
+  .section {
+    padding: 24px 0;
   }
 }
