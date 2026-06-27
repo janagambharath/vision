@@ -362,12 +362,24 @@ function setPill(el, icon, text, muted = false) {
   refreshIcons();
 }
 
+// FIX: track scroll position to prevent iOS body-lock jump
+let _menuScrollY = 0;
+
 function setMenu(open) {
   if (!menuToggle || !mobileMenu) return;
   mobileMenu.classList.toggle("open", open);
   menuToggle.setAttribute("aria-expanded", String(open));
   menuToggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-  document.body.classList.toggle("menu-open", open);
+  if (open) {
+    _menuScrollY = window.scrollY;
+    document.body.classList.add("menu-open");
+  } else {
+    document.body.classList.remove("menu-open");
+    // FIX: restore scroll position after unlocking body on iOS
+    if (_menuScrollY) {
+      window.scrollTo({ top: _menuScrollY, behavior: "instant" });
+    }
+  }
 }
 
 function updateHeader() {
@@ -413,9 +425,13 @@ function scrollToSection(sel) {
   setMenu(false);
   const t = document.querySelector(sel);
   if (!t) return;
-  const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--header-height")) || 76;
-  const offset  = t.getBoundingClientRect().top + window.scrollY - headerH - 16;
-  window.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+  // FIX: Use a small delay so menu close animation completes before scroll
+  // This prevents iOS layout shift glitch when scrolling with menu open
+  setTimeout(() => {
+    const headerH = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--header-height")) || 76;
+    const offset  = t.getBoundingClientRect().top + window.scrollY - headerH - 16;
+    window.scrollTo({ top: Math.max(0, offset), behavior: "smooth" });
+  }, 10);
 }
 
 function blobToDataUrl(blob) {
@@ -832,8 +848,19 @@ async function openCamera() {
     cam.stream = stream;
     if (cam.videoEl) {
       cam.videoEl.srcObject = stream;
+      cam.videoEl.setAttribute("playsinline", "");
+      cam.videoEl.setAttribute("webkit-playsinline", "");
+      cam.videoEl.muted = true;
       cam.videoEl.style.transform = cam.facingMode === "user" ? "scaleX(-1)" : "none";
-      try { await cam.videoEl.play(); } catch { /* autoplay ok */ }
+      try {
+        await cam.videoEl.play();
+      } catch (playErr) {
+        // FIX: iOS sometimes needs a user gesture to play video
+        // Add a one-time click handler as fallback
+        if (playErr.name === "NotAllowedError") {
+          cam.videoEl.addEventListener("click", () => cam.videoEl.play().catch(() => {}), { once: true });
+        }
+      }
     }
     if (cam.panelEl) cam.panelEl.hidden = false;
     if (tryOn.selfieWorkspace) tryOn.selfieWorkspace.hidden = true;
@@ -1021,7 +1048,8 @@ async function handleSelfieInput(event) {
   if (!file) return;
   if (!file.type.startsWith("image/")) {
     if (tryOn.leadNote) tryOn.leadNote.textContent = "Please upload a selfie image file.";
-    event.currentTarget.value = "";
+    // FIX: reset file input on iOS - direct assignment to value may fail on iOS
+    try { event.currentTarget.value = ""; } catch(e) {}
     return;
   }
   // Fix: close camera if open when uploading file
@@ -1460,6 +1488,15 @@ function setupCamera() {
   window.addEventListener("beforeunload", () => {
     if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
   });
+
+  // FIX: also stop camera when iOS sends page to background
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && cam.stream) {
+      cam.stream.getTracks().forEach(t => t.stop());
+      cam.stream = null;
+      if (cam.videoEl) cam.videoEl.srcObject = null;
+    }
+  });
 }
 
 function setupLensUpsell() {
@@ -1524,7 +1561,8 @@ function setupTryOn() {
     viewport.addEventListener("touchend", e => {
       const t = e.changedTouches[0];
       const dx = t.clientX - sx, dy = t.clientY - sy;
-      if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.5) stepFrame(dx < 0 ? 1 : -1);
+      // FIX: stricter threshold to avoid accidental swipes on mobile scroll
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2) stepFrame(dx < 0 ? 1 : -1);
     }, { passive: true });
   }
 
@@ -1638,7 +1676,11 @@ function setupRevealAnimations() {
   if (reduced || !("IntersectionObserver" in window)) {
     items.forEach(el => el.classList.add("revealed")); return;
   }
-  items.forEach(el => el.setAttribute("data-reveal", ""));
+  items.forEach(el => {
+    el.setAttribute("data-reveal", "");
+    // FIX: hint browser for smoother reveal animation on mobile
+    el.style.willChange = "opacity, transform";
+  });
   // threshold: 0 fires as soon as a single pixel of the element is visible.
   // Using a percentage threshold (e.g. 0.12) breaks for tall sections like the
   // frame catalog grid, which can be many viewport-heights tall — a ratio-based
@@ -1646,7 +1688,14 @@ function setupRevealAnimations() {
   // stays at opacity:0 forever. rootMargin nudges the trigger point up slightly
   // so content still feels intentional rather than appearing right at the edge.
   const obs = new IntersectionObserver((entries) => {
-    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("revealed"); obs.unobserve(e.target); } });
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add("revealed");
+        // FIX: remove will-change after reveal to free GPU memory on mobile
+        setTimeout(() => { e.target.style.willChange = "auto"; }, 600);
+        obs.unobserve(e.target);
+      }
+    });
   }, { threshold: 0, rootMargin: "0px 0px -5% 0px" });
   items.forEach(el => obs.observe(el));
 
