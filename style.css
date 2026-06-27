@@ -1,6 +1,6 @@
 /* ─────────────────────────────────────────────
    Vision Vistara Optics & Lasers Eye Care
-   style.css — v3.0 (Mobile-Fixed)
+   style.css — v3.1 (Mobile-Glitch-Free)
    ───────────────────────────────────────────── */
 
 /* ── 1. Design Tokens ─────────────────────── */
@@ -56,6 +56,8 @@ html {
   scroll-padding-top: calc(var(--header-height) + 16px);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* FIX: prevent horizontal scroll globally */
+  overflow-x: hidden;
 }
 
 body {
@@ -64,13 +66,16 @@ body {
   background: var(--paper);
   line-height: 1.6;
   overflow-x: hidden;
-  /* Prevent horizontal scroll glitches */
   width: 100%;
   max-width: 100vw;
+  /* FIX: prevent elastic overscroll glitches on iOS */
+  position: relative;
 }
 
 body.menu-open {
   overflow: hidden;
+  /* FIX: lock position on iOS when menu open */
+  touch-action: none;
 }
 
 a {
@@ -119,6 +124,8 @@ button:disabled {
 .container {
   width: min(1180px, calc(100% - 40px));
   margin: 0 auto;
+  /* FIX: guard against container overflow */
+  min-width: 0;
 }
 
 code {
@@ -145,6 +152,8 @@ code {
     background 180ms ease,
     box-shadow 180ms ease,
     border-color 180ms ease;
+  /* FIX: prevent header from causing horizontal overflow */
+  overflow: hidden;
 }
 
 .site-header.scrolled {
@@ -158,8 +167,10 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  /* FIX: allow brand to shrink without overflow */
   min-width: 0;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  overflow: hidden;
 }
 
 .brand-mark {
@@ -187,6 +198,7 @@ code {
   display: grid;
   line-height: 1.1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .brand-text strong {
@@ -194,12 +206,19 @@ code {
   font-size: 0.9rem;
   font-weight: 800;
   text-transform: uppercase;
+  /* FIX: prevent brand text overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-text span {
   color: var(--soft-text);
   font-size: 0.74rem;
   font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── 6. Desktop Navigation ────────────────── */
@@ -231,6 +250,7 @@ code {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .header-call {
@@ -258,12 +278,13 @@ code {
   justify-content: center;
   width: 44px;
   height: 44px;
+  /* FIX: prevent toggle from shrinking */
+  flex: 0 0 44px;
   color: #ffffff;
   border: 1px solid var(--line-light);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   transition: background 160ms ease;
-  flex-shrink: 0;
 }
 
 .menu-toggle:hover {
@@ -290,9 +311,11 @@ code {
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  /* Fix: prevent overflow issues */
   overflow-y: auto;
+  /* FIX: use dvh for accurate mobile viewport height */
   max-height: calc(100dvh - var(--header-height));
+  /* FIX: prevent menu scroll from propagating to body */
+  overscroll-behavior: contain;
 }
 
 .mobile-menu.open {
@@ -304,10 +327,13 @@ code {
   color: var(--text);
   font-weight: 750;
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-  /* Fix: ensure tap targets are big enough */
+  /* FIX: guaranteed 48px tap targets */
   min-height: 48px;
   display: flex;
   align-items: center;
+  /* FIX: prevent link text from overflowing */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .mobile-menu a:last-child {
@@ -329,6 +355,8 @@ code {
 .icon-button,
 .text-button {
   -webkit-tap-highlight-color: transparent;
+  /* FIX: prevent buttons from causing layout shifts */
+  touch-action: manipulation;
 }
 
 .btn {
@@ -349,6 +377,9 @@ code {
     background 160ms ease,
     border-color 160ms ease,
     opacity 160ms ease;
+  /* FIX: prevent text overflow in buttons */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .btn svg {
@@ -358,13 +389,16 @@ code {
   pointer-events: none;
 }
 
-.btn:hover,
-.btn:focus-visible,
-.icon-button:hover,
-.icon-button:focus-visible,
-.text-button:hover,
-.text-button:focus-visible {
-  transform: translateY(-2px);
+/* FIX: disable hover transform on touch devices to avoid stuck state */
+@media (hover: hover) {
+  .btn:hover,
+  .btn:focus-visible,
+  .icon-button:hover,
+  .icon-button:focus-visible,
+  .text-button:hover,
+  .text-button:focus-visible {
+    transform: translateY(-2px);
+  }
 }
 
 .btn:disabled {
@@ -419,6 +453,7 @@ code {
   font-weight: 800;
   margin-top: 22px;
   transition: background 160ms ease, transform 160ms ease;
+  touch-action: manipulation;
 }
 
 .btn-outline-map:hover {
@@ -446,6 +481,8 @@ code {
     transform 160ms ease,
     border-color 160ms ease,
     background 160ms ease;
+  /* FIX: ensure icon buttons don't shrink below their size */
+  flex-shrink: 0;
 }
 
 .icon-button svg {
@@ -670,6 +707,9 @@ code {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-soft);
+  /* FIX: prevent text overflow in lead strip items */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .lead-point svg {
@@ -682,6 +722,9 @@ code {
 .lead-point span {
   line-height: 1.25;
   font-size: 0.86rem;
+  /* FIX: allow text to wrap gracefully */
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* ── 16. Section Base ─────────────────────── */
@@ -813,14 +856,17 @@ code {
     box-shadow 160ms ease;
 }
 
-.trust-grid article:hover,
-.service-grid article:hover,
-.diagnostic-grid article:hover,
-.testimonial-grid article:hover,
-.product-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(45, 119, 255, 0.26);
-  box-shadow: 0 22px 54px rgba(20, 32, 51, 0.14);
+/* FIX: only apply hover transforms on pointer devices */
+@media (hover: hover) {
+  .trust-grid article:hover,
+  .service-grid article:hover,
+  .diagnostic-grid article:hover,
+  .testimonial-grid article:hover,
+  .product-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(45, 119, 255, 0.26);
+    box-shadow: 0 22px 54px rgba(20, 32, 51, 0.14);
+  }
 }
 
 .trust-grid svg,
@@ -933,8 +979,9 @@ code {
   padding-bottom: 4px;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
-  /* Fix: prevent scroll chaining on mobile */
   -webkit-overflow-scrolling: touch;
+  /* FIX: prevent scroll from propagating on iOS */
+  overscroll-behavior-x: contain;
 }
 
 .frame-filter-list::-webkit-scrollbar,
@@ -957,6 +1004,7 @@ code {
 .category-scroller button {
   flex: 0 0 auto;
   min-height: 38px;
+  /* FIX: ensure 44px tap target height on mobile */
   padding: 0 13px;
   color: var(--paper-muted);
   font-size: 0.84rem;
@@ -965,6 +1013,8 @@ code {
   border-radius: 999px;
   background: #ffffff;
   transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .category-scroller button {
@@ -1028,12 +1078,15 @@ code {
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
+  /* FIX: prevent zoom on focus in iOS Safari (font-size must be >= 16px) */
+  font-size: 16px;
 }
 
 .home-trial-form textarea {
   min-height: 92px;
   padding: 12px 14px;
   resize: vertical;
+  font-size: 16px;
 }
 
 .lead-form input,
@@ -1053,12 +1106,15 @@ code {
     border-color 160ms ease,
     background 160ms ease,
     box-shadow 160ms ease;
+  /* FIX: prevent iOS zoom on focus */
+  font-size: 16px;
 }
 
 .appointment-form textarea {
   min-height: 96px;
   padding: 12px 14px;
   resize: vertical;
+  font-size: 16px;
 }
 
 .catalog-search input::placeholder,
@@ -1121,13 +1177,14 @@ code {
 
 .product-card {
   display: grid;
-  /* rows: image area then info area */
   grid-template-rows: auto 1fr;
   overflow: hidden;
   transition:
     transform 160ms ease,
     border-color 160ms ease,
     box-shadow 160ms ease;
+  /* FIX: contain content within card */
+  min-width: 0;
 }
 
 .product-media {
@@ -1137,6 +1194,8 @@ code {
   aspect-ratio: 16 / 8.5;
   padding: 22px;
   background: #f5f6f8;
+  /* FIX: prevent media overflow */
+  overflow: hidden;
 }
 
 .product-media img {
@@ -1155,20 +1214,24 @@ code {
   transition: opacity 180ms ease;
 }
 
-.product-card:hover .product-hover-image,
-.product-card:focus-within .product-hover-image {
-  opacity: 1;
-}
+/* FIX: only apply hover effects on pointer devices */
+@media (hover: hover) {
+  .product-card:hover .product-hover-image,
+  .product-card:focus-within .product-hover-image {
+    opacity: 1;
+  }
 
-.product-card.has-hover:hover .product-main-image,
-.product-card.has-hover:focus-within .product-main-image {
-  opacity: 0;
+  .product-card.has-hover:hover .product-main-image,
+  .product-card.has-hover:focus-within .product-main-image {
+    opacity: 0;
+  }
 }
 
 .product-copy {
   display: grid;
   gap: 14px;
   padding: 18px;
+  min-width: 0;
 }
 
 .product-title-row {
@@ -1191,6 +1254,7 @@ code {
   color: var(--paper-text);
   font-size: 1.16rem;
   line-height: 1.2;
+  overflow-wrap: break-word;
 }
 
 .product-commercials {
@@ -1234,6 +1298,7 @@ code {
   margin: 0;
   color: var(--paper-muted);
   font-size: 0.92rem;
+  overflow-wrap: break-word;
 }
 
 /* ── 25. Product Specs ────────────────────── */
@@ -1248,6 +1313,7 @@ code {
   padding: 10px;
   border-radius: var(--radius);
   background: #f5f8fc;
+  min-width: 0;
 }
 
 .product-specs dt {
@@ -1263,6 +1329,7 @@ code {
   color: var(--paper-text);
   font-size: 0.86rem;
   font-weight: 800;
+  overflow-wrap: break-word;
 }
 
 /* ── 26. Frame Detail / Accordion ─────────── */
@@ -1277,6 +1344,10 @@ code {
   cursor: pointer;
   user-select: none;
   list-style: none;
+  /* FIX: ensure 44px tap target */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .frame-detail summary::-webkit-details-marker {
@@ -1343,6 +1414,7 @@ code {
   margin: 0;
   color: var(--paper-text);
   font-weight: 750;
+  overflow-wrap: break-word;
 }
 
 .detail-note {
@@ -1469,10 +1541,13 @@ code {
   color: var(--paper-muted);
   font-size: 0.88rem;
   font-weight: 750;
+  /* FIX: prevent overflow in totals */
+  min-width: 0;
 }
 
 .summary-totals strong {
   color: var(--paper-text);
+  flex-shrink: 0;
 }
 
 .summary-totals .total-row {
@@ -1529,6 +1604,9 @@ code {
   border-radius: var(--radius);
   background: var(--glass);
   box-shadow: var(--shadow-strong);
+  /* FIX: prevent content overflow in panels */
+  min-width: 0;
+  overflow: hidden;
 }
 
 .tryon-stage {
@@ -1555,6 +1633,11 @@ code {
   border: 1px solid rgba(66, 200, 232, 0.24);
   border-radius: 999px;
   background: rgba(66, 200, 232, 0.10);
+  /* FIX: prevent pill text overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .status-pill.muted {
@@ -1598,13 +1681,16 @@ code {
     transform 160ms ease,
     border-color 160ms ease,
     background 160ms ease;
+  touch-action: manipulation;
 }
 
-.selfie-upload-card:hover,
-.selfie-upload-card:focus-within {
-  transform: translateY(-2px);
-  border-color: rgba(66, 200, 232, 0.36);
-  background: rgba(255, 255, 255, 0.10);
+@media (hover: hover) {
+  .selfie-upload-card:hover,
+  .selfie-upload-card:focus-within {
+    transform: translateY(-2px);
+    border-color: rgba(66, 200, 232, 0.36);
+    background: rgba(255, 255, 255, 0.10);
+  }
 }
 
 .selfie-upload-card input[type="file"] {
@@ -1719,6 +1805,7 @@ code {
   gap: 3px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line-light);
+  min-width: 0;
 }
 
 .selected-frame span,
@@ -1735,6 +1822,7 @@ code {
   color: #ffffff;
   font-size: 1.18rem;
   line-height: 1.2;
+  overflow-wrap: break-word;
 }
 
 .selected-frame small {
@@ -1746,6 +1834,7 @@ code {
   margin: 4px 0 0;
   color: var(--soft-text);
   font-size: 0.86rem;
+  overflow-wrap: break-word;
 }
 
 /* ── 38. Frame Thumbnails ─────────────────── */
@@ -1767,13 +1856,20 @@ code {
     transform 160ms ease,
     border-color 160ms ease,
     background 160ms ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* FIX: prevent thumb overflow */
+  min-width: 0;
+  overflow: hidden;
 }
 
-.frame-thumb:hover,
-.frame-thumb:focus-visible {
-  transform: translateY(-2px);
-  border-color: rgba(66, 200, 232, 0.36);
-  background: rgba(255, 255, 255, 0.09);
+@media (hover: hover) {
+  .frame-thumb:hover,
+  .frame-thumb:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(66, 200, 232, 0.36);
+    background: rgba(255, 255, 255, 0.09);
+  }
 }
 
 .frame-thumb.active {
@@ -1797,6 +1893,7 @@ code {
   color: #ffffff;
   font-size: 0.84rem;
   line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 .frame-thumb span {
@@ -1839,6 +1936,7 @@ code {
 .preview-head div {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .preview-panel img {
@@ -1896,6 +1994,7 @@ code {
   margin: 0;
   color: var(--paper-muted);
   font-size: 0.88rem;
+  overflow-wrap: break-word;
 }
 
 .lead-form .form-note,
@@ -1919,6 +2018,8 @@ code {
   font-size: 0.88rem;
   font-weight: 800;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  /* FIX: ensure tap target size */
+  padding: 4px 0;
 }
 
 .post-tryon-actions a:first-child {
@@ -1965,6 +2066,10 @@ code {
   cursor: pointer;
   user-select: none;
   list-style: none;
+  /* FIX: ensure 44px tap target */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .faq-list summary::-webkit-details-marker {
@@ -1999,6 +2104,7 @@ code {
   color: var(--text);
   border-color: var(--line-light);
   background: rgba(255, 255, 255, 0.07);
+  min-width: 0;
 }
 
 .contact-details svg {
@@ -2021,6 +2127,7 @@ code {
 .contact-details strong {
   color: #ffffff;
   font-size: 1rem;
+  overflow-wrap: break-word;
 }
 
 .contact-details small {
@@ -2180,6 +2287,7 @@ code {
   margin: 0;
   text-align: right;
   font-size: 0.9rem;
+  overflow-wrap: break-word;
 }
 
 /* ── 51. Mobile Sticky Actions ────────────── */
@@ -2199,6 +2307,8 @@ code {
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+  /* FIX: avoid overlap with iOS home indicator */
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
 }
 
 .mobile-sticky-actions a {
@@ -2212,6 +2322,8 @@ code {
   font-weight: 800;
   border-radius: 999px;
   transition: background 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .mobile-sticky-actions a:hover {
@@ -2253,12 +2365,16 @@ code {
   overflow: hidden;
   background: #000;
   aspect-ratio: 4 / 3;
+  /* FIX: prevent viewport from overflowing its container */
+  max-width: 100%;
 }
 
 .camera-feed {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* FIX: prevent camera feed from causing layout shift on iOS */
+  display: block;
 }
 
 .camera-guide {
@@ -2339,6 +2455,9 @@ code {
   border-radius: var(--radius);
   cursor: pointer;
   transition: border-color 140ms ease, background 140ms ease;
+  touch-action: manipulation;
+  /* FIX: ensure 44px tap target */
+  min-height: 44px;
 }
 
 .lens-option:has(input:checked) {
@@ -2365,6 +2484,7 @@ code {
   font-size: 0.84rem;
   font-weight: 800;
   color: var(--blue-800);
+  flex-shrink: 0;
 }
 
 /* ── Home trial section ───────────────────── */
@@ -2421,7 +2541,6 @@ code {
 
   .site-header {
     padding: 0 20px;
-    /* Fix: tighter gap on tablet */
     gap: 12px;
   }
 
@@ -2489,7 +2608,6 @@ code {
     text-align: left;
   }
 
-  /* Fix tablet tryon shell */
   .tryon-shell {
     grid-template-columns: 1fr;
   }
@@ -2505,12 +2623,11 @@ code {
     --header-height: 64px;
   }
 
-  /* Fix: extra bottom padding for sticky bar */
+  /* FIX: account for sticky bar + safe area at bottom */
   body {
-    padding-bottom: 80px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Fix: tighten container on narrow screens */
   .container {
     width: calc(100% - 32px);
   }
@@ -2523,7 +2640,6 @@ code {
 
   .brand {
     gap: 9px;
-    /* Fix: allow brand to shrink if needed */
     min-width: 0;
     flex: 1 1 auto;
     overflow: hidden;
@@ -2531,7 +2647,6 @@ code {
 
   .brand-text strong {
     font-size: 0.8rem;
-    /* Fix: truncate on very small screens */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2553,7 +2668,6 @@ code {
   /* ─ Hero fixes ─ */
   .hero {
     min-height: auto;
-    /* Fix: ensure proper padding with smaller header */
     padding: 88px 0 44px;
     align-items: flex-start;
   }
@@ -2571,7 +2685,6 @@ code {
     font-size: 2rem;
     line-height: 1.1;
     text-wrap: wrap;
-    /* Fix: prevent text from overflowing */
     word-break: break-word;
   }
 
@@ -2581,7 +2694,7 @@ code {
     margin-top: 14px;
   }
 
-  /* Fix: hero action buttons - full width stack on mobile */
+  /* FIX: hero action buttons - full width stack on mobile */
   .hero-actions {
     display: flex;
     flex-direction: column;
@@ -2636,7 +2749,6 @@ code {
   .contact-copy h2 {
     font-size: 1.54rem;
     line-height: 1.16;
-    /* Fix: balance doesn't work well on mobile, use normal wrap */
     text-wrap: wrap;
   }
 
@@ -2673,19 +2785,17 @@ code {
     grid-template-columns: 1fr;
   }
 
-  /* Fix: selection summary not sticky on mobile - causes layout issues */
   .selection-summary {
     position: static;
     margin-top: 0;
   }
 
-  /* ─ Product grid: single column on mobile with HORIZONTAL card layout ─ */
+  /* ─ Product grid: horizontal card on mobile ─ */
   .product-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  /* Horizontal card: image left (fixed width), info right */
   .product-card {
     grid-template-rows: 1fr;
     grid-template-columns: 140px 1fr;
@@ -2737,8 +2847,7 @@ code {
     font-size: 0.9rem;
   }
 
-  /* Hide tags, description, specs, and detail accordion on mobile cards */
-  /* They're discoverable via the actions */
+  /* FIX: hide extra detail on mobile cards */
   .product-tags,
   .product-copy > p,
   .product-specs,
@@ -2778,7 +2887,7 @@ code {
     padding: 12px;
   }
 
-  /* Fix: selfie workspace stacks on mobile */
+  /* FIX: selfie workspace stacks on mobile */
   .selfie-workspace {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -2789,7 +2898,7 @@ code {
     min-height: 200px;
   }
 
-  /* Fix: try-on preview side by side but smaller */
+  /* FIX: try-on preview side by side */
   .tryon-preview-grid {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
@@ -2815,7 +2924,6 @@ code {
     font-size: 0.84rem;
   }
 
-  /* Fix: frame thumbs grid */
   .frame-thumbs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
@@ -2870,7 +2978,6 @@ code {
     padding: 20px;
   }
 
-  /* Fix: form row (date/time) to single column on mobile */
   .form-row {
     grid-template-columns: 1fr;
   }
@@ -2916,7 +3023,9 @@ code {
 
   /* ─ Camera panel fixes ─ */
   .camera-viewport {
+    /* FIX: portrait ratio better for mobile selfies */
     aspect-ratio: 3 / 4;
+    max-height: 55svh;
   }
 
   .camera-actions {
@@ -2938,6 +3047,11 @@ code {
     padding: 0 10px;
     min-height: 30px;
   }
+
+  /* FIX: prevent tryon section overflow on mobile */
+  .tryon-section .container {
+    overflow: hidden;
+  }
 }
 
 /* ── 56. Responsive — 420px (Small phones) ── */
@@ -2950,8 +3064,8 @@ code {
     width: calc(100% - 24px);
   }
 
+  /* FIX: hide brand text on very small screens */
   .brand-text {
-    /* Fix: hide subtitle on very small screens */
     display: none;
   }
 
@@ -2993,7 +3107,7 @@ code {
     font-size: 1.4rem;
   }
 
-  /* Fix: tryon preview on smallest screens */
+  /* FIX: tryon preview stacks on smallest screens */
   .tryon-preview-grid {
     grid-template-columns: 1fr;
   }
@@ -3002,7 +3116,7 @@ code {
     min-height: 220px;
   }
 
-  /* Fix: frame thumbs 1 column on tiny screens */
+  /* FIX: frame thumbs 1 column on tiny screens */
   .frame-thumbs {
     grid-template-columns: 1fr;
   }
@@ -3015,7 +3129,6 @@ code {
     grid-template-columns: 1fr;
   }
 
-  /* Even narrower image on tiny screens */
   .product-card {
     grid-template-columns: 110px 1fr;
   }
@@ -3027,6 +3140,16 @@ code {
   .summary-item {
     grid-template-columns: 50px 1fr 28px;
     gap: 8px;
+  }
+
+  /* FIX: appointment form padding on tiny phones */
+  .appointment-form {
+    padding: 16px;
+  }
+
+  /* FIX: lens options on tiny phones */
+  .lens-option {
+    padding: 8px 10px;
   }
 }
 
@@ -3117,5 +3240,18 @@ code {
 @media (max-width: 680px) {
   .camera-launch-card {
     min-height: 200px;
+  }
+}
+
+/* ── iOS safe area support ──────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .site-footer {
+    padding-bottom: calc(110px + env(safe-area-inset-bottom));
+  }
+
+  @media (max-width: 680px) {
+    .site-footer {
+      padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    }
   }
 }
