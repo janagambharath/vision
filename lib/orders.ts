@@ -7,6 +7,7 @@ import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
 import { prisma } from "@/lib/db";
 import { checkoutSchema, tryAtHomeSchema } from "@/lib/validations";
 import { createRazorpayOrder } from "@/lib/integrations/razorpay";
+import { configureCloudinary } from "@/lib/integrations/cloudinary";
 
 function makePublicOrderId() {
   return `VV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -82,6 +83,32 @@ export async function checkoutAction(formData: FormData) {
     }
   });
 
+  // Handle Prescription Upload
+  const file = formData.get("prescription") as File | null;
+  if (file && file.size > 0) {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
+      const cloudinary = configureCloudinary();
+      const uploadResult = await new Promise<any>((resolve, reject) => {
+        cloudinary.uploader.upload(base64, { folder: "prescriptions" }, (err, res) => {
+          if (err) reject(err);
+          else resolve(res);
+        });
+      });
+
+      await prisma.prescription.create({
+        data: {
+          orderId: order.id,
+          fileUrl: uploadResult.secure_url,
+          fileName: file.name
+        }
+      });
+    } catch (uploadError) {
+      console.error("Prescription upload to Cloudinary failed:", uploadError);
+    }
+  }
+
   if (parsed.data.paymentMethod === "RAZORPAY") {
     try {
       const razorpayOrder = await createRazorpayOrder({
@@ -114,6 +141,7 @@ export async function checkoutAction(formData: FormData) {
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
   redirect(`/frames/orders/${publicId}`);
 }
+
 
 export async function tryAtHomeAction(formData: FormData) {
   const productIds = formData.getAll("productIds").map(String);

@@ -1,12 +1,16 @@
+import Image from "next/image";
 import Link from "next/link";
-import { CalendarClock, Home, PackageCheck } from "lucide-react";
+import type { Metadata } from "next";
+import { ArrowLeft, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
 import { tryAtHomeAction } from "@/lib/orders";
-import { MAX_HOME_TRIAL_FRAMES } from "@/lib/constants";
 import { getStoreProducts } from "@/lib/store-data";
+import { formatMoney } from "@/lib/money";
+import { HOME_TRIAL_DEPOSIT_PAISE, HOME_TRIAL_SERVICE_FEE_PAISE, MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Try at Home",
-  description: "Choose 1 to 5 Vision Vistara frames, select a visit date and slot, enter address, and create a trackable home-trial request."
+  description: "Select up to 5 frames for a Vision Vistara home trial. Try them on in the comfort of your home before buying.",
+  alternates: { canonical: `${SITE_URL}/frames/try-at-home` }
 };
 
 export default async function TryAtHomePage({
@@ -15,105 +19,170 @@ export default async function TryAtHomePage({
   searchParams?: Promise<{ productIds?: string; request?: string; error?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const products = await getStoreProducts({ includeDrafts: true });
-  const selectedSlugs = (params.productIds ?? "").split(",").map((item) => item.trim()).filter(Boolean).slice(0, MAX_HOME_TRIAL_FRAMES);
-  const selectedProducts = products.filter((product) => selectedSlugs.includes(product.slug));
+  const products = await getStoreProducts({});
+  const eligibleProducts = products.filter((p) => p.tryAtHomeEligible && p.status === "ACTIVE");
+  const preselectedIds = params.productIds?.split(",").filter(Boolean) ?? [];
+
+  // Success state
+  if (params.request) {
+    return (
+      <main className="vv-section bg-paper">
+        <div className="vv-container max-w-2xl text-center">
+          <CheckCircle2 className="mx-auto h-16 w-16 text-retail" />
+          <h1 className="mt-6 text-4xl font-extrabold">Home trial booked!</h1>
+          <p className="mt-4 text-lg text-slate-600">
+            Your try-at-home request has been submitted. Our team will contact you within 24 hours to confirm the visit.
+          </p>
+          <p className="mt-2 text-sm text-slate-500">Request ID: {params.request}</p>
+          <div className="mt-8 flex justify-center gap-3">
+            <Link className="vv-button-retail" href="/frames">Continue Shopping</Link>
+            <Link className="vv-button-light" href="/frames/orders/demo">Track Orders</Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const timeSlots = [
+    "10:00 AM – 12:00 PM",
+    "12:00 PM – 2:00 PM",
+    "2:00 PM – 4:00 PM",
+    "4:00 PM – 6:00 PM",
+    "6:00 PM – 8:00 PM"
+  ];
 
   return (
     <main className="vv-section bg-paper">
       <div className="vv-container">
+        <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900">
+          <ArrowLeft className="h-4 w-4" />
+          Back to store
+        </Link>
+
         <div className="mb-8">
-          <p className="vv-kicker text-retail">Try at home</p>
-          <h1 className="text-4xl font-extrabold">Book a trackable home-trial request.</h1>
-          <p className="mt-2 max-w-2xl text-slate-600">
-            Choose 1 to 5 frames, select a delivery date and time slot, enter address, and let staff handle the visit or courier flow from admin.
+          <p className="vv-kicker text-retail flex items-center gap-2">
+            <Home className="h-4 w-4" />
+            Try at Home
+          </p>
+          <h1 className="text-4xl font-extrabold">Try frames at home before you buy.</h1>
+          <p className="mt-3 text-slate-600">
+            Select up to {MAX_HOME_TRIAL_FRAMES} frames, choose a date and time, and our team will bring them to your doorstep.
           </p>
         </div>
 
-        {params.request ? (
-          <div className="mb-6 rounded-vv border border-emerald-200 bg-emerald-50 p-5 text-emerald-900">
-            <PackageCheck className="h-7 w-7" />
-            <strong className="mt-3 block text-lg">Try-at-home request saved.</strong>
-            <p className="mt-1 text-sm">Request ID: {params.request}. Staff can manage this from admin leads and try-at-home queues.</p>
+        {params.error ? (
+          <div className="mb-6 rounded-vv border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+            Please fill in all required fields correctly.
           </div>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-          <form action={tryAtHomeAction} className="vv-card grid gap-5 p-6">
-            <h2 className="text-2xl font-extrabold">Visit details</h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Full name" name="name" required />
-              <Field label="Phone" name="phone" type="tel" required />
+        {/* Info Cards */}
+        <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} frames you'd like to try.`} />
+          <InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Pick a slot" body="Choose your preferred date and time window." />
+          <InfoCard icon={<Truck className="h-8 w-8" />} title="We deliver" body="Our team brings the frames to your door." />
+        </div>
+
+        <form action={tryAtHomeAction} className="grid gap-8 lg:grid-cols-[1fr_380px]">
+          {/* Frame Selector */}
+          <div>
+            <h2 className="mb-4 text-2xl font-extrabold">Select frames to try</h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {eligibleProducts.map((product) => {
+                const frontImage = product.images[0];
+                const isPreselected = preselectedIds.includes(product.slug);
+                return (
+                  <label key={product.slug} className="vv-card cursor-pointer overflow-hidden transition has-[:checked]:border-retail has-[:checked]:ring-2 has-[:checked]:ring-teal-200 hover:shadow-strong">
+                    <input type="checkbox" name="productIds" value={product.slug} defaultChecked={isPreselected} className="peer sr-only" />
+                    <div className="grid grid-cols-[80px_1fr] gap-3 p-3">
+                      <div className="relative aspect-square overflow-hidden rounded bg-slate-50">
+                        {frontImage ? (
+                          <Image src={frontImage.url} alt={frontImage.alt} fill className="object-contain p-1" sizes="80px" />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-500">{product.brand}</p>
+                        <p className="truncate font-extrabold">{product.name}</p>
+                        <p className="mt-1 text-sm font-bold text-retail">{formatMoney(product.pricePaise)}</p>
+                        <p className="mt-1 text-xs text-slate-400">{product.colour} · {product.shape}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 peer-checked:bg-teal-50 peer-checked:text-retail">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      <span className="peer-checked:hidden">Select</span>
+                      <span className="hidden peer-checked:inline">Selected</span>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
-            <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-              Address
-              <textarea className="store-input min-h-28 py-3" name="address" required />
-            </label>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Preferred date" name="preferredDate" type="date" required />
-              <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-                Preferred slot
+          </div>
+
+          {/* Booking Form */}
+          <aside className="vv-card sticky top-28 self-start p-6">
+            <h2 className="text-xl font-extrabold">Your details</h2>
+            <div className="mt-5 grid gap-4">
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Name
+                <input className="store-input" type="text" name="name" required placeholder="Full name" />
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Phone
+                <input className="store-input" type="tel" name="phone" required placeholder="e.g. 9876543210" />
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Full address
+                <textarea className="store-input min-h-20 py-2" name="address" required placeholder="House/flat, street, area, city, pincode" />
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Preferred date
+                <input className="store-input" type="date" name="preferredDate" required min={new Date().toISOString().split("T")[0]} />
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Time slot
                 <select className="store-input" name="preferredSlot" required>
-                  <option value="">Select slot</option>
-                  <option>10:00 AM - 12:00 PM</option>
-                  <option>12:00 PM - 2:00 PM</option>
-                  <option>2:00 PM - 5:00 PM</option>
-                  <option>5:00 PM - 8:00 PM</option>
+                  {timeSlots.map((slot) => (
+                    <option key={slot} value={slot}>{slot}</option>
+                  ))}
                 </select>
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Notes (optional)
+                <textarea className="store-input min-h-16 py-2" name="notes" placeholder="Prescription info, special requests..." />
               </label>
             </div>
 
-            <fieldset className="grid gap-3">
-              <legend className="text-sm font-extrabold text-slate-600">Choose frames</legend>
-              <div className="grid gap-2 md:grid-cols-2">
-                {products.map((product) => (
-                  <label key={product.slug} className="flex items-center gap-3 rounded-vv border border-slate-200 bg-white p-3 text-sm font-bold">
-                    <input type="checkbox" name="productIds" value={product.slug} defaultChecked={selectedSlugs.includes(product.slug)} />
-                    {product.brand} {product.name}
-                  </label>
-                ))}
+            <div className="mt-5 rounded-vv bg-slate-50 p-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-600">Service fee</span>
+                <strong>{formatMoney(HOME_TRIAL_SERVICE_FEE_PAISE)}</strong>
               </div>
-            </fieldset>
-
-            <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-              Notes optional
-              <textarea className="store-input min-h-24 py-3" name="notes" placeholder="Preferred fit, prescription note, or landmark" />
-            </label>
-            <button className="vv-button-retail" type="submit">
-              <CalendarClock className="h-4 w-4" />
-              Confirm home-trial request
-            </button>
-          </form>
-
-          <aside className="vv-card self-start p-6">
-            <Home className="h-9 w-9 text-retail" />
-            <h2 className="mt-4 text-2xl font-extrabold">Selected frames</h2>
-            <p className="mt-2 text-sm text-slate-600">Select up to {MAX_HOME_TRIAL_FRAMES} frames. Draft products are allowed for home-trial intake, but checkout remains blocked until price verification.</p>
-            <div className="mt-5 grid gap-3">
-              {selectedProducts.length ? (
-                selectedProducts.map((product) => (
-                  <div key={product.slug} className="rounded-vv border border-slate-200 p-3 text-sm">
-                    <strong>{product.name}</strong>
-                    <p className="text-slate-500">{product.brand} · SKU {product.sku}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="rounded-vv border border-dashed border-slate-300 p-4 text-sm text-slate-500">No frames preselected. Choose from the list.</p>
-              )}
+              <div className="mt-2 flex justify-between">
+                <span className="text-slate-600">Deposit (3+ frames)</span>
+                <strong>{formatMoney(HOME_TRIAL_DEPOSIT_PAISE)}</strong>
+              </div>
+              <p className="mt-3 text-xs text-slate-500">
+                Deposit is fully refundable. Adjusted against purchase if you buy.
+              </p>
             </div>
-            <Link className="vv-button-light mt-5 w-full" href="/frames">Back to storefront</Link>
+
+            <button className="vv-button-retail mt-5 w-full" type="submit">
+              <Home className="h-4 w-4" />
+              Book Home Trial
+            </button>
           </aside>
-        </div>
+        </form>
       </div>
     </main>
   );
 }
 
-function Field({ label, name, type = "text", required = false }: { label: string; name: string; type?: string; required?: boolean }) {
+function InfoCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-      {label}
-      <input className="store-input" type={type} name={name} required={required} />
-    </label>
+    <div className="vv-card p-5">
+      <div className="text-retail">{icon}</div>
+      <h3 className="mt-3 font-extrabold">{title}</h3>
+      <p className="mt-1 text-sm text-slate-600">{body}</p>
+    </div>
   );
 }

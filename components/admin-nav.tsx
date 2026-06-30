@@ -5,7 +5,9 @@ const adminLinks = [
   ["Products", "/admin/products"],
   ["Orders", "/admin/orders"],
   ["Leads", "/admin/leads"],
-  ["Inventory", "/admin/inventory"]
+  ["Inventory", "/admin/inventory"],
+  ["Coupons", "/admin/coupons"],
+  ["Promotions", "/admin/promotions"]
 ];
 
 export function AdminNav() {
@@ -19,3 +21,4 @@ export function AdminNav() {
     </nav>
   );
 }
+

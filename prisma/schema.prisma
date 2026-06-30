@@ -82,12 +82,15 @@ model User {
   phone          String?           @unique
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
   carts          Cart[]
   orders         Order[]
   wishlistItems  WishlistItem[]
   reviews        Review[]
   prescriptions  Prescription[]
   shipping       ShippingAddress[]
+
+  @@index([createdAt])
 }
 
 model AdminUser {
@@ -108,6 +111,7 @@ model Category {
   name        String
   description String?
   imageUrl    String?
+  sortOrder   Int               @default(0)
   products    ProductCategory[]
   banners     Banner[]
   createdAt   DateTime          @default(now())
@@ -121,6 +125,7 @@ model Product {
   name               String
   brand              String
   status             ProductStatus     @default(DRAFT)
+  featured           Boolean           @default(false)
   pricePaise         Int?
   compareAtPaise     Int?
   currency           String            @default("INR")
@@ -145,6 +150,7 @@ model Product {
   searchText         String            @default("")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
   images             ProductImage[]
   categories         ProductCategory[]
   inventory          Inventory?
@@ -152,6 +158,11 @@ model Product {
   orderItems         OrderItem[]
   reviews            Review[]
   wishlistItems      WishlistItem[]
+
+  @@index([status])
+  @@index([brand])
+  @@index([createdAt])
+  @@index([featured])
 }
 
 model ProductCategory {
@@ -172,6 +183,8 @@ model ProductImage {
   sortOrder Int      @default(0)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([productId])
 }
 
 model Inventory {
@@ -193,6 +206,7 @@ model LensOption {
   description String
   pricePaise  Int?
   active      Boolean    @default(false)
+  sortOrder   Int        @default(0)
   cartItems   CartItem[]
   orderItems  OrderItem[]
   createdAt   DateTime   @default(now())
@@ -209,6 +223,8 @@ model Cart {
   coupon    Coupon?    @relation(fields: [couponId], references: [id])
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  @@index([updatedAt])
 }
 
 model CartItem {
@@ -219,11 +235,14 @@ model CartItem {
   quantity       Int            @default(1)
   deliveryMethod DeliveryMethod @default(DELIVERY)
   tryAtHome      Boolean        @default(false)
+  savedForLater  Boolean        @default(false)
   cart           Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id])
   lensOption     LensOption?    @relation(fields: [lensOptionId], references: [id])
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+
+  @@index([cartId])
 }
 
 model Order {
@@ -245,13 +264,19 @@ model Order {
   grandTotalPaise   Int
   notes             String?
   prescriptionNote  String?
+  couponCode        String?
   items             OrderItem[]
   payments          Payment[]
   shippingAddress   ShippingAddress?
   tryAtHomeRequest  TryAtHomeRequest?
   prescriptions     Prescription[]
+  notifications     Notification[]
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
+
+  @@index([status])
+  @@index([phone])
+  @@index([createdAt])
 }
 
 model OrderItem {
@@ -275,12 +300,15 @@ model Payment {
   provider          String        @default("razorpay")
   providerOrderId   String?
   providerPaymentId String?
+  signature         String?
   status            PaymentStatus @default(PENDING)
   amountPaise       Int
   rawPayload        Json?
   order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@index([providerOrderId])
 }
 
 model ShippingAddress {
@@ -318,6 +346,9 @@ model TryAtHomeRequest {
   order           Order?      @relation(fields: [orderId], references: [id])
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+
+  @@index([phone])
+  @@index([status])
 }
 
 model Prescription {
@@ -341,6 +372,8 @@ model Coupon {
   discountPaise  Int?
   discountPct    Int?
   minOrderPaise  Int?
+  maxUses        Int?
+  usedCount      Int      @default(0)
   expiresAt      DateTime?
   carts          Cart[]
   createdAt      DateTime @default(now())
@@ -351,6 +384,7 @@ model Review {
   id        String   @id @default(cuid())
   productId String
   userId    String?
+  name      String?
   rating    Int
   title     String?
   body      String
@@ -358,6 +392,8 @@ model Review {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+
+  @@index([productId, approved])
 }
 
 model WishlistItem {
@@ -382,6 +418,10 @@ model Lead {
   payload   Json?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  @@index([status])
+  @@index([phone])
+  @@index([createdAt])
 }
 
 model HomepageSection {
@@ -398,6 +438,7 @@ model HomepageSection {
 model Banner {
   id         String    @id @default(cuid())
   title      String
+  subtitle   String?
   imageUrl   String?
   href       String?
   active     Boolean   @default(false)
@@ -405,6 +446,7 @@ model Banner {
   category   Category? @relation(fields: [categoryId], references: [id])
   startsAt   DateTime?
   endsAt     DateTime?
+  sortOrder  Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }
@@ -418,4 +460,38 @@ model ActivityLog {
   metadata    Json?
   adminUser   AdminUser? @relation(fields: [adminUserId], references: [id])
   createdAt   DateTime   @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  orderId   String?
+  channel   String
+  recipient String
+  subject   String?
+  body      String?
+  status    String   @default("pending")
+  sentAt    DateTime?
+  error     String?
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([channel, status])
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  event      String
+  sessionId  String?
+  userId     String?
+  productId  String?
+  orderId    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([event])
+  @@index([createdAt])
 }

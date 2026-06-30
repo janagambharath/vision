@@ -7,6 +7,7 @@ type DbStoreProduct = {
   name: string;
   brand: string;
   status: StoreProductStatus;
+  featured: boolean;
   pricePaise: number | null;
   compareAtPaise: number | null;
   currency: string;
@@ -28,7 +29,7 @@ type DbStoreProduct = {
   images?: Array<{ url: string; alt: string; role: string; sortOrder: number }>;
   inventory?: { quantity: number; status: StoreProduct["inventoryStatus"] } | null;
   categories?: Array<{ category: { slug: string; name: string } }>;
-  reviews?: Array<{ body: string }>;
+  reviews?: Array<{ rating: number; body: string }>;
 };
 
 function mapDbProduct(product: DbStoreProduct): StoreProduct {
@@ -41,6 +42,7 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     name: product.name,
     brand: product.brand,
     status: product.status,
+    featured: product.featured,
     pricePaise: product.pricePaise,
     compareAtPaise: product.compareAtPaise,
     currency: "INR",
@@ -59,10 +61,10 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     highlights: product.highlights ?? [],
     lensCompatibility: product.lensCompatibility ?? [],
     faceShapes: product.faceShapes ?? [],
-    careInstructions: product.careInstructions ?? "Care instructions pending admin verification.",
-    warranty: product.warranty ?? "Warranty pending admin verification.",
-    returnPolicy: product.returnPolicy ?? "Return policy pending admin verification.",
-    deliveryEstimate: product.deliveryEstimate ?? "Delivery estimate pending admin verification.",
+    careInstructions: product.careInstructions ?? "Clean with microfiber cloth. Store in a hard case.",
+    warranty: product.warranty ?? "1-year manufacturer warranty.",
+    returnPolicy: product.returnPolicy ?? "7-day easy return on frame-only orders.",
+    deliveryEstimate: product.deliveryEstimate ?? "3–5 business days.",
     images:
       product.images?.map((image) => ({
         url: image.url,
@@ -71,27 +73,32 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
         sortOrder: image.sortOrder
       })) ??
       (firstImage
-        ? [{ url: firstImage.url, alt: firstImage.alt, role: "front", sortOrder: 0 }]
+        ? [{ url: firstImage.url, alt: firstImage.alt, role: "front" as const, sortOrder: 0 }]
         : []),
     reviewSnippet: product.reviews?.[0]?.body,
     blockers: []
   };
 }
 
-export async function getStoreProducts(options: { query?: string; category?: string; includeDrafts?: boolean } = {}) {
-  const { query = "", category = "", includeDrafts = true } = options;
+export async function getStoreProducts(options: { query?: string; category?: string; includeDrafts?: boolean; featuredOnly?: boolean } = {}) {
+  const { query = "", category = "", includeDrafts = false, featuredOnly = false } = options;
 
   if (process.env.DATABASE_URL) {
     try {
+      const where: Record<string, unknown> = {};
+      if (!includeDrafts) where.status = "ACTIVE";
+      if (featuredOnly) where.featured = true;
+      where.deletedAt = null;
+
       const products = await prisma.product.findMany({
-        where: includeDrafts ? undefined : { status: "ACTIVE" },
+        where,
         include: {
           images: { orderBy: { sortOrder: "asc" } },
           inventory: true,
           categories: { include: { category: true } },
           reviews: { where: { approved: true }, take: 1, orderBy: { createdAt: "desc" } }
         },
-        orderBy: [{ status: "asc" }, { createdAt: "desc" }]
+        orderBy: [{ featured: "desc" }, { createdAt: "desc" }]
       });
 
       const mapped = products.map(mapDbProduct);
@@ -101,18 +108,85 @@ export async function getStoreProducts(options: { query?: string; category?: str
     }
   }
 
-  return migratedProducts.filter((product) => (includeDrafts || product.status === "ACTIVE") && productMatches(product, query, category));
+  let fallback = migratedProducts.filter((product) =>
+    (includeDrafts || product.status === "ACTIVE") && productMatches(product, query, category)
+  );
+  if (featuredOnly) fallback = fallback.filter((p) => p.featured);
+  return fallback;
 }
 
 export async function getStoreProduct(slug: string) {
-  const products = await getStoreProducts({ includeDrafts: true });
-  return products.find((product) => product.slug === slug) ?? null;
+  if (process.env.DATABASE_URL) {
+    try {
+      const product = await prisma.product.findUnique({
+        where: { slug, deletedAt: null },
+        include: {
+          images: { orderBy: { sortOrder: "asc" } },
+          inventory: true,
+          categories: { include: { category: true } },
+          reviews: { where: { approved: true }, take: 5, orderBy: { createdAt: "desc" } }
+        }
+      });
+      if (product) return mapDbProduct(product);
+    } catch {
+      // Fallback to migrated data
+    }
+  }
+  return migratedProducts.find((product) => product.slug === slug) ?? null;
 }
 
-export async function getRelatedProducts(product: StoreProduct) {
-  const products = await getStoreProducts({ includeDrafts: true });
+export async function getRelatedProducts(product: StoreProduct, limit = 4) {
+  const products = await getStoreProducts({});
   return products
     .filter((candidate) => candidate.slug !== product.slug)
     .filter((candidate) => candidate.categories.some((category) => product.categories.includes(category)))
-    .slice(0, 4);
+    .slice(0, limit);
+}
+
+export async function getFeaturedProducts(limit = 8) {
+  const products = await getStoreProducts({ featuredOnly: true });
+  return products.slice(0, limit);
+}
+
+export async function getCategories() {
+  if (process.env.DATABASE_URL) {
+    try {
+      return await prisma.category.findMany({
+        orderBy: { sortOrder: "asc" },
+        include: { _count: { select: { products: true } } }
+      });
+    } catch {
+      // Fallback
+    }
+  }
+
+  const categorySlugs = [...new Set(migratedProducts.flatMap((p) => p.categories))];
+  return categorySlugs.map((slug) => ({
+    id: slug,
+    slug,
+    name: slug.split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+    description: null,
+    imageUrl: null,
+    sortOrder: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    _count: { products: migratedProducts.filter((p) => p.categories.includes(slug)).length }
+  }));
+}
+
+export async function getLensOptions() {
+  if (process.env.DATABASE_URL) {
+    try {
+      const options = await prisma.lensOption.findMany({
+        where: { active: true },
+        orderBy: { sortOrder: "asc" }
+      });
+      if (options.length) return options;
+    } catch {
+      // Fallback
+    }
+  }
+
+  const { lensPackages } = await import("@/lib/inventory");
+  return lensPackages.filter((l) => l.active);
 }
