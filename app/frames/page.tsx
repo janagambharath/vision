@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
-import { ArrowRight, Filter, Gift, Search, ShieldCheck, SlidersHorizontal, Sparkles, Star, Truck } from "lucide-react";
+import { ArrowRight, Filter, SlidersHorizontal, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getFeaturedProducts, getCategories } from "@/lib/store-data";
 import { filterOptions, productIsSellable } from "@/lib/inventory";
@@ -41,35 +41,6 @@ export default async function FramesPage({
 
   return (
     <main>
-      {/* Hero */}
-      <section className="bg-ink text-white">
-        <div className="vv-container grid gap-10 py-16 lg:grid-cols-[1fr_340px]">
-          <div>
-            <p className="mb-3 text-xs font-extrabold uppercase text-teal-300">Vision Vistara Frames</p>
-            <h1 className="max-w-4xl text-4xl font-extrabold leading-tight md:text-5xl">
-              Premium optical frames backed by a trusted clinic brand.
-            </h1>
-            <p className="mt-5 max-w-2xl text-lg text-slate-300">
-              Browse {sortedProducts.length}+ frames with lens upsell, try-at-home, cart, checkout, and order tracking — all powered by real inventory.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link className="vv-button-retail" href="/frames/search">
-                <Search className="h-5 w-5" />
-                Search Frames
-              </Link>
-              <Link className="vv-button-light" href="/frames/try-at-home">
-                <Truck className="h-5 w-5" />
-                Try at Home
-              </Link>
-            </div>
-          </div>
-          <div className="grid gap-3">
-            <PromoCard icon={<ShieldCheck className="h-6 w-6" />} title="Verified inventory" body="Every frame is backed by real clinic stock with confirmed pricing." />
-            <PromoCard icon={<Gift className="h-6 w-6" />} title="Use WELCOME10" body="10% off on your first order. Apply at checkout." />
-            <PromoCard icon={<Truck className="h-6 w-6" />} title="Free home trial" body="Try up to 5 frames at home before you buy." />
-          </div>
-        </div>
-      </section>
 
       {/* Categories */}
       <section className="border-b border-slate-200 bg-white">
@@ -216,12 +187,4 @@ export default async function FramesPage({
   );
 }
 
-function PromoCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  return (
-    <div className="rounded-vv border border-white/15 bg-white/10 p-4">
-      <div className="text-teal-300">{icon}</div>
-      <h3 className="mt-3 font-extrabold">{title}</h3>
-      <p className="mt-1 text-sm text-slate-300">{body}</p>
-    </div>
-  );
-}
+
