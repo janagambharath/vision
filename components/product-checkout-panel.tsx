@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShoppingBag, Home, MessageCircle, Heart, Ruler, CheckCircle2 } from "lucide-react";
 import { addToCart } from "@/lib/cart-actions";
 import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
+import { addRecentlyViewed } from "@/lib/recently-viewed";
 import LensSelector from "@/components/lens-selector";
 import SizeGuideModal from "@/components/size-guide-modal";
 import { formatMoney } from "@/lib/money";
@@ -27,6 +28,10 @@ interface ProductCheckoutPanelProps {
 export default function ProductCheckoutPanel({ product, sellable, lensPackages }: ProductCheckoutPanelProps) {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+
+  useEffect(() => {
+    addRecentlyViewed(product.slug).catch(console.error);
+  }, [product.slug]);
 
   useEffect(() => {
     const stored = localStorage.getItem("vv_wishlist_slugs");

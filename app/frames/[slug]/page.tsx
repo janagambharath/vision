@@ -60,8 +60,6 @@ export default async function ProductPage({
     );
   }
 
-  await addRecentlyViewed(product.slug);
-
   const sellable = productIsSellable(product);
   const related = await getRelatedProducts(product);
 
