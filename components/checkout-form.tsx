@@ -68,7 +68,7 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
         });
       }}
       method="POST"
-      enctype="multipart/form-data"
+      encType="multipart/form-data"
       className="grid gap-6 lg:grid-cols-[1fr_380px]"
     >
       <input type="hidden" name="paymentMethod" value={paymentMethod} />

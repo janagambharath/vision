@@ -8,6 +8,7 @@ export type StoreImage = {
 };
 
 export type StoreProduct = {
+  id?: string;
   slug: string;
   sku: string;
   name: string;

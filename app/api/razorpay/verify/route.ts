@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId: string, signature: string) {
-  let orderData = null;
+  let orderData: any = null;
 
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({

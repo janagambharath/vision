@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { Camera, RefreshCw, ZoomIn, ZoomOut, Check, ArrowLeftRight, AlertCircle, ShoppingBag } from "lucide-react";
+import Link from "next/link";
+import { Camera, RefreshCw, ZoomIn, ZoomOut, Check, ArrowLeftRight, AlertCircle, ShoppingBag, Sparkles } from "lucide-react";
 
 interface VirtualTryOnProps {
   productSlug?: string;

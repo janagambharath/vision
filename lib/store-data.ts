@@ -3,6 +3,7 @@ import { migratedProducts, productMatches, type StoreImage, type StoreProduct, t
 import { getCache, setCache } from "@/lib/redis";
 
 type DbStoreProduct = {
+  id: string;
   slug: string;
   sku: string;
   name: string;
@@ -38,6 +39,7 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
   const firstImage = product.images?.[0];
 
   return {
+    id: product.id,
     slug: product.slug,
     sku: product.sku,
     name: product.name,

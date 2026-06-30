@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Home, MessageCircle, Ruler, ShieldCheck, ShoppingBag, Sparkles, Truck, Star, Heart } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Home, MessageCircle, Ruler, ShieldCheck, ShoppingBag, Sparkles, Truck, Star, Heart, Clock } from "lucide-react";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
 import ProductCheckoutPanel from "@/components/product-checkout-panel";
@@ -151,7 +151,7 @@ export default async function ProductPage({
 
     await prisma.review.create({
       data: {
-        productId: product!.id,
+        productId: product!.id!,
         name,
         rating,
         title: title || undefined,

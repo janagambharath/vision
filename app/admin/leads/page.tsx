@@ -126,9 +126,9 @@ export default async function AdminLeadsPage({
                     {/* Meta info / payloads */}
                     {payload ? (
                       <div className="mt-3 bg-slate-50 rounded-vv p-3 text-xs text-slate-600 grid gap-1">
-                        {dateVal ? <p>Preferred Date: <strong>{new Date(dateVal).toLocaleDateString()}</strong></p> : null}
-                        {slotVal ? <p>Preferred Slot: <strong>{slotVal}</strong></p> : null}
-                        {payload.intent ? <p>Intent: <strong>{payload.intent}</strong></p> : null}
+                        {dateVal ? <p>Preferred Date: <strong>{new Date(String(dateVal)).toLocaleDateString()}</strong></p> : null}
+                        {slotVal ? <p>Preferred Slot: <strong>{String(slotVal)}</strong></p> : null}
+                        {payload.intent ? <p>Intent: <strong>{String(payload.intent)}</strong></p> : null}
                       </div>
                     ) : null}
                   </div>

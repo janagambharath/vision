@@ -68,6 +68,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
       redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
     }
 
+    if (!product) throw new Error("Product not found");
+
     // Update main product details
     await prisma.product.update({
       where: { id: product.id },
@@ -98,6 +100,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
         searchText: [sku, name, brand, material, colour, shape, rimType, selectedCategories.join(" ")].join(" ")
       }
     });
+
+    if (!product) throw new Error("Product not found");
 
     // Update Inventory
     await prisma.inventory.upsert({
