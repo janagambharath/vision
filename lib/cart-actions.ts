@@ -19,7 +19,8 @@ export async function addToCart(formData: FormData) {
     redirect(`/frames/${slug}?blocked=price-required`);
   }
 
-  if (product.inventory?.status === "OUT_OF_STOCK") {
+  const availableStock = product.inventory?.quantity ?? 0;
+  if (product.inventory?.status === "OUT_OF_STOCK" || availableStock <= 0) {
     redirect(`/frames/${slug}?blocked=out-of-stock`);
   }
 
@@ -40,10 +41,18 @@ export async function addToCart(formData: FormData) {
     (item) => item.productId === product.id && item.lensOptionId === (lensOption?.id ?? null)
   );
 
+  const currentQtyInCart = existingItem?.quantity ?? 0;
+  const requestedQty = Math.max(1, Math.min(5, quantity));
+  const newQty = currentQtyInCart + requestedQty;
+
+  if (newQty > availableStock) {
+    redirect(`/frames/${slug}?blocked=insufficient-stock`);
+  }
+
   if (existingItem) {
     await prisma.cartItem.update({
       where: { id: existingItem.id },
-      data: { quantity: Math.min(5, existingItem.quantity + Math.max(1, quantity)) }
+      data: { quantity: Math.min(5, newQty) }
     });
   } else {
     await prisma.cartItem.create({
@@ -51,7 +60,7 @@ export async function addToCart(formData: FormData) {
         cartId: cart.id,
         productId: product.id,
         lensOptionId: lensOption?.id,
-        quantity: Math.max(1, Math.min(5, quantity)),
+        quantity: requestedQty,
         deliveryMethod,
         tryAtHome: deliveryMethod === "TRY_AT_HOME"
       }
@@ -74,6 +83,18 @@ export async function updateCartItemQuantity(formData: FormData) {
   const quantity = Number(formData.get("quantity") ?? 1);
 
   if (id && quantity >= 1 && quantity <= 5) {
+    const item = await prisma.cartItem.findUnique({
+      where: { id },
+      include: { product: { include: { inventory: true } } }
+    });
+
+    if (item) {
+      const availableStock = item.product.inventory?.quantity ?? 0;
+      if (quantity > availableStock) {
+        redirect("/frames/cart?error=insufficient-stock");
+      }
+    }
+
     await prisma.cartItem.update({
       where: { id },
       data: { quantity }

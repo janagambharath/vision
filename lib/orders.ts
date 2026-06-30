@@ -149,6 +149,23 @@ export async function checkoutAction(formData: FormData) {
   }
 
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+
+  // Increment coupon usage counter
+  if (cart.coupon) {
+    await prisma.coupon.update({
+      where: { id: cart.coupon.id },
+      data: { usedCount: { increment: 1 } }
+    });
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { couponCode: cart.coupon.code }
+    });
+    // Detach coupon from cart after use
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: { couponId: null }
+    });
+  }
   
   if (isOnlinePayment) {
     redirect(`/frames/checkout/pay/${publicId}`);

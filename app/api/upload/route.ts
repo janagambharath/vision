@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { configureCloudinary } from "@/lib/integrations/cloudinary";
+import { auth } from "@/auth";
 
 export async function POST(request: NextRequest) {
   try {
+    // Require admin authentication for uploads
+    const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const cloudinary = configureCloudinary();
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

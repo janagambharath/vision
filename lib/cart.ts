@@ -92,14 +92,17 @@ export function calculateCartTotals(cart: Awaited<ReturnType<typeof getCartOrNul
 
   let discountPaise = 0;
   if (cart?.coupon) {
-    if (cart.coupon.discountPaise) {
-      discountPaise = cart.coupon.discountPaise;
-    } else if (cart.coupon.discountPct) {
-      discountPaise = Math.round((subtotalPaise + lensTotalPaise) * cart.coupon.discountPct / 100);
-    }
-    // Check minimum order
-    if (cart.coupon.minOrderPaise && (subtotalPaise + lensTotalPaise) < cart.coupon.minOrderPaise) {
-      discountPaise = 0;
+    const coupon = cart.coupon;
+    const isExpired = coupon.expiresAt && new Date(coupon.expiresAt) < new Date();
+    const isMaxedOut = coupon.maxUses && coupon.usedCount >= coupon.maxUses;
+    const belowMinimum = coupon.minOrderPaise && (subtotalPaise + lensTotalPaise) < coupon.minOrderPaise;
+
+    if (!isExpired && !isMaxedOut && !belowMinimum && coupon.active) {
+      if (coupon.discountPaise) {
+        discountPaise = coupon.discountPaise;
+      } else if (coupon.discountPct) {
+        discountPaise = Math.round((subtotalPaise + lensTotalPaise) * coupon.discountPct / 100);
+      }
     }
   }
 

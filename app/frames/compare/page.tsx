@@ -79,9 +79,9 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                   label="Home Trial"
                   values={products.map((p) =>
                     p.tryAtHomeEligible ? (
-                      <span className="text-emerald-700 font-bold flex items-center justify-center gap-1"><Check className="h-4 w-4" /> Eligible</span>
+                      <span key={p.slug} className="text-emerald-700 font-bold flex items-center justify-center gap-1"><Check className="h-4 w-4" /> Eligible</span>
                     ) : (
-                      <span className="text-slate-400 flex items-center justify-center gap-1"><X className="h-4 w-4" /> Ineligible</span>
+                      <span key={p.slug} className="text-slate-400 flex items-center justify-center gap-1"><X className="h-4 w-4" /> Ineligible</span>
                     )
                   )}
                 />
