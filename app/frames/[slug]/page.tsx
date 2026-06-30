@@ -69,12 +69,19 @@ export default async function ProductPage({
     (p) => p.slug !== product.slug && recentlyViewedSlugs.includes(p.slug)
   );
 
-  // Fetch approved reviews
-  const reviews = await prisma.review.findMany({
-    where: { productId: product.id, approved: true },
-    orderBy: { createdAt: "desc" },
-    take: 10
-  });
+  // Fetch approved reviews safely
+  let reviews: any[] = [];
+  try {
+    if (product.id) {
+      reviews = await prisma.review.findMany({
+        where: { productId: product.id, approved: true },
+        orderBy: { createdAt: "desc" },
+        take: 10
+      });
+    }
+  } catch (err) {
+    console.warn("⚠️ Database connection error while fetching reviews:", err);
+  }
 
   const avgRating = reviews.length
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
@@ -98,7 +105,7 @@ export default async function ProductPage({
     name: `${product.brand} ${product.name}`,
     sku: product.sku,
     brand: { "@type": "Brand", name: product.brand },
-    image: product.images.map((image) => `${SITE_URL}${image.url}`),
+    image: product.images.map((image) => image.url.startsWith("http") ? image.url : `${SITE_URL}${image.url}`),
     description: product.description,
     category: product.primaryCategory,
     aggregateRating: {
