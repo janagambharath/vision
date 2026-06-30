@@ -99,6 +99,30 @@ export default function VirtualTryOn({ productSlug = "" }: VirtualTryOnProps) {
     stopCamera();
   };
 
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPhoto, setAiPhoto] = useState<string | null>(null);
+
+  const generateAiTryOn = async () => {
+    if (!capturedPhoto) return;
+    setIsGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/try-on", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: capturedPhoto, frameSlug: selectedSlug })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to generate AI image");
+      
+      setAiPhoto(data.image);
+    } catch (err: any) {
+      setError(err.message || "An error occurred during AI generation.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   useEffect(() => {
     return () => {
       stopCamera();
@@ -202,13 +226,51 @@ export default function VirtualTryOn({ productSlug = "" }: VirtualTryOnProps) {
         )}
 
         {/* Photo snapshot preview */}
-        {capturedPhoto && (
-          <div className="w-full max-w-md aspect-[4/3] rounded overflow-hidden border border-slate-800 bg-slate-900 relative">
-            <img src={capturedPhoto} alt="Captured snapshot" className="w-full h-full object-cover" />
-            <div className="absolute bottom-3 left-3 right-3 flex justify-between gap-3 bg-black/60 p-2 rounded backdrop-blur">
-              <span className="text-xs text-white font-extrabold flex items-center gap-1">✨ Look matches perfect!</span>
-              <button onClick={startCamera} className="text-xs text-white underline font-bold">Retake photo</button>
+        {capturedPhoto && !aiPhoto && (
+          <div className="w-full max-w-md flex flex-col gap-4">
+            <div className="w-full aspect-[4/3] rounded overflow-hidden border border-slate-800 bg-slate-900 relative shadow-xl">
+              <img src={capturedPhoto} alt="Captured snapshot" className="w-full h-full object-cover" />
+              <div className="absolute bottom-3 left-3 right-3 flex justify-between gap-3 bg-black/60 p-2 rounded backdrop-blur">
+                <span className="text-xs text-white font-extrabold flex items-center gap-1">✨ Look matches perfect!</span>
+                <button onClick={() => {
+                  setCapturedPhoto(null);
+                  startCamera();
+                }} className="text-xs text-white underline font-bold">Retake photo</button>
+              </div>
             </div>
+
+            <button 
+              onClick={generateAiTryOn}
+              disabled={isGenerating}
+              className="vv-button-retail w-full font-bold bg-gradient-to-r from-teal-500 to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 py-3 transition-all"
+            >
+              {isGenerating ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
+              {isGenerating ? "Analyzing Facial Structure & Lighting..." : "Enhance with Generative AI"}
+            </button>
+          </div>
+        )}
+
+        {/* AI Generated Photo */}
+        {aiPhoto && (
+          <div className="w-full max-w-md flex flex-col gap-4">
+            <div className="w-full aspect-[4/3] rounded overflow-hidden border-2 border-teal-500 bg-slate-900 relative shadow-2xl shadow-teal-500/20">
+              <img src={aiPhoto} alt="AI Generated Try-On" className="w-full h-full object-cover" />
+              <div className="absolute top-3 left-3 bg-teal-500 text-white text-[10px] font-black uppercase px-2 py-1 rounded-sm tracking-wider">
+                AI Enhanced
+              </div>
+              <div className="absolute bottom-3 left-3 right-3 flex justify-between gap-3 bg-black/60 p-2 rounded backdrop-blur">
+                <span className="text-xs text-white font-extrabold">Ultra-Realistic Fit</span>
+                <button onClick={() => {
+                  setAiPhoto(null);
+                  setCapturedPhoto(null);
+                  startCamera();
+                }} className="text-xs text-white underline font-bold">Try Another</button>
+              </div>
+            </div>
+            
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              This image was generated using advanced AI to simulate realistic lighting, shadows, and precise optical fitting.
+            </p>
           </div>
         )}
 

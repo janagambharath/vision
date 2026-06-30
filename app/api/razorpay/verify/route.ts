@@ -42,66 +42,93 @@ export async function POST(request: NextRequest) {
 }
 
 async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId: string, signature: string) {
-  const order = await prisma.order.findUnique({
-    where: { publicId },
-    include: { items: true }
-  });
+  let orderData = null;
 
-  if (!order) {
-    throw new Error(`Order ${publicId} not found`);
-  }
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { publicId },
+      include: { items: true }
+    });
 
-  // Update order status & link payment details
-  await prisma.order.update({
-    where: { id: order.id },
-    data: { status: "CONFIRMED" }
-  });
-
-  await prisma.payment.upsert({
-    where: { id: `payment-${order.id}` },
-    update: {
-      status: "PAID",
-      providerPaymentId: paymentId,
-      signature: signature
-    },
-    create: {
-      orderId: order.id,
-      providerOrderId: razorpayOrderId,
-      providerPaymentId: paymentId,
-      amountPaise: order.grandTotalPaise,
-      status: "PAID",
-      signature: signature
+    if (!order) {
+      throw new Error(`Order ${publicId} not found`);
     }
+    
+    orderData = order;
+
+    if (order.status !== "PENDING") {
+      // Already processed by webhook
+      return;
+    }
+
+    // Decrement inventory securely
+    for (const item of order.items) {
+      if (item.productId) {
+        const inv = await tx.inventory.findUnique({ where: { productId: item.productId } });
+        if (!inv || inv.quantity < item.quantity) {
+          throw new Error(`Insufficient inventory for product ID ${item.productId}`);
+        }
+        await tx.inventory.update({
+          where: { productId: item.productId },
+          data: { quantity: { decrement: item.quantity } }
+        });
+      }
+    }
+
+    // Update order status & link payment details
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: "CONFIRMED" }
+    });
+
+    await tx.payment.upsert({
+      where: { id: `payment-${order.id}` },
+      update: {
+        status: "PAID",
+        providerPaymentId: paymentId,
+        signature: signature
+      },
+      create: {
+        orderId: order.id,
+        providerOrderId: razorpayOrderId,
+        providerPaymentId: paymentId,
+        amountPaise: order.grandTotalPaise,
+        status: "PAID",
+        signature: signature
+      }
+    });
+
+    // Log activity
+    await tx.activityLog.create({
+      data: {
+        action: "PAYMENT_VERIFIED",
+        entityType: "order",
+        entityId: order.id,
+        metadata: { paymentId, razorpayOrderId }
+      }
+    });
   });
 
-  // Log activity
-  await prisma.activityLog.create({
-    data: {
-      action: "PAYMENT_VERIFIED",
-      entityType: "order",
-      entityId: order.id,
-      metadata: { paymentId, razorpayOrderId }
-    }
-  });
+  if (!orderData) return;
 
   // Send Resend confirmation email
-  if (order.email) {
+  if (orderData.email) {
     try {
-      const emailHtml = getOrderConfirmationTemplate(order as any);
-      await sendEmail(order.email, `Order Confirmed: ${order.publicId} | Vision Vistara`, emailHtml);
+      const emailHtml = getOrderConfirmationTemplate(orderData as any);
+      await sendEmail(orderData.email, `Order Confirmed: ${orderData.publicId} | Vision Vistara`, emailHtml);
     } catch (emailErr) {
       console.error("Failed to send confirmation email:", emailErr);
     }
   }
 
   // Send WhatsApp confirmation
-  if (order.phone) {
+  if (orderData.phone) {
     try {
-      await sendWhatsAppTemplate(order.phone, "order_confirmed", [
-        order.customerName,
-        order.publicId,
-        (order.grandTotalPaise / 100).toFixed(2),
-        `${process.env.NEXT_PUBLIC_SITE_URL || "https://visionvistara.online"}/frames/orders/${order.publicId}`
+      await sendWhatsAppTemplate(orderData.phone, "order_confirmed", [
+        orderData.customerName,
+        orderData.publicId,
+        (orderData.grandTotalPaise / 100).toFixed(2),
+        `${process.env.NEXT_PUBLIC_SITE_URL || "https://visionvistara.online"}/frames/orders/${orderData.publicId}`
       ]);
     } catch (waErr) {
       console.error("Failed to send confirmation WhatsApp:", waErr);

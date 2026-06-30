@@ -94,29 +94,58 @@ export async function PUT(request: NextRequest) {
     }
 
     if (event.event === "payment.captured") {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: "PAID",
-          providerPaymentId: paymentEntity.id,
-          signature: signature,
-          rawPayload: paymentEntity
-        }
-      });
+      await prisma.$transaction(async (tx) => {
+        const order = await tx.order.findUnique({
+          where: { id: payment.orderId },
+          include: { items: true }
+        });
 
-      await prisma.order.update({
-        where: { id: payment.orderId },
-        data: { status: "CONFIRMED" }
-      });
+        if (!order) throw new Error("Order not found in webhook");
 
-      // Log activity
-      await prisma.activityLog.create({
-        data: {
-          action: "PAYMENT_CAPTURED",
-          entityType: "order",
-          entityId: payment.orderId,
-          metadata: { razorpayPaymentId: paymentEntity.id, amount: paymentEntity.amount }
+        if (order.grandTotalPaise !== paymentEntity.amount) {
+          throw new Error(`Amount mismatch: order is ${order.grandTotalPaise}, payment is ${paymentEntity.amount}`);
         }
+
+        if (order.status === "PENDING") {
+          // Decrement inventory securely
+          for (const item of order.items) {
+            if (item.productId) {
+              const inv = await tx.inventory.findUnique({ where: { productId: item.productId } });
+              if (!inv || inv.quantity < item.quantity) {
+                throw new Error(`Insufficient inventory for product ID ${item.productId}`);
+              }
+              await tx.inventory.update({
+                where: { productId: item.productId },
+                data: { quantity: { decrement: item.quantity } }
+              });
+            }
+          }
+        }
+
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: "PAID",
+            providerPaymentId: paymentEntity.id,
+            signature: signature,
+            rawPayload: paymentEntity
+          }
+        });
+
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: { status: "CONFIRMED" }
+        });
+
+        // Log activity
+        await tx.activityLog.create({
+          data: {
+            action: "PAYMENT_CAPTURED",
+            entityType: "order",
+            entityId: payment.orderId,
+            metadata: { razorpayPaymentId: paymentEntity.id, amount: paymentEntity.amount }
+          }
+        });
       });
     }
 
