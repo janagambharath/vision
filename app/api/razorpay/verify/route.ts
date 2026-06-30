@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { sendEmail, getOrderConfirmationTemplate } from "@/lib/integrations/resend";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
+import { createShiprocketShipment } from "@/lib/integrations/shiprocket";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +48,7 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { publicId },
-      include: { items: true }
+      include: { items: true, shippingAddress: true }
     });
 
     if (!order) {
@@ -133,5 +134,20 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
     } catch (waErr) {
       console.error("Failed to send confirmation WhatsApp:", waErr);
     }
+  }
+
+  // Trigger Shiprocket shipment auto-creation
+  try {
+    await createShiprocketShipment({
+      publicId: orderData.publicId,
+      customerName: orderData.customerName,
+      phone: orderData.phone,
+      shippingAddress: orderData.shippingAddress,
+      items: orderData.items,
+      grandTotalPaise: orderData.grandTotalPaise,
+      paymentMethod: orderData.paymentMethod
+    });
+  } catch (shiprocketErr) {
+    console.error("Failed to trigger Shiprocket auto-shipment:", shiprocketErr);
   }
 }

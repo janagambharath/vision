@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
+import { createShiprocketShipment } from "@/lib/integrations/shiprocket";
 
 // POST /api/razorpay/webhook — Razorpay sends webhooks as POST
 export async function POST(request: NextRequest) {
@@ -43,13 +44,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (event.event === "payment.captured") {
+      let orderData: any = null;
+
       await prisma.$transaction(async (tx) => {
         const order = await tx.order.findUnique({
           where: { id: payment.orderId },
-          include: { items: true }
+          include: { items: true, shippingAddress: true }
         });
 
         if (!order) throw new Error("Order not found in webhook");
+
+        orderData = order;
 
         // Verify amount matches to prevent tampering
         if (order.grandTotalPaise !== paymentEntity.amount) {
@@ -99,6 +104,23 @@ export async function POST(request: NextRequest) {
       });
 
       console.log(`✅ Webhook: Payment captured for order ${payment.orderId}`);
+
+      // Auto-trigger Shiprocket shipment
+      if (orderData) {
+        try {
+          await createShiprocketShipment({
+            publicId: orderData.publicId,
+            customerName: orderData.customerName,
+            phone: orderData.phone,
+            shippingAddress: orderData.shippingAddress,
+            items: orderData.items,
+            grandTotalPaise: orderData.grandTotalPaise,
+            paymentMethod: orderData.paymentMethod
+          });
+        } catch (shiprocketErr) {
+          console.error("Failed to auto-create Shiprocket shipment:", shiprocketErr);
+        }
+      }
     }
 
     if (event.event === "payment.failed") {
