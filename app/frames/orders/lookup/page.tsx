@@ -21,7 +21,7 @@ export default async function OrderLookupPage({
     }).catch(() => null);
 
     if (order) {
-      redirect(`/frames/orders/${order.publicId}`);
+      redirect(`/frames/orders/${order.publicId}?phone=${encodeURIComponent(params.phone ?? "")}`);
     }
   }
 

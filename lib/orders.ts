@@ -32,6 +32,15 @@ export async function checkoutAction(formData: FormData) {
   const totals = calculateCartTotals(cart);
   const publicId = makePublicOrderId();
 
+  // Handle Prescription logic
+  const file = formData.get("prescription") as File | null;
+  const requiresPrescription = cart.items.some(item => item.lensOptionId !== null);
+  const prescriptionUploaded = file && file.size > 0;
+
+  const orderStatus = (requiresPrescription && !prescriptionUploaded)
+    ? "AWAITING_PRESCRIPTION"
+    : "PENDING";
+
   const order = await prisma.order.create({
     data: {
       publicId,
@@ -40,7 +49,7 @@ export async function checkoutAction(formData: FormData) {
       email: parsed.data.email || null,
       deliveryMethod: parsed.data.deliveryMethod,
       paymentMethod: parsed.data.paymentMethod,
-      status: "PENDING",
+      status: orderStatus,
       subtotalPaise: totals.subtotalPaise,
       lensTotalPaise: totals.lensTotalPaise,
       shippingPaise: totals.shippingPaise,
@@ -84,8 +93,7 @@ export async function checkoutAction(formData: FormData) {
   });
 
   // Handle Prescription Upload
-  const file = formData.get("prescription") as File | null;
-  if (file && file.size > 0) {
+  if (prescriptionUploaded && file) {
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
       const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
@@ -109,7 +117,9 @@ export async function checkoutAction(formData: FormData) {
     }
   }
 
-  if (parsed.data.paymentMethod === "RAZORPAY") {
+  const isOnlinePayment = ["RAZORPAY", "UPI", "CARD", "NETBANKING"].includes(parsed.data.paymentMethod);
+
+  if (isOnlinePayment) {
     try {
       const razorpayOrder = await createRazorpayOrder({
         amountPaise: totals.grandTotalPaise,
@@ -139,7 +149,12 @@ export async function checkoutAction(formData: FormData) {
   }
 
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-  redirect(`/frames/orders/${publicId}`);
+  
+  if (isOnlinePayment) {
+    redirect(`/frames/checkout/pay/${publicId}`);
+  } else {
+    redirect(`/frames/orders/${publicId}`);
+  }
 }
 
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Edit, Eye, Star, Search, Filter } from "lucide-react";
+import { Plus, Edit, Eye, Star, Search, Filter, AlertTriangle } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
 import { productIsSellable } from "@/lib/inventory";
 import { formatMoney } from "@/lib/money";
@@ -31,9 +31,38 @@ export default async function AdminProductsPage({
     products = products.filter((p) => p.status === params.status);
   }
 
+  // Auditing for duplicate active images
+  const activeProducts = products.filter(p => p.status === "ACTIVE");
+  const imageUrlCounts: Record<string, number> = {};
+  activeProducts.forEach(p => {
+    p.images.forEach(img => {
+      imageUrlCounts[img.url] = (imageUrlCounts[img.url] || 0) + 1;
+    });
+  });
+  const duplicateUrls = Object.keys(imageUrlCounts).filter(url => imageUrlCounts[url] > 1);
+  const activeProductsWithDuplicateImages = activeProducts.filter(p =>
+    p.images.some(img => duplicateUrls.includes(img.url))
+  );
+
   return (
     <main className="vv-section">
       <div className="vv-container">
+        {activeProductsWithDuplicateImages.length > 0 ? (
+          <div className="mb-6 rounded-vv border border-red-200 bg-red-50 p-4 text-sm text-red-800 flex flex-col gap-2">
+            <h3 className="font-extrabold text-base flex items-center gap-1.5">
+              <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+              Image Integrity Warning: Duplicate Active Images Found
+            </h3>
+            <p>The following active products are reusing the same image files. For production integrity, please ensure every active product has unique photographs:</p>
+            <ul className="list-disc list-inside mt-1 font-semibold">
+              {activeProductsWithDuplicateImages.map(p => (
+                <li key={p.slug}>
+                  {p.brand} {p.name} ({p.sku})
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {/* Header */}
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>

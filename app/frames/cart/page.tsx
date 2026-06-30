@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CheckCircle2, Minus, PackageCheck, Plus, ShoppingBag, Tag, Trash2, X } from "lucide-react";
-import { getCartOrNull, calculateCartTotals, removeCartItem, updateCartItemQuantity, applyCouponAction, removeCouponAction } from "@/lib/cart";
+import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
+import { removeCartItem, updateCartItemQuantity, applyCouponAction, removeCouponAction } from "@/lib/cart-actions";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = {
@@ -134,6 +135,7 @@ export default async function CartPage({
                 <SummaryRow label="Frame subtotal" value={formatMoney(totals.subtotalPaise)} />
                 <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
                 <SummaryRow label="Delivery" value={formatMoney(totals.shippingPaise)} />
+                <SummaryRow label="GST (12%)" value={formatMoney(totals.taxPaise)} />
                 {totals.discountPaise > 0 ? (
                   <SummaryRow label="Discount" value={`-${formatMoney(totals.discountPaise)}`} className="text-emerald-600" />
                 ) : null}

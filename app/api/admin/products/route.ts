@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireOwner } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { invalidateProductCache } from "@/lib/inventory-actions";
 
 export async function POST(request: Request) {
   await requireAdmin();
@@ -10,6 +11,11 @@ export async function POST(request: Request) {
   if (method === "PATCH") {
     const slug = String(formData.get("slug") ?? "");
     const pricePaiseRaw = String(formData.get("pricePaise") ?? "").trim();
+    if (pricePaiseRaw) {
+      await requireOwner();
+    } else {
+      await requireAdmin();
+    }
     const quantityRaw = String(formData.get("quantity") ?? "").trim();
     const pricePaise = pricePaiseRaw ? Number(pricePaiseRaw) : undefined;
     const quantity = quantityRaw ? Number(quantityRaw) : undefined;
@@ -53,5 +59,6 @@ export async function POST(request: Request) {
     });
   }
 
+  await invalidateProductCache();
   return NextResponse.redirect(new URL("/admin/products", request.url), 303);
 }

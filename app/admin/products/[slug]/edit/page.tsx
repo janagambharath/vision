@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { getCategories } from "@/lib/store-data";
+import { invalidateProductCache } from "@/lib/inventory-actions";
 
 export const metadata = { title: "Edit Product | Admin" };
 
@@ -147,6 +148,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
       }
     });
 
+    await invalidateProductCache();
     redirect("/admin/products");
   }
 

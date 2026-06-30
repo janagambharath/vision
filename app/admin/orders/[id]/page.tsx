@@ -1,16 +1,22 @@
 import Link from "next/link";
-import { ArrowLeft, MessageCircle, Package, ShieldCheck, Truck, User } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MessageCircle, Package, ShieldCheck, Truck, User, AlertTriangle, CreditCard } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin, requireOwner, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
+import { refundRazorpayPayment } from "@/lib/integrations/razorpay";
+import { createShiprocketShipment } from "@/lib/integrations/shiprocket";
+import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
+import { sendEmail } from "@/lib/integrations/resend";
 import type { OrderStatus } from "@prisma/client";
 
 export const metadata = { title: "Order Details | Admin" };
 
 export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const role = (session.user as { role?: string }).role || "STAFF";
+
   const { id } = await params;
 
   const order = await prisma.order.findUnique({
@@ -20,7 +26,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       payments: { orderBy: { createdAt: "desc" } },
       shippingAddress: true,
       tryAtHomeRequest: true,
-      prescriptions: true
+      prescriptions: true,
+      refunds: true
     }
   });
 
@@ -30,7 +37,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   async function updateOrderStatus(formData: FormData) {
     "use server";
-    await requireAdmin();
+    await requireManager();
 
     const newStatus = String(formData.get("status") ?? order!.status) as OrderStatus;
     const adminNotes = String(formData.get("adminNotes") ?? "").trim();
@@ -43,7 +50,6 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       }
     });
 
-    // Create Activity Log
     await prisma.activityLog.create({
       data: {
         action: "ORDER_STATUS_UPDATED",
@@ -54,6 +60,179 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     });
 
     redirect(`/admin/orders/${order!.publicId}`);
+  }
+
+  async function verifyPrescriptionAction(formData: FormData) {
+    "use server";
+    await requireAdmin();
+
+    const rxId = String(formData.get("rxId") ?? "");
+    if (!rxId) return;
+
+    const rx = await prisma.prescription.update({
+      where: { id: rxId },
+      data: { verified: true }
+    });
+
+    // Check if all prescriptions for this order are now verified
+    const allRxs = await prisma.prescription.findMany({
+      where: { orderId: order!.id }
+    });
+    const allVerified = allRxs.every((r) => r.verified);
+
+    if (allVerified) {
+      await prisma.order.update({
+        where: { id: order!.id },
+        data: { status: "LENS_IN_PROCESSING" }
+      });
+    }
+
+    await prisma.activityLog.create({
+      data: {
+        action: "PRESCRIPTION_VERIFIED",
+        entityType: "prescription",
+        entityId: rxId,
+        metadata: { orderId: order!.id }
+      }
+    });
+
+    // Send WhatsApp Alert
+    if (order!.phone) {
+      await sendWhatsAppTemplate(order!.phone, "prescription_verified", [
+        order!.customerName,
+        order!.publicId
+      ]);
+    }
+
+    redirect(`/admin/orders/${order!.publicId}?prescriptionVerified=true`);
+  }
+
+  async function issueRefundAction(formData: FormData) {
+    "use server";
+    await requireOwner();
+
+    const amountRupees = Number(formData.get("amountRupees") ?? 0);
+    const reason = String(formData.get("reason") ?? "").trim();
+    const amountPaise = Math.round(amountRupees * 100);
+
+    const latestPayment = order!.payments[0];
+
+    if (!latestPayment || !latestPayment.providerPaymentId) {
+      redirect(`/admin/orders/${order!.publicId}?error=payment-not-found`);
+    }
+
+    if (amountPaise <= 0 || amountPaise > order!.grandTotalPaise) {
+      redirect(`/admin/orders/${order!.publicId}?error=invalid-amount`);
+    }
+
+    try {
+      // Call Razorpay Refund API
+      const rzpRefund = await refundRazorpayPayment(latestPayment.providerPaymentId, amountPaise);
+
+      // Create local Refund record
+      await prisma.refund.create({
+        data: {
+          orderId: order!.id,
+          paymentId: latestPayment.id,
+          providerRefundId: rzpRefund.id,
+          amountPaise,
+          reason,
+          status: "processed"
+        }
+      });
+
+      await prisma.order.update({
+        where: { id: order!.id },
+        data: { status: "REFUNDED" }
+      });
+
+      await prisma.payment.update({
+        where: { id: latestPayment.id },
+        data: { status: "REFUNDED" }
+      });
+
+      await prisma.activityLog.create({
+        data: {
+          action: "REFUND_ISSUED",
+          entityType: "order",
+          entityId: order!.id,
+          metadata: { amountPaise, reason, refundId: rzpRefund.id }
+        }
+      });
+
+      // Notify customer
+      if (order!.email) {
+        await sendEmail(
+          order!.email,
+          `Refund Processed: ${order!.publicId}`,
+          `<h3>Your refund of ${formatMoney(amountPaise)} has been processed.</h3><p>Reason: ${reason}</p>`
+        );
+      }
+
+      if (order!.phone) {
+        await sendWhatsAppTemplate(order!.phone, "refund_processed", [
+          order!.customerName,
+          order!.publicId,
+          (amountPaise / 100).toFixed(2)
+        ]);
+      }
+
+      redirect(`/admin/orders/${order!.publicId}?refundSuccess=true`);
+    } catch (err) {
+      console.error("Refund trigger failed:", err);
+      redirect(`/admin/orders/${order!.publicId}?error=refund-failed`);
+    }
+  }
+
+  async function createShipmentTrigger() {
+    "use server";
+    await requireAdmin();
+
+    const mappedOrder = {
+      publicId: order!.publicId,
+      customerName: order!.customerName,
+      phone: order!.phone,
+      shippingAddress: order!.shippingAddress
+        ? {
+            name: order!.shippingAddress.name,
+            phone: order!.shippingAddress.phone,
+            line1: order!.shippingAddress.line1,
+            line2: order!.shippingAddress.line2,
+            city: order!.shippingAddress.city,
+            state: order!.shippingAddress.state,
+            pincode: order!.shippingAddress.pincode
+          }
+        : null,
+      items: order!.items.map((item) => ({
+        unitPricePaise: item.unitPricePaise,
+        quantity: item.quantity,
+        productSnapshot: item.productSnapshot
+      })),
+      grandTotalPaise: order!.grandTotalPaise,
+      paymentMethod: order!.paymentMethod
+    };
+
+    const res = await createShiprocketShipment(mappedOrder);
+
+    if (res.success || res.simulated) {
+      await prisma.order.update({
+        where: { id: order!.id },
+        data: { status: "SHIPPED", notes: `Shipment ID: ${res.shipmentId || "simulated"}` }
+      });
+
+      await prisma.activityLog.create({
+        data: {
+          action: "SHIPMENT_CREATED",
+          entityType: "order",
+          entityId: order!.id,
+          metadata: { shipmentId: res.shipmentId, simulated: res.simulated }
+        }
+      });
+
+      redirect(`/admin/orders/${order!.publicId}?shipmentSuccess=true`);
+    } else {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-failed`);
+    }
   }
 
   const latestPayment = order.payments[0];
@@ -68,7 +247,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="vv-kicker text-retail">Admin</p>
+            <p className="vv-kicker text-retail">Admin · Role: {role}</p>
             <h1 className="text-4xl font-extrabold">Order details</h1>
             <p className="mt-2 text-slate-600">ID: <strong className="text-slate-800">{order.publicId}</strong> · Date: {new Date(order.createdAt).toLocaleString("en-IN")}</p>
           </div>
@@ -86,31 +265,48 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           {/* Main order info */}
           <div className="grid gap-6">
-            {/* Status Update Form */}
-            <section className="vv-card p-6 bg-slate-50 border border-slate-200">
-              <h2 className="text-xl font-extrabold mb-4">Operations update</h2>
-              <form action={updateOrderStatus} className="grid gap-4">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                    Order status
-                    <select className="store-input" name="status" defaultValue={order.status}>
-                      {Object.entries(ORDER_STATUS_LABELS).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                    Staff notes / internal update
-                    <input className="store-input" type="text" name="adminNotes" defaultValue={order.notes ?? ""} placeholder="e.g. Lens processed, ready for packing" />
-                  </label>
-                </div>
-                <button className="vv-button-retail justify-self-end inline-flex items-center gap-2" type="submit">
-                  Save status
-                </button>
-              </form>
-            </section>
+            {/* Operations update (Guarded for Manager/Owner only) */}
+            {["OWNER", "MANAGER"].includes(role) ? (
+              <section className="vv-card p-6 bg-slate-50 border border-slate-200">
+                <h2 className="text-xl font-extrabold mb-4">Operations update</h2>
+                <form action={updateOrderStatus} className="grid gap-4">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                      Order status
+                      <select className="store-input" name="status" defaultValue={order.status}>
+                        {Object.entries(ORDER_STATUS_LABELS).map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                      Staff notes / internal update
+                      <input className="store-input" type="text" name="adminNotes" defaultValue={order.notes ?? ""} placeholder="e.g. Lens processed, ready for packing" />
+                    </label>
+                  </div>
+                  <button className="vv-button-retail justify-self-end inline-flex items-center gap-2" type="submit">
+                    Save status
+                  </button>
+                </form>
+              </section>
+            ) : null}
 
-            {/* Items list */}
+            {/* Shiprocket Section */}
+            {order.status !== "SHIPPED" && order.status !== "DELIVERED" && order.status !== "CANCELLED" ? (
+              <section className="vv-card p-6 border-l-4 border-l-retail flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-extrabold text-lg">Shiprocket Fulfillment</h3>
+                  <p className="text-sm text-slate-500">Dispatch items and create cargo pickup slips.</p>
+                </div>
+                <form action={createShipmentTrigger}>
+                  <button className="vv-button-retail" type="submit">
+                    Create Shipment
+                  </button>
+                </form>
+              </section>
+            ) : null}
+
+            {/* Products list */}
             <section className="vv-card p-6">
               <h2 className="text-xl font-extrabold mb-4 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <Package className="h-5 w-5 text-retail" />
@@ -143,28 +339,75 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               </div>
             </section>
 
-            {/* Prescription Viewer */}
+            {/* Prescription Viewer with verification trigger */}
             {order.prescriptions.length > 0 ? (
               <section className="vv-card p-6">
-                <h2 className="text-xl font-extrabold mb-4">Patient prescription</h2>
+                <h2 className="text-xl font-extrabold mb-4">Patient prescriptions</h2>
                 <div className="grid gap-4">
                   {order.prescriptions.map((presc) => (
-                    <div key={presc.id} className="flex justify-between items-center border border-slate-100 p-4 rounded-vv">
+                    <div key={presc.id} className="flex flex-wrap justify-between items-center border border-slate-100 p-4 rounded-vv gap-4">
                       <div>
                         <p className="font-bold">{presc.fileName ?? "Prescription Upload"}</p>
                         <p className="text-xs text-slate-500">Uploaded: {new Date(presc.createdAt).toLocaleDateString()}</p>
+                        <div className="mt-2 flex items-center gap-1.5">
+                          <span className={`inline-block h-2 w-2 rounded-full ${presc.verified ? "bg-emerald-500" : "bg-amber-500"}`} />
+                          <span className="text-xs font-bold text-slate-600">{presc.verified ? "Verified" : "Pending Verification"}</span>
+                        </div>
                       </div>
-                      <a href={presc.fileUrl} target="_blank" rel="noopener noreferrer" className="vv-button-light text-sm">
-                        View file
-                      </a>
+                      <div className="flex gap-2">
+                        <a href={presc.fileUrl} target="_blank" rel="noopener noreferrer" className="vv-button-light text-sm py-2">
+                          View prescription file
+                        </a>
+                        {!presc.verified ? (
+                          <form action={verifyPrescriptionAction}>
+                            <input type="hidden" name="rxId" value={presc.id} />
+                            <button className="vv-button-retail text-sm py-2" type="submit">
+                              Mark verified
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
                     </div>
                   ))}
                 </div>
               </section>
             ) : null}
+
+            {/* Refund Panel (OWNER Only) */}
+            {role === "OWNER" && order.status !== "REFUNDED" && latestPayment?.status === "PAID" ? (
+              <section className="vv-card p-6 bg-red-50/50 border border-red-200">
+                <h2 className="text-xl font-extrabold mb-2 text-red-950 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-red-700" />
+                  Refund management (Owner Only)
+                </h2>
+                <form action={issueRefundAction} className="grid gap-4 mt-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-1 text-sm font-extrabold text-slate-700">
+                      Refund Amount (₹)
+                      <input
+                        className="store-input"
+                        type="number"
+                        name="amountRupees"
+                        max={order.grandTotalPaise / 100}
+                        step="0.01"
+                        placeholder={(order.grandTotalPaise / 100).toFixed(2)}
+                        required
+                      />
+                    </label>
+                    <label className="grid gap-1 text-sm font-extrabold text-slate-700">
+                      Reason for refund
+                      <input className="store-input" type="text" name="reason" required placeholder="e.g. Out of stock / Customer requested" />
+                    </label>
+                  </div>
+                  <button className="vv-button bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded justify-self-end" type="submit">
+                    Trigger Razorpay Refund
+                  </button>
+                </form>
+              </section>
+            ) : null}
           </div>
 
-          {/* Sidebar customer/payment/shipping */}
+          {/* Sidebar */}
           <div className="grid gap-6 self-start">
             {/* Customer profile */}
             <aside className="vv-card p-6">
@@ -191,7 +434,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               </dl>
             </aside>
 
-            {/* Payment Summary */}
+            {/* Payment Summary with 12% GST */}
             <aside className="vv-card p-6">
               <h2 className="text-lg font-extrabold mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <ShieldCheck className="h-5 w-5 text-retail" />
@@ -209,6 +452,10 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                 <div className="flex justify-between">
                   <dt className="text-slate-500">Shipping</dt>
                   <dd className="font-bold">{formatMoney(order.shippingPaise)}</dd>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <dt>GST (12%)</dt>
+                  <dd className="font-bold">{formatMoney(order.taxPaise)}</dd>
                 </div>
                 {order.discountPaise > 0 ? (
                   <div className="flex justify-between text-emerald-600 font-bold">

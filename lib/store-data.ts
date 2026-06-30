@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { migratedProducts, productMatches, type StoreImage, type StoreProduct, type StoreProductStatus } from "@/lib/inventory";
+import { getCache, setCache } from "@/lib/redis";
 
 type DbStoreProduct = {
   slug: string;
@@ -85,6 +86,12 @@ export async function getStoreProducts(options: { query?: string; category?: str
 
   if (process.env.DATABASE_URL) {
     try {
+      const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}`;
+      const cached = await getCache<StoreProduct[]>(cacheKey);
+      if (cached) {
+        return cached.filter((product) => productMatches(product, query, category));
+      }
+
       const where: Record<string, unknown> = {};
       if (!includeDrafts) where.status = "ACTIVE";
       if (featuredOnly) where.featured = true;
@@ -102,7 +109,10 @@ export async function getStoreProducts(options: { query?: string; category?: str
       });
 
       const mapped = products.map(mapDbProduct);
-      if (mapped.length) return mapped.filter((product) => productMatches(product, query, category));
+      if (mapped.length) {
+        await setCache(cacheKey, mapped, 300); // 5 minutes cache TTL
+        return mapped.filter((product) => productMatches(product, query, category));
+      }
     } catch {
       // During first Railway deploy the DB may not be migrated yet; use migration inventory as read-only fallback.
     }

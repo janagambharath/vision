@@ -1,10 +1,15 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, Home, MessageCircle, ShoppingBag, Star } from "lucide-react";
-import { addToCart } from "@/lib/cart";
+import { Eye, Home, MessageCircle, ShoppingBag, Star, Heart } from "lucide-react";
+import { addToCart } from "@/lib/cart-actions";
 import { CLINIC_WHATSAPP_NUMBER } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
 import { productIsSellable, type StoreProduct } from "@/lib/inventory";
+import { useCompare } from "@/components/compare-context";
+import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const sellable = productIsSellable(product);
@@ -14,8 +19,39 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   const hasDiscount = product.compareAtPaise && product.pricePaise && product.compareAtPaise > product.pricePaise;
   const discountPct = hasDiscount ? Math.round(((product.compareAtPaise! - product.pricePaise!) / product.compareAtPaise!) * 100) : 0;
 
+  const { compareSlugs, addToCompare, removeFromCompare } = useCompare();
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("vv_wishlist_slugs");
+    if (stored) {
+      try {
+        const list = JSON.parse(stored);
+        setIsWishlisted(list.includes(product.slug));
+      } catch {
+        // Ignore
+      }
+    }
+  }, [product.slug]);
+
+  const toggleWishlist = async () => {
+    const nextState = !isWishlisted;
+    setIsWishlisted(nextState);
+
+    const stored = localStorage.getItem("vv_wishlist_slugs");
+    let list = stored ? JSON.parse(stored) : [];
+    if (nextState) {
+      if (!list.includes(product.slug)) list.push(product.slug);
+      await addToWishlist(product.slug);
+    } else {
+      list = list.filter((s: string) => s !== product.slug);
+      await removeFromWishlist(product.slug);
+    }
+    localStorage.setItem("vv_wishlist_slugs", JSON.stringify(list));
+  };
+
   return (
-    <article className="vv-card group overflow-hidden transition hover:shadow-strong">
+    <article className="vv-card group overflow-hidden transition hover:shadow-strong relative">
       <Link href={`/frames/${product.slug}`} className="relative block bg-slate-50">
         <div className="relative aspect-[16/9] overflow-hidden">
           {frontImage ? (
@@ -43,23 +79,37 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         {/* Badges */}
         <div className="absolute left-3 top-3 flex flex-col gap-1">
           {product.featured ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-retail px-3 py-1 text-xs font-extrabold text-white">
-              <Star className="h-3 w-3" />
+            <span className="inline-flex items-center gap-1 rounded-full bg-retail px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+              <Star className="h-2.5 w-2.5 fill-white" />
               Featured
             </span>
           ) : null}
           {hasDiscount ? (
-            <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-extrabold text-white">
+            <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
               {discountPct}% OFF
             </span>
           ) : null}
-          {product.inventoryStatus === "LOW_STOCK" ? (
-            <span className="rounded-full bg-amber-500 px-3 py-1 text-xs font-extrabold text-white">
-              Low stock
+          {product.inventoryStatus === "LOW_STOCK" || (product.inventoryQuantity <= 3 && product.inventoryQuantity > 0) ? (
+            <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white animate-pulse">
+              Only {product.inventoryQuantity} left!
+            </span>
+          ) : null}
+          {product.tryAtHomeEligible ? (
+            <span className="rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+              🏠 Home trial
             </span>
           ) : null}
         </div>
       </Link>
+
+      {/* Wishlist Heart Button overlay */}
+      <button
+        onClick={toggleWishlist}
+        className="absolute top-3 right-3 h-8 w-8 rounded-full bg-white/90 backdrop-blur shadow-sm border border-slate-100 flex items-center justify-center transition hover:bg-white z-10"
+        title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart className={`h-4 w-4 transition-all ${isWishlisted ? "fill-red-500 text-red-500 scale-110" : "text-slate-400 hover:text-red-500"}`} />
+      </button>
 
       <div className="grid gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
@@ -84,12 +134,31 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1">
-          {product.categories.slice(0, 4).map((category) => (
-            <Link key={category} href={`/frames/category/${category}`} className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-500 hover:border-retail hover:text-retail">
-              {category.replace(/-/g, " ")}
-            </Link>
-          ))}
+        <div className="flex flex-wrap gap-1 items-center justify-between">
+          <div className="flex flex-wrap gap-1">
+            {product.categories.slice(0, 3).map((category) => (
+              <Link key={category} href={`/frames/category/${category}`} className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:border-retail hover:text-retail">
+                {category.replace(/-/g, " ")}
+              </Link>
+            ))}
+          </div>
+
+          {/* Compare Checkbox */}
+          <label className="flex items-center gap-1 text-[11px] font-bold text-slate-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={compareSlugs.includes(product.slug)}
+              onChange={(e) => {
+                if (e.target.checked) {
+                  addToCompare(product.slug);
+                } else {
+                  removeFromCompare(product.slug);
+                }
+              }}
+              className="rounded border-slate-300 text-retail focus:ring-retail h-3.5 w-3.5"
+            />
+            Compare
+          </label>
         </div>
 
         <p className="line-clamp-2 text-sm text-slate-600">{product.description}</p>

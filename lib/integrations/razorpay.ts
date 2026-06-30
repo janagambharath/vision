@@ -21,3 +21,9 @@ export async function createRazorpayOrder(input: { amountPaise: number; receipt:
     notes: input.notes
   });
 }
+
+export async function refundRazorpayPayment(paymentId: string, amountPaise: number) {
+  const razorpay = getRazorpayClient();
+  return razorpay.payments.refund(paymentId, { amount: amountPaise });
+}
+

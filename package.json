@@ -12,15 +12,15 @@
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "worker:abandoned-carts": "tsx workers/abandoned-cart.ts"
+    "worker:abandoned-carts": "tsx workers/abandoned-cart.ts",
+    "worker:order-followup": "tsx workers/order-followup.ts",
+    "worker:low-stock-alert": "tsx workers/low-stock-alert.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
     "@prisma/client": "^6.1.0",
-    "@tanstack/react-query": "^5.62.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
-    "framer-motion": "^11.15.0",
     "ioredis": "^5.4.1",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",

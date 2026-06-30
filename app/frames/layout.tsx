@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, ShoppingBag, Truck, WandSparkles } from "lucide-react";
+import { Search, ShoppingBag, Truck, WandSparkles, Heart } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SITE_URL, STORE_NAME } from "@/lib/constants";
+import { CompareProvider } from "@/components/compare-context";
+import { CompareBar } from "@/components/compare-bar";
 
 export const metadata: Metadata = {
   title: STORE_NAME,
@@ -19,7 +21,7 @@ export const metadata: Metadata = {
 
 export default function FramesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <CompareProvider>
       <SiteHeader mode="store" />
       <div className="border-b border-slate-200 bg-white">
         <div className="vv-container flex flex-wrap items-center justify-between gap-3 py-3 text-sm font-bold text-slate-600">
@@ -36,15 +38,20 @@ export default function FramesLayout({ children }: { children: React.ReactNode }
               <WandSparkles className="h-4 w-4" />
               Try at Home
             </Link>
-            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/frames/orders/demo">
+            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/frames/wishlist">
+              <Heart className="h-4 w-4 text-red-500 fill-red-500" />
+              Wishlist
+            </Link>
+            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/frames/orders/lookup">
               <Truck className="h-4 w-4" />
-              Track
+              Track Order
             </Link>
           </nav>
           <p className="text-xs uppercase tracking-normal text-slate-500">Retail section: product-first, checkout-ready, database-backed</p>
         </div>
       </div>
       {children}
-    </>
+      <CompareBar />
+    </CompareProvider>
   );
 }

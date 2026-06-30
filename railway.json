@@ -8,5 +8,19 @@
     "healthcheckPath": "/api/health",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
-  }
+  },
+  "cron": [
+    {
+      "schedule": "0 */6 * * *",
+      "command": "npm run worker:abandoned-carts"
+    },
+    {
+      "schedule": "0 9 * * *",
+      "command": "npm run worker:order-followup"
+    },
+    {
+      "schedule": "0 8 * * *",
+      "command": "npm run worker:low-stock-alert"
+    }
+  ]
 }

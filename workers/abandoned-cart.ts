@@ -36,7 +36,7 @@ async function main() {
           <p>Hello ${user.name || "Customer"},</p>
           <p>We noticed you left ${itemCount} frame(s) in your cart, including the <strong>${firstItemName}</strong>.</p>
           <p>Frames in your cart are reserved for a limited time. Complete your order today and get 10% off using code <strong>WELCOME10</strong>.</p>
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://visionvistara.online'}/frames/cart" 
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://visionvistara.online'}/frames/cart/apply?coupon=WELCOME10" 
              style="display: inline-block; padding: 12px 24px; background-color: #0f766e; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 15px;">
             Return to Cart
           </a>
@@ -50,7 +50,7 @@ async function main() {
       await sendWhatsAppTemplate(user.phone, "abandoned_cart_reminder", [
         user.name || "Customer",
         firstItemName,
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://visionvistara.online'}/frames/cart`
+        `${process.env.NEXT_PUBLIC_SITE_URL || 'https://visionvistara.online'}/frames/cart/apply?coupon=WELCOME10`
       ]);
     }
 

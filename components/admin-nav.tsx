@@ -6,6 +6,8 @@ const adminLinks = [
   ["Orders", "/admin/orders"],
   ["Leads", "/admin/leads"],
   ["Inventory", "/admin/inventory"],
+  ["Try-at-Home", "/admin/try-at-home"],
+  ["Reviews", "/admin/reviews"],
   ["Coupons", "/admin/coupons"],
   ["Promotions", "/admin/promotions"]
 ];
