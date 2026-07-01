@@ -288,18 +288,56 @@ export default async function ProductPage({
               sellable={sellable}
               lensPackages={lensPackages}
             />
+
+            {/* Premium Accordions for Product Data */}
+            <div className="mt-8 grid gap-0.5 border-t border-slate-100 pt-4">
+              {product.careInstructions && (
+                <details className="group [&_summary::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer items-center justify-between py-4 text-sm font-extrabold text-slate-800 hover:text-retail transition-colors">
+                    Care Instructions
+                    <span className="transition group-open:rotate-180">
+                      <svg fill="none" height="16" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M6 9l6 6 6-6"></path></svg>
+                    </span>
+                  </summary>
+                  <p className="pb-4 text-sm text-slate-600 font-medium leading-relaxed animate-in fade-in slide-in-from-top-2">{product.careInstructions}</p>
+                </details>
+              )}
+              {product.warranty && (
+                <details className="group border-t border-slate-100 [&_summary::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer items-center justify-between py-4 text-sm font-extrabold text-slate-800 hover:text-retail transition-colors">
+                    Warranty
+                    <span className="transition group-open:rotate-180">
+                      <svg fill="none" height="16" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M6 9l6 6 6-6"></path></svg>
+                    </span>
+                  </summary>
+                  <p className="pb-4 text-sm text-slate-600 font-medium leading-relaxed animate-in fade-in slide-in-from-top-2">{product.warranty}</p>
+                </details>
+              )}
+              {product.returnPolicy && (
+                <details className="group border-t border-slate-100 [&_summary::-webkit-details-marker]:hidden">
+                  <summary className="flex cursor-pointer items-center justify-between py-4 text-sm font-extrabold text-slate-800 hover:text-retail transition-colors">
+                    Return Policy
+                    <span className="transition group-open:rotate-180">
+                      <svg fill="none" height="16" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="16"><path d="M6 9l6 6 6-6"></path></svg>
+                    </span>
+                  </summary>
+                  <p className="pb-4 text-sm text-slate-600 font-medium leading-relaxed animate-in fade-in slide-in-from-top-2">{product.returnPolicy}</p>
+                </details>
+              )}
+            </div>
           </div>
         </FadeIn>
       </section>
 
       <section className="vv-section bg-paper">
-        <StaggerContainer className="vv-container grid gap-6 lg:grid-cols-3">
-          <StaggerItem><Spec title="Measurements" icon={<Ruler className="h-5 w-5" />} lines={[product.measurements || "", product.size || "", product.rimType || ""]} /></StaggerItem>
+        <StaggerContainer className="vv-container grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StaggerItem><Spec title="Measurements" icon={<Ruler className="h-5 w-5" />} lines={[product.measurements || "", product.size || ""]} /></StaggerItem>
+          <StaggerItem><Spec title="Specifications" icon={<Sparkles className="h-5 w-5" />} lines={[product.material ? `Material: ${product.material}` : "", product.colour ? `Colour: ${product.colour}` : "", product.shape ? `Shape: ${product.shape}` : "", product.rimType ? `Rim: ${product.rimType}` : ""]} /></StaggerItem>
           <StaggerItem><Spec title="Lens support" icon={<Sparkles className="h-5 w-5" />} lines={product.lensCompatibility} /></StaggerItem>
           <StaggerItem><Spec
-            title="Delivery and policy"
+            title="Delivery"
             icon={<Truck className="h-5 w-5" />}
-            lines={[getDeliveryDateText(product.deliveryEstimate), product.returnPolicy || "", product.warranty || ""]}
+            lines={[getDeliveryDateText(product.deliveryEstimate)]}
           /></StaggerItem>
         </StaggerContainer>
       </section>
