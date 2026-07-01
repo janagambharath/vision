@@ -91,7 +91,17 @@ export default function VirtualTryOn({
   const [isDragging, setIsDragging] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const videoRef = useCallback((el: HTMLVideoElement | null) => {
+    videoElementRef.current = el;
+    if (el && streamRef.current) {
+      el.srcObject = streamRef.current;
+      el.play().catch((e) => {
+        console.error("Video play failed:", e);
+      });
+    }
+  }, []);
+
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -126,18 +136,11 @@ export default function VirtualTryOn({
 
       streamRef.current = stream;
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        // Wait for metadata to load to ensure dimensions are correct
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch((e) => {
-            console.error("Video play failed:", e);
-          });
-        };
-      }
-
+      // Update state and step to mount the video element in DOM
       setStreamActive(true);
       setStep("camera");
+
+      // The callback ref will handle setting srcObject and calling play() once mounted
     } catch (err: any) {
       console.error("Camera access failed:", err);
       setError(
@@ -158,8 +161,8 @@ export default function VirtualTryOn({
 
   /* ─────── capture photo ─────── */
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
+    if (!videoElementRef.current || !canvasRef.current) return;
+    const video = videoElementRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
