@@ -12,7 +12,8 @@ export async function getCustomerSession(): Promise<CustomerSession | null> {
   const token = cookieStore.get("vv_customer_session")?.value;
   if (!token) return null;
 
-  const secret = process.env.AUTH_SECRET || "dummy-secret-at-least-32-chars-long";
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("Missing AUTH_SECRET in environment variables");
   const parts = token.split(".");
   if (parts.length !== 2) return null;
 

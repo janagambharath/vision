@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, CheckCircle2, Home, MessageCircle, Ruler, ShieldCheck, ShoppingBag, Sparkles, Truck, Star, Heart, Clock } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Home, MessageCircle, Ruler, ShieldCheck, ShoppingBag, Sparkles, Truck, Star, Heart, Clock } from "lucide-react";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import ProductCheckoutPanel from "@/components/product-checkout-panel";
 import { CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
 import { lensPackages, migratedProducts, productIsSellable } from "@/lib/inventory";
@@ -84,8 +85,8 @@ export default async function ProductPage({
   }
 
   const avgRating = reviews.length
-    ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
-    : "4.5"; // Default mock aggregate rating if no review yet
+    ? (reviews.reduce((sum, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    : null;
 
   // Schema BreadcrumbList
   const breadcrumbSchema = {
@@ -108,11 +109,13 @@ export default async function ProductPage({
     image: product.images.map((image) => image.url.startsWith("http") ? image.url : `${SITE_URL}${image.url}`),
     description: product.description,
     category: product.primaryCategory,
-    aggregateRating: {
-      "@type": "AggregateRating",
-      "ratingValue": avgRating,
-      "reviewCount": reviews.length || "5"
-    },
+    ...(avgRating && reviews.length > 0 ? {
+      aggregateRating: {
+        "@type": "AggregateRating",
+        "ratingValue": avgRating,
+        "reviewCount": reviews.length
+      }
+    } : {}),
     offers: sellable
       ? {
           "@type": "Offer",
@@ -173,8 +176,8 @@ export default async function ProductPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
       
-      <section className="vv-section bg-white">
-        <div className="vv-container grid gap-10 lg:grid-cols-[1.05fr_.95fr]">
+      <section className="vv-section bg-white/40">
+        <FadeIn className="vv-container grid gap-10 lg:grid-cols-[1.05fr_.95fr]">
           <ProductGallery product={product} />
 
           <div>
@@ -258,6 +261,18 @@ export default async function ProductPage({
               ))}
             </div>
 
+            {/* Virtual Try-On CTA */}
+            <Link
+              href={`/frames/try-on?slug=${product.slug}`}
+              className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
+            >
+              <Camera className="h-8 w-8 text-teal-600 shrink-0 group-hover:scale-110 transition-transform" />
+              <div>
+                <strong className="text-sm font-extrabold text-teal-800">Try this frame on your face</strong>
+                <p className="text-xs text-teal-600 mt-0.5">Use your camera to see how this frame looks on you.</p>
+              </div>
+            </Link>
+
             {/* Client Interactive Selector and Add-To-Cart actions */}
             <ProductCheckoutPanel
               product={{
@@ -274,24 +289,24 @@ export default async function ProductPage({
               lensPackages={lensPackages}
             />
           </div>
-        </div>
+        </FadeIn>
       </section>
 
       <section className="vv-section bg-paper">
-        <div className="vv-container grid gap-6 lg:grid-cols-3">
-          <Spec title="Measurements" icon={<Ruler className="h-5 w-5" />} lines={[product.measurements || "", product.size || "", product.rimType || ""]} />
-          <Spec title="Lens support" icon={<Sparkles className="h-5 w-5" />} lines={product.lensCompatibility} />
-          <Spec
+        <StaggerContainer className="vv-container grid gap-6 lg:grid-cols-3">
+          <StaggerItem><Spec title="Measurements" icon={<Ruler className="h-5 w-5" />} lines={[product.measurements || "", product.size || "", product.rimType || ""]} /></StaggerItem>
+          <StaggerItem><Spec title="Lens support" icon={<Sparkles className="h-5 w-5" />} lines={product.lensCompatibility} /></StaggerItem>
+          <StaggerItem><Spec
             title="Delivery and policy"
             icon={<Truck className="h-5 w-5" />}
             lines={[getDeliveryDateText(product.deliveryEstimate), product.returnPolicy || "", product.warranty || ""]}
-          />
-        </div>
+          /></StaggerItem>
+        </StaggerContainer>
       </section>
 
       {/* Review Moderation Panel displays */}
-      <section className="vv-section bg-white border-t border-slate-100">
-        <div className="vv-container grid gap-8 lg:grid-cols-[1fr_2fr]">
+      <section className="vv-section bg-white/70 border-t border-slate-100">
+        <FadeIn className="vv-container grid gap-8 lg:grid-cols-[1fr_2fr]">
           <div className="grid gap-4 self-start">
             <div>
               <p className="vv-kicker text-retail">Customer Feedback</p>
@@ -337,7 +352,7 @@ export default async function ProductPage({
           <div className="grid gap-4">
             <h3 className="font-extrabold text-slate-900 text-xl border-b border-slate-100 pb-2 flex items-center justify-between">
               <span>Customer Reviews ({reviews.length})</span>
-              <span className="text-sm font-bold text-retail bg-teal-50 px-2 py-0.5 rounded">Avg {avgRating} Stars</span>
+              {avgRating && <span className="text-sm font-bold text-retail bg-teal-50 px-2 py-0.5 rounded">Avg {avgRating} Stars</span>}
             </h3>
 
             {reviews.length === 0 ? (
@@ -364,12 +379,12 @@ export default async function ProductPage({
               </div>
             )}
           </div>
-        </div>
+        </FadeIn>
       </section>
 
       {related.length ? (
         <section className="vv-section bg-paper">
-          <div className="vv-container">
+          <FadeIn className="vv-container">
             <div className="mb-8 flex items-center gap-3">
               <ShieldCheck className="h-6 w-6 text-retail" />
               <h2 className="text-3xl font-extrabold font-sans text-slate-900">Related frames</h2>
@@ -379,13 +394,13 @@ export default async function ProductPage({
                 <ProductCard key={item.slug} product={item} />
               ))}
             </div>
-          </div>
+          </FadeIn>
         </section>
       ) : null}
 
       {recentlyViewedProducts.length ? (
-        <section className="vv-section bg-white border-t border-slate-100">
-          <div className="vv-container">
+        <section className="vv-section bg-white/70 border-t border-slate-100">
+          <FadeIn className="vv-container">
             <div className="mb-8 flex items-center gap-3">
               <Clock className="h-6 w-6 text-retail" />
               <h2 className="text-3xl font-extrabold font-sans text-slate-900">Recently viewed</h2>
@@ -395,7 +410,7 @@ export default async function ProductPage({
                 <ProductCard key={item.slug} product={item} />
               ))}
             </div>
-          </div>
+          </FadeIn>
         </section>
       ) : null}
     </main>

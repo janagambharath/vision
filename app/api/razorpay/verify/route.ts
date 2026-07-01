@@ -15,11 +15,8 @@ export async function POST(request: NextRequest) {
     }
 
     const secret = process.env.RAZORPAY_KEY_SECRET;
-    if (!secret || secret.startsWith("dummy")) {
-      console.warn("⚠️ Razorpay Key Secret is not configured. Simulating payment confirmation.");
-      // Skip signature verification for mock/local testing
-      await confirmOrder(orderPublicId, razorpay_payment_id, razorpay_order_id, razorpay_signature);
-      return NextResponse.json({ status: "ok", simulated: true });
+    if (!secret) {
+      throw new Error("Missing RAZORPAY_KEY_SECRET in environment variables");
     }
 
     // Verify signature
@@ -82,22 +79,34 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
       data: { status: "CONFIRMED" }
     });
 
-    await tx.payment.upsert({
-      where: { id: `payment-${order.id}` },
-      update: {
-        status: "PAID",
-        providerPaymentId: paymentId,
-        signature: signature
-      },
-      create: {
-        orderId: order.id,
-        providerOrderId: razorpayOrderId,
-        providerPaymentId: paymentId,
-        amountPaise: order.grandTotalPaise,
-        status: "PAID",
-        signature: signature
-      }
+    // Find existing payment record by provider order ID
+    const existingPayment = await tx.payment.findFirst({
+      where: { orderId: order.id, providerOrderId: razorpayOrderId },
     });
+
+    if (existingPayment) {
+      // Update existing payment record
+      await tx.payment.update({
+        where: { id: existingPayment.id },
+        data: {
+          status: "PAID",
+          providerPaymentId: paymentId,
+          signature: signature,
+        },
+      });
+    } else {
+      // Create new payment record if none existed
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          providerOrderId: razorpayOrderId,
+          providerPaymentId: paymentId,
+          amountPaise: order.grandTotalPaise,
+          status: "PAID",
+          signature: signature,
+        },
+      });
+    }
 
     // Log activity
     await tx.activityLog.create({

@@ -2,7 +2,7 @@ export async function getShiprocketToken() {
   const email = process.env.SHIPROCKET_EMAIL;
   const password = process.env.SHIPROCKET_PASSWORD;
 
-  if (!email || !password || email.includes("dummy")) {
+  if (!email || !password) {
     console.warn("⚠️ Shiprocket credentials not configured.");
     return null;
   }

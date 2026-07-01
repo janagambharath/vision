@@ -115,8 +115,8 @@ export async function getStoreProducts(options: { query?: string; category?: str
         await setCache(cacheKey, mapped, 300); // 5 minutes cache TTL
         return mapped.filter((product) => productMatches(product, query, category));
       }
-    } catch {
-      // During first Railway deploy the DB may not be migrated yet; use migration inventory as read-only fallback.
+    } catch (dbError) {
+      console.warn("⚠️ Database query failed for getStoreProducts, using fallback inventory:", dbError);
     }
   }
 
@@ -140,8 +140,8 @@ export async function getStoreProduct(slug: string) {
         }
       });
       if (product) return mapDbProduct(product);
-    } catch {
-      // Fallback to migrated data
+    } catch (dbError) {
+      console.warn("⚠️ Database query failed for getStoreProduct, using fallback:", dbError);
     }
   }
   return migratedProducts.find((product) => product.slug === slug) ?? null;
@@ -167,8 +167,8 @@ export async function getCategories() {
         orderBy: { sortOrder: "asc" },
         include: { _count: { select: { products: true } } }
       });
-    } catch {
-      // Fallback
+    } catch (dbError) {
+      console.warn("⚠️ Database query failed for getCategories, using fallback:", dbError);
     }
   }
 
@@ -194,8 +194,8 @@ export async function getLensOptions() {
         orderBy: { sortOrder: "asc" }
       });
       if (options.length) return options;
-    } catch {
-      // Fallback
+    } catch (dbError) {
+      console.warn("⚠️ Database query failed for getLensOptions, using fallback:", dbError);
     }
   }
 

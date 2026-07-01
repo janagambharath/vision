@@ -1,7 +1,7 @@
 export async function sendEmail(to: string, subject: string, bodyHtml: string) {
   const apiKey = process.env.RESEND_API_KEY;
 
-  if (!apiKey || apiKey.startsWith("re_dummy")) {
+  if (!apiKey) {
     console.warn("⚠️ Resend API Key is not configured. Logging simulated email:");
     console.log(`Email Simulation:\nTo: ${to}\nSubject: ${subject}\nContent:\n${bodyHtml}\n-----------------`);
     return { success: false, simulated: true };

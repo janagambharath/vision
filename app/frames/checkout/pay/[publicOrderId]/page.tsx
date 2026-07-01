@@ -66,7 +66,7 @@ export default function RazorpayPayPage({ params }: { params: Promise<{ publicOr
       const config = await configRes.json();
 
       const options = {
-        key: config.keyId || "rzp_test_dummy",
+        key: config.keyId,
         amount: config.amount,
         currency: config.currency,
         name: "Vision Vistara",

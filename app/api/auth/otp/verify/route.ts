@@ -4,7 +4,8 @@ import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 
 function signPayload(payload: object) {
-  const secret = process.env.AUTH_SECRET || "dummy-secret-at-least-32-chars-long";
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("Missing AUTH_SECRET in environment variables");
   const str = JSON.stringify(payload);
   const sig = crypto.createHmac("sha256", secret).update(str).digest("hex");
   return `${Buffer.from(str).toString("base64")}.${sig}`;

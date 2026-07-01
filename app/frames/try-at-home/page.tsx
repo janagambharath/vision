@@ -1,10 +1,11 @@
 import Image from "next/image";
+import { ArrowLeft, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
 import { tryAtHomeAction } from "@/lib/orders";
 import { getStoreProducts } from "@/lib/store-data";
 import { formatMoney } from "@/lib/money";
+import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import { HOME_TRIAL_DEPOSIT_PAISE, HOME_TRIAL_SERVICE_FEE_PAISE, MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -53,8 +54,8 @@ export default async function TryAtHomePage({
 
   return (
     <main className="vv-section bg-paper">
-      <div className="vv-container">
-        <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900">
+      <FadeIn className="vv-container">
+        <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Back to store
         </Link>
@@ -77,11 +78,11 @@ export default async function TryAtHomePage({
         ) : null}
 
         {/* Info Cards */}
-        <div className="mb-8 grid gap-4 md:grid-cols-3">
-          <InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} frames you'd like to try.`} />
-          <InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Pick a slot" body="Choose your preferred date and time window." />
-          <InfoCard icon={<Truck className="h-8 w-8" />} title="We deliver" body="Our team brings the frames to your door." />
-        </div>
+        <StaggerContainer className="mb-8 grid gap-4 md:grid-cols-3">
+          <StaggerItem><InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} frames you'd like to try.`} /></StaggerItem>
+          <StaggerItem><InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Pick a slot" body="Choose your preferred date and time window." /></StaggerItem>
+          <StaggerItem><InfoCard icon={<Truck className="h-8 w-8" />} title="We deliver" body="Our team brings the frames to your door." /></StaggerItem>
+        </StaggerContainer>
 
         <form action={tryAtHomeAction} className="grid gap-8 lg:grid-cols-[1fr_380px]">
           {/* Frame Selector */}
@@ -147,6 +148,18 @@ export default async function TryAtHomePage({
                 </select>
               </label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Prescription upload (optional)
+                <input
+                  className="store-input"
+                  type="file"
+                  name="prescription"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                />
+                <span className="text-xs text-slate-400 font-normal">
+                  JPEG, PNG, or PDF · Upload your latest prescription if available
+                </span>
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Notes (optional)
                 <textarea className="store-input min-h-16 py-2" name="notes" placeholder="Prescription info, special requests..." />
               </label>
@@ -172,7 +185,7 @@ export default async function TryAtHomePage({
             </button>
           </aside>
         </form>
-      </div>
+      </FadeIn>
     </main>
   );
 }

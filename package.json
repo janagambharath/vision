@@ -18,9 +18,13 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/face_mesh": "^0.4.1633559619",
     "@prisma/client": "^6.1.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
+    "framer-motion": "^12.42.1",
     "ioredis": "^5.4.1",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",
