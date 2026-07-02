@@ -12,7 +12,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/frames/try-at-home",
     "/frames/search",
     ...filterOptions.map((category) => `/frames/category/${category}`),
-    ...migratedProducts.map((product) => `/frames/${product.slug}`)
+    ...migratedProducts
+      .filter((product) => product.status === "ACTIVE")
+      .map((product) => `/frames/${product.slug}`)
   ];
 
   return [...clinicRoutes, ...storeRoutes].map((route) => ({

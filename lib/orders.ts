@@ -37,6 +37,16 @@ export async function checkoutAction(formData: FormData) {
   const requiresPrescription = cart.items.some(item => item.lensOptionId !== null);
   const prescriptionUploaded = file && file.size > 0;
 
+  if (prescriptionUploaded && file) {
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      redirect("/frames/checkout?error=invalid-prescription-type");
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      redirect("/frames/checkout?error=prescription-file-too-large");
+    }
+  }
+
   const orderStatus = (requiresPrescription && !prescriptionUploaded)
     ? "AWAITING_PRESCRIPTION"
     : "PENDING";

@@ -446,6 +446,20 @@ export default function VirtualTryOn({
           </div>
         )}
 
+        {/* Transparency/Fitting Notice */}
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 text-xs text-slate-500 leading-normal mt-2">
+          <div className="flex items-center gap-1.5 font-bold text-slate-700 mb-1">
+            <Sparkles className="h-3.5 w-3.5 text-teal-600" />
+            <span>Fitting System Notice</span>
+          </div>
+          <p className="text-[11px]">
+            <strong>Local Overlay Fit:</strong> Precise geometric mapping that preserves exact frame sizes, colors, and rim shapes. Best for validating sizing.
+          </p>
+          <p className="mt-1.5 text-[11px]">
+            <strong>Generative AI Try-On:</strong> Blends lighting, shadows, and textures for a realistic look. This is a simulation; frame details may vary slightly from real products.
+          </p>
+        </div>
+
         <Link
           href={`/frames/${selectedFrame.slug}`}
           className="vv-button-retail py-2.5 px-4 text-xs font-bold justify-center mt-auto flex items-center gap-1.5"
@@ -665,6 +679,10 @@ export default function VirtualTryOn({
                 <div className="absolute top-3 right-3 bg-teal-600/80 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-sm z-20">
                   AI Enhanced
                 </div>
+                
+                <div className="absolute bottom-3 left-3 right-3 bg-amber-950/90 border border-amber-800/40 text-amber-300 text-[10px] font-semibold px-2 py-1 rounded backdrop-blur-sm z-20 text-center leading-normal">
+                  ⚠️ AI simulation preview: Frame details/dimensions may vary slightly from real product.
+                </div>
               </div>
             ) : (
               /* Composite fallback preview */
@@ -677,6 +695,10 @@ export default function VirtualTryOn({
                 />
                 <div className="absolute top-3 left-3 bg-teal-600 text-white text-[10px] font-bold px-2 py-1 rounded">
                   Fitted Composite Preview
+                </div>
+                
+                <div className="absolute bottom-3 left-3 right-3 bg-teal-950/90 border border-teal-800/40 text-teal-300 text-[10px] font-semibold px-2.5 py-1.5 rounded backdrop-blur-sm text-center leading-normal">
+                  💡 High-fidelity overlay fits exact frame geometry & details onto your photo.
                 </div>
               </div>
             )}

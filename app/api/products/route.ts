@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const products = await getStoreProducts({
     query: url.searchParams.get("q") ?? "",
     category: url.searchParams.get("category") ?? "",
-    includeDrafts: url.searchParams.get("includeDrafts") === "true"
+    includeDrafts: false
   });
 
   return NextResponse.json({ products });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateTryOnComposite } from "@/lib/integrations/ai-image";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
@@ -10,6 +11,16 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Missing required fields (image, frameSlug)" },
         { status: 400 }
+      );
+    }
+
+    // IP-based Rate Limit Check (5 requests per IP per minute)
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+    const rl = await rateLimit(`ai_try_on:${ip}`, 5, 60);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please wait a minute before requesting another AI Try-On generation." },
+        { status: 429 }
       );
     }
 

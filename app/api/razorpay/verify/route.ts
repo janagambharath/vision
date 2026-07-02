@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
 
 async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId: string, signature: string) {
   let orderData: any = null;
+  let wasUpdated = false;
 
   await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
@@ -58,6 +59,8 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
       // Already processed by webhook
       return;
     }
+
+    wasUpdated = true;
 
     // Decrement inventory securely
     for (const item of order.items) {
@@ -119,7 +122,7 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
     });
   });
 
-  if (!orderData) return;
+  if (!orderData || !wasUpdated) return;
 
   // Send Resend confirmation email
   if (orderData.email) {

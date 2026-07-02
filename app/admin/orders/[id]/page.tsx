@@ -125,6 +125,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       redirect(`/admin/orders/${order!.publicId}?error=invalid-amount`);
     }
 
+    let isSuccessful = false;
     try {
       // Call Razorpay Refund API
       const rzpRefund = await refundRazorpayPayment(latestPayment.providerPaymentId, amountPaise);
@@ -162,24 +163,37 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
       // Notify customer
       if (order!.email) {
-        await sendEmail(
-          order!.email,
-          `Refund Processed: ${order!.publicId}`,
-          `<h3>Your refund of ${formatMoney(amountPaise)} has been processed.</h3><p>Reason: ${reason}</p>`
-        );
+        try {
+          await sendEmail(
+            order!.email,
+            `Refund Processed: ${order!.publicId}`,
+            `<h3>Your refund of ${formatMoney(amountPaise)} has been processed.</h3><p>Reason: ${reason}</p>`
+          );
+        } catch (emailErr) {
+          console.error("Failed to send refund email confirmation:", emailErr);
+        }
       }
 
       if (order!.phone) {
-        await sendWhatsAppTemplate(order!.phone, "refund_processed", [
-          order!.customerName,
-          order!.publicId,
-          (amountPaise / 100).toFixed(2)
-        ]);
+        try {
+          await sendWhatsAppTemplate(order!.phone, "refund_processed", [
+            order!.customerName,
+            order!.publicId,
+            (amountPaise / 100).toFixed(2)
+          ]);
+        } catch (waErr) {
+          console.error("Failed to send refund WhatsApp notification:", waErr);
+        }
       }
 
-      redirect(`/admin/orders/${order!.publicId}?refundSuccess=true`);
+      isSuccessful = true;
     } catch (err) {
       console.error("Refund trigger failed:", err);
+    }
+
+    if (isSuccessful) {
+      redirect(`/admin/orders/${order!.publicId}?refundSuccess=true`);
+    } else {
       redirect(`/admin/orders/${order!.publicId}?error=refund-failed`);
     }
   }
