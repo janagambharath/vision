@@ -9,7 +9,8 @@ import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
 
 export const metadata = {
   title: "Order Tracking | Vision Vistara",
-  description: "Track your Vision Vistara frame orders from pending to delivered."
+  description: "Track your Vision Vistara frame orders from pending to delivered.",
+  robots: { index: false, follow: false }
 };
 
 const statusFlow = ["PENDING", "CONFIRMED", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED"];
@@ -29,13 +30,23 @@ export default async function OrderTrackingPage({
   const { id } = await params;
   const search = (await searchParams) ?? {};
 
-  if (id === "demo" || id === "lookup") {
+  if (id === "demo" || id === "lookup" || id === "start") {
     return (
       <main className="vv-section bg-paper">
         <div className="vv-container max-w-2xl">
           <p className="vv-kicker text-retail">Order tracking</p>
           <h1 className="text-4xl font-extrabold font-sans text-slate-900">Track your order</h1>
           <p className="mt-3 text-slate-600">Enter your order ID and verification phone number to view the delivery timeline.</p>
+          {search.error === "rate-limited" ? (
+            <div className="mt-5 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+              Too many tracking attempts. Wait a minute and try again.
+            </div>
+          ) : null}
+          {search.error === "invalid" ? (
+            <div className="mt-5 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+              Enter both the order ID and the phone number used at checkout.
+            </div>
+          ) : null}
           <form className="vv-card mt-8 grid gap-4 p-6 bg-white border border-slate-200" action="/frames/orders/lookup" method="get">
             <label className="grid gap-2 text-sm font-extrabold text-slate-600">
               Order ID
@@ -74,7 +85,7 @@ export default async function OrderTrackingPage({
           <h1 className="mt-6 text-3xl font-extrabold">Order not found</h1>
           <p className="mt-3 text-slate-600">We couldn't find an order with ID "{id}". Please check the order ID or contact us on WhatsApp.</p>
           <div className="mt-6 flex justify-center gap-3">
-            <Link className="vv-button-retail" href="/frames/orders/demo">Try again</Link>
+            <Link className="vv-button-retail" href="/frames/orders/start">Try again</Link>
             <a className="vv-button bg-emerald-400 text-ink" href={`https://wa.me/${CLINIC_WHATSAPP_NUMBER}?text=Hello%20Vision%20Vistara%2C%20I%20need%20help%20tracking%20order%20${id}`} target="_blank" rel="noopener">
               <MessageCircle className="h-4 w-4" />
               WhatsApp

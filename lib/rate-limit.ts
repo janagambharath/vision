@@ -1,5 +1,20 @@
 import { redis } from "@/lib/redis";
 
+type RateLimitOptions = {
+  keyPrefix: string;
+  limit: number;
+  windowSeconds: number;
+};
+
+const globalForRateLimit = globalThis as unknown as {
+  vvRateLimit?: Map<string, { count: number; resetAt: number }>;
+};
+
+function getClientIp(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwardedFor || request.headers.get("x-real-ip") || "unknown";
+}
+
 export async function rateLimit(
   key: string,
   limit: number,
@@ -27,4 +42,27 @@ export async function rateLimit(
     console.warn("⚠️ Rate limiter failed (degrading gracefully):", err);
     return { allowed: true, remaining: limit };
   }
+}
+
+export async function isRateLimited(request: Request, options: RateLimitOptions) {
+  const ip = getClientIp(request);
+  const key = `${options.keyPrefix}:${ip}`;
+
+  if (redis) {
+    const result = await rateLimit(key, options.limit, options.windowSeconds);
+    return !result.allowed;
+  }
+
+  const now = Date.now();
+  const windowMs = options.windowSeconds * 1000;
+  const store = (globalForRateLimit.vvRateLimit ??= new Map());
+  const current = store.get(key);
+
+  if (!current || current.resetAt <= now) {
+    store.set(key, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+
+  current.count += 1;
+  return current.count > options.limit;
 }

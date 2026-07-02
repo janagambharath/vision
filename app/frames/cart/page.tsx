@@ -40,7 +40,11 @@ export default async function CartPage({
 
         {params.error ? (
           <div className="mb-5 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
-            Checkout is blocked until all product and lens prices are verified.
+            {params.error === "invalid-coupon"
+              ? "That coupon is inactive, expired, or does not meet the order minimum."
+              : params.error === "empty-cart"
+                ? "Your cart is empty."
+                : "Checkout is blocked until all product and lens prices, stock, and terms are verified."}
           </div>
         ) : null}
 

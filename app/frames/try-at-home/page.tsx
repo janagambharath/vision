@@ -37,7 +37,7 @@ export default async function TryAtHomePage({
           <p className="mt-2 text-sm text-slate-500">Request ID: {params.request}</p>
           <div className="mt-8 flex justify-center gap-3">
             <Link className="vv-button-retail" href="/frames">Continue Shopping</Link>
-            <Link className="vv-button-light" href="/frames/orders/demo">Track Orders</Link>
+            <Link className="vv-button-light" href="/frames/orders/lookup">Track Orders</Link>
           </div>
         </div>
       </main>

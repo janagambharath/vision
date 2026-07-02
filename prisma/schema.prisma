@@ -75,6 +75,14 @@ enum AdminRole {
   STAFF
 }
 
+enum PreviewStatus {
+  RECEIVED
+  PROCESSING
+  READY
+  FALLBACK_READY
+  FAILED
+}
+
 model User {
   id             String            @id @default(cuid())
   name           String?
@@ -90,6 +98,7 @@ model User {
   prescriptions  Prescription[]
   shipping       ShippingAddress[]
 
+  @@index([phone])
   @@index([createdAt])
 }
 
@@ -158,9 +167,11 @@ model Product {
   orderItems         OrderItem[]
   reviews            Review[]
   wishlistItems      WishlistItem[]
+  previewRequests    FramePreviewRequest[]
 
   @@index([status])
   @@index([brand])
+  @@index([searchText])
   @@index([createdAt])
   @@index([featured])
 }
@@ -184,7 +195,7 @@ model ProductImage {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@index([productId])
+  @@index([productId, role])
 }
 
 model Inventory {
@@ -310,6 +321,25 @@ model Payment {
   updatedAt         DateTime      @updatedAt
 
   @@index([providerOrderId])
+  @@index([providerPaymentId])
+  @@index([status])
+}
+
+model PaymentWebhookEvent {
+  id              String   @id @default(cuid())
+  provider        String   @default("razorpay")
+  providerEventId String   @unique
+  eventType       String
+  paymentId       String?
+  orderId         String?
+  processed       Boolean  @default(false)
+  payload         Json
+  createdAt       DateTime @default(now())
+
+  @@index([provider, eventType])
+  @@index([paymentId])
+  @@index([orderId])
+  @@map("payment_webhook_events")
 }
 
 model ShippingAddress {
@@ -350,6 +380,7 @@ model TryAtHomeRequest {
 
   @@index([phone])
   @@index([status])
+  @@index([preferredDate])
 }
 
 model Prescription {
@@ -399,13 +430,38 @@ model Review {
 
 model WishlistItem {
   id        String   @id @default(cuid())
-  userId    String
+  userId    String?
+  sessionId String?
   productId String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@unique([userId, productId])
+  @@unique([sessionId, productId])
+  @@index([sessionId])
+}
+
+model FramePreviewRequest {
+  id               String        @id @default(cuid())
+  productId        String
+  productSlug      String
+  customerImageUrl String
+  frameImageUrl    String?
+  resultImageUrl   String?
+  status           PreviewStatus @default(RECEIVED)
+  disclaimer       String
+  promptVersion    String
+  prompt           String
+  failureReason    String?
+  product          Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([productSlug])
+  @@index([status])
+  @@index([createdAt])
+  @@map("frame_preview_requests")
 }
 
 model Lead {
@@ -422,6 +478,7 @@ model Lead {
 
   @@index([status])
   @@index([phone])
+  @@index([source])
   @@index([createdAt])
 }
 
@@ -474,13 +531,19 @@ model Notification {
   subject   String?
   body      String?
   status    String   @default("pending")
+  entityType String?
+  entityId   String?
+  metadata   Json?
   sentAt    DateTime?
   error     String?
   order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([orderId])
   @@index([channel, status])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }
 
 model AnalyticsEvent {
@@ -490,10 +553,13 @@ model AnalyticsEvent {
   userId     String?
   productId  String?
   orderId    String?
+  source     String?
+  path       String?
   metadata   Json?
   createdAt  DateTime @default(now())
 
   @@index([event])
+  @@index([sessionId])
   @@index([createdAt])
 }
 

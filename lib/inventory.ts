@@ -740,8 +740,15 @@ export const migratedProducts: StoreProduct[] = [
   }
 ];
 
-export function productIsSellable(product: Pick<StoreProduct, "status" | "pricePaise" | "inventoryStatus">) {
-  return product.status === "ACTIVE" && typeof product.pricePaise === "number" && product.inventoryStatus !== "OUT_OF_STOCK";
+export function productIsSellable(product: Pick<StoreProduct, "status" | "pricePaise" | "inventoryStatus" | "inventoryQuantity">) {
+  return (
+    product.status === "ACTIVE" &&
+    typeof product.pricePaise === "number" &&
+    product.pricePaise > 0 &&
+    product.inventoryQuantity > 0 &&
+    product.inventoryStatus !== "OUT_OF_STOCK" &&
+    product.inventoryStatus !== "PRICE_REQUIRED"
+  );
 }
 
 export function productMatches(product: StoreProduct, query = "", category = "") {
