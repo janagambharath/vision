@@ -9,7 +9,11 @@ export function ProductGallery({ product }: { product: StoreProduct }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
-  const images = product.images.length > 0 ? product.images : [{ url: "/assets/vision-vistara-eye-logo.png", alt: "Vision Vistara", role: "front", sortOrder: 0 }];
+  const galleryImages = product.images.filter((image) => image.role !== "ar");
+  const images =
+    galleryImages.length > 0
+      ? galleryImages
+      : [{ url: "/assets/vision-vistara-eye-logo.png", alt: "Vision Vistara", role: "front", sortOrder: 0 }];
   const activeImage = images[activeIdx] || images[0];
 
   return (

@@ -139,6 +139,7 @@ export async function checkoutAction(formData: FormData) {
 
       await prisma.payment.create({
         data: {
+          id: `payment-${order.id}`,
           orderId: order.id,
           providerOrderId: razorpayOrder.id,
           amountPaise: totals.grandTotalPaise,
@@ -149,6 +150,7 @@ export async function checkoutAction(formData: FormData) {
     } catch {
       await prisma.payment.create({
         data: {
+          id: `payment-${order.id}`,
           orderId: order.id,
           amountPaise: totals.grandTotalPaise,
           status: "PENDING",

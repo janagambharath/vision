@@ -7,11 +7,13 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
+    "test": "node --import tsx --test tests/cart.test.ts tests/razorpay.test.ts",
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-database.ps1",
     "worker:abandoned-carts": "tsx workers/abandoned-cart.ts",
     "worker:order-followup": "tsx workers/order-followup.ts",
     "worker:low-stock-alert": "tsx workers/low-stock-alert.ts"

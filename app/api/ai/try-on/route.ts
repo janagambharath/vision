@@ -24,6 +24,15 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!process.env.HUGGINGFACE_API_KEY) {
+      return NextResponse.json({
+        success: true,
+        source: "local_composite",
+        image: null,
+        message: "AI enhancement is not configured yet. Showing the exact local frame overlay instead."
+      });
+    }
+
     // Call our modular AI integration service
     const generatedImageBase64 = await generateTryOnComposite(image, frameSlug);
 

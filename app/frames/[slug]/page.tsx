@@ -264,16 +264,26 @@ export default async function ProductPage({
             </div>
 
             {/* Virtual Try-On CTA */}
-            <Link
-              href={`/frames/try-on?slug=${product.slug}`}
-              className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
-            >
-              <Camera className="h-8 w-8 text-teal-600 shrink-0 group-hover:scale-110 transition-transform" />
-              <div>
-                <strong className="text-sm font-extrabold text-teal-800">Try this frame on your face</strong>
-                <p className="text-xs text-teal-600 mt-0.5">Use your camera to see how this frame looks on you.</p>
+            {product.tryOnEligible && product.arImageUrl ? (
+              <Link
+                href={`/frames/try-on?slug=${product.slug}`}
+                className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
+              >
+                <Camera className="h-8 w-8 text-teal-600 shrink-0 group-hover:scale-110 transition-transform" />
+                <div>
+                  <strong className="text-sm font-extrabold text-teal-800">Try this frame on your face</strong>
+                  <p className="text-xs text-teal-600 mt-0.5">Use your camera to see how this frame looks on you.</p>
+                </div>
+              </Link>
+            ) : (
+              <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <Camera className="h-8 w-8 text-slate-400 shrink-0" />
+                <div>
+                  <strong className="text-sm font-extrabold text-slate-700">Virtual try-on not available</strong>
+                  <p className="text-xs text-slate-500 mt-0.5">This frame needs a verified AR overlay before online fitting.</p>
+                </div>
               </div>
-            </Link>
+            )}
 
             {/* Client Interactive Selector and Add-To-Cart actions */}
             <ProductCheckoutPanel

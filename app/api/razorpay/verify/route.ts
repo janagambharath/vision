@@ -4,9 +4,18 @@ import { prisma } from "@/lib/db";
 import { sendEmail, getOrderConfirmationTemplate } from "@/lib/integrations/resend";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
 import { createShiprocketShipment } from "@/lib/integrations/shiprocket";
+import { isRateLimited } from "@/lib/rate-limit";
+import { assertSameOrigin } from "@/lib/request-security";
 
 export async function POST(request: NextRequest) {
   try {
+    const originError = assertSameOrigin(request);
+    if (originError) return originError;
+
+    if (await isRateLimited(request, { keyPrefix: "razorpay-verify", limit: 20, windowSeconds: 60 })) {
+      return NextResponse.json({ error: "Too many verification attempts" }, { status: 429 });
+    }
+
     const body = await request.json();
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, orderPublicId } = body;
 
@@ -55,7 +64,7 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
     
     orderData = order;
 
-    if (order.status !== "PENDING") {
+    if (!["PENDING", "AWAITING_PRESCRIPTION"].includes(order.status)) {
       // Already processed by webhook
       return;
     }
@@ -79,7 +88,7 @@ async function confirmOrder(publicId: string, paymentId: string, razorpayOrderId
     // Update order status & link payment details
     await tx.order.update({
       where: { id: order.id },
-      data: { status: "CONFIRMED" }
+      data: { status: order.status === "AWAITING_PRESCRIPTION" ? "AWAITING_PRESCRIPTION" : "CONFIRMED" }
     });
 
     // Find existing payment record by provider order ID

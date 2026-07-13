@@ -9,9 +9,58 @@ import { ProductForm } from "@/components/admin/product-form";
 
 export const metadata = { title: "Edit Product | Admin" };
 
-export default async function EditProductPage({ params }: { params: Promise<{ slug: string }> }) {
+const errorMessages: Record<string, string> = {
+  "missing-fields": "Name, brand, and SKU are required.",
+  "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
+  "duplicate-slug": "Another product already uses that slug.",
+  "duplicate-sku": "Another product already uses that SKU.",
+  "try-on-ar-required": "Virtual try-on requires a transparent AR overlay URL."
+};
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function readImages(formData: FormData, productId: string, brand: string, name: string, arImageUrl: string) {
+  const imageCount = Number(formData.get("image_count") ?? 0);
+  const images: Array<{ productId: string; url: string; alt: string; role: string; sortOrder: number }> = [];
+
+  for (let i = 0; i < imageCount; i += 1) {
+    const url = String(formData.get(`image_url_${i}`) ?? "").trim();
+    const alt = String(formData.get(`image_alt_${i}`) ?? "").trim();
+    const role = String(formData.get(`image_role_${i}`) ?? "gallery");
+    const sortOrder = Number(formData.get(`image_sort_${i}`) ?? i);
+    if (url) images.push({ productId, url, alt, role, sortOrder });
+  }
+
+  if (arImageUrl && !images.some((image) => image.role === "ar" && image.url === arImageUrl)) {
+    images.push({
+      productId,
+      url: arImageUrl,
+      alt: `${brand} ${name} AR overlay`,
+      role: "ar",
+      sortOrder: images.length
+    });
+  }
+
+  return images;
+}
+
+export default async function EditProductPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ error?: string }>;
+}) {
   await requireAdmin();
   const { slug: currentSlug } = await params;
+  const query = (await searchParams) ?? {};
+  const errorMessage = query.error ? errorMessages[query.error] : null;
   const [categories, brands] = await Promise.all([getCategories(), getBrands()]);
 
   const product = await prisma.product.findUnique({
@@ -38,12 +87,14 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
     const brand = String(formData.get("brand") ?? "").trim();
     const sku = String(formData.get("sku") ?? "").trim();
     const barcode = String(formData.get("barcode") ?? "").trim() || null;
-    const slug = String(formData.get("slug") ?? "").trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const slug = slugify(String(formData.get("slug") ?? "").trim() || `${brand}-${name}`);
     const status = String(formData.get("status") ?? "DRAFT") as "ACTIVE" | "DRAFT" | "ARCHIVED";
     const featured = formData.get("featured") === "on";
     const tryAtHomeEligible = formData.get("tryAtHomeEligible") === "on";
+    const tryOnEligible = formData.get("tryOnEligible") === "on";
     const codAvailable = formData.get("codAvailable") === "on";
     const brandId = String(formData.get("brandId") ?? "").trim() || null;
+    const arImageUrl = String(formData.get("arImageUrl") ?? "").trim();
 
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
@@ -87,82 +138,83 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
     const faceShapes = String(formData.get("faceShapes") ?? "").split(",").map(f => f.trim()).filter(Boolean);
     const lensCompatibility = String(formData.get("lensCompatibility") ?? "").split("\n").map(l => l.trim()).filter(Boolean);
 
-    if (!name || !brand || !sku) {
-      redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
-    }
+    if (!name || !brand || !sku) redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect(`/admin/products/${currentSlug}/edit?error=invalid-slug`);
+    if (tryOnEligible && !arImageUrl) redirect(`/admin/products/${currentSlug}/edit?error=try-on-ar-required`);
 
-    // Create slug redirect if slug changed
-    if (slug !== currentSlug) {
-      await prisma.slugRedirect.upsert({
-        where: { oldSlug: currentSlug },
-        update: { newSlug: slug },
-        create: { oldSlug: currentSlug, newSlug: slug }
-      });
-    }
-
-    // Update product
-    await prisma.product.update({
-      where: { id: product!.id },
-      data: {
-        slug, sku, barcode, name, brand, brandId, status, featured, tryAtHomeEligible, codAvailable,
-        pricePaise, compareAtPaise, costPricePaise, taxPct, description, shortDescription,
-        gender, ageGroup, material, colour, finish, shape, rimType, size, measurements,
-        weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight, pdRange,
-        springHinges, blueLightCompatible, prescriptionCompatible,
-        highlights, faceShapes, lensCompatibility,
-        careInstructions, warranty, returnPolicy, deliveryEstimate,
-        seoTitle, seoDescription, seoKeywords,
-        publishedAt: status === "ACTIVE" && !product!.publishedAt ? new Date() : product!.publishedAt,
-        searchText: [sku, name, brand, material, colour, shape, rimType, gender, selectedCategories.join(" ")].filter(Boolean).join(" ")
-      }
-    });
-
-    // Inventory
-    await prisma.inventory.upsert({
-      where: { productId: product!.id },
-      update: {
-        quantity,
-        status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
-        warehouse: String(formData.get("warehouse") ?? "").trim() || undefined,
-        supplier: String(formData.get("supplier") ?? "").trim() || undefined
+    const duplicate = await prisma.product.findFirst({
+      where: {
+        id: { not: product!.id },
+        OR: [{ slug }, { sku }]
       },
-      create: {
-        productId: product!.id, quantity,
-        status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
-        warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
-        location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"
-      }
+      select: { slug: true, sku: true }
     });
+    if (duplicate?.slug === slug) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-slug`);
+    if (duplicate?.sku === sku) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-sku`);
 
-    // Images — replace all with uploader state
-    await prisma.productImage.deleteMany({ where: { productId: product!.id } });
-    const imageCount = Number(formData.get("image_count") ?? 0);
-    for (let i = 0; i < imageCount; i++) {
-      const url = String(formData.get(`image_url_${i}`) ?? "").trim();
-      const alt = String(formData.get(`image_alt_${i}`) ?? "").trim();
-      const role = String(formData.get(`image_role_${i}`) ?? "gallery");
-      const sortOrder = Number(formData.get(`image_sort_${i}`) ?? i);
-      if (url) {
-        await prisma.productImage.create({
-          data: { productId: product!.id, url, alt, role, sortOrder }
+    await prisma.$transaction(async (tx) => {
+      if (slug !== currentSlug) {
+        await tx.slugRedirect.upsert({
+          where: { oldSlug: currentSlug },
+          update: { newSlug: slug },
+          create: { oldSlug: currentSlug, newSlug: slug }
         });
       }
-    }
 
-    // Categories
-    await prisma.productCategory.deleteMany({ where: { productId: product!.id } });
-    for (const catSlug of selectedCategories) {
-      const category = await prisma.category.findUnique({ where: { slug: catSlug } });
-      if (category) {
-        await prisma.productCategory.create({
-          data: { productId: product!.id, categoryId: category.id }
+      await tx.product.update({
+        where: { id: product!.id },
+        data: {
+          slug, sku, barcode, name, brand, brandId, status, featured, tryAtHomeEligible, tryOnEligible,
+          arImageUrl: arImageUrl || null, codAvailable,
+          pricePaise, compareAtPaise, costPricePaise, taxPct, description, shortDescription,
+          gender, ageGroup, material, colour, finish, shape, rimType, size, measurements,
+          weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight, pdRange,
+          springHinges, blueLightCompatible, prescriptionCompatible,
+          highlights, faceShapes, lensCompatibility,
+          careInstructions, warranty, returnPolicy, deliveryEstimate,
+          seoTitle, seoDescription, seoKeywords,
+          publishedAt: status === "ACTIVE" && !product!.publishedAt ? new Date() : product!.publishedAt,
+          searchText: [sku, name, brand, material, colour, shape, rimType, gender, selectedCategories.join(" ")].filter(Boolean).join(" ")
+        }
+      });
+
+      await tx.inventory.upsert({
+        where: { productId: product!.id },
+        update: {
+          quantity,
+          status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
+          warehouse: String(formData.get("warehouse") ?? "").trim() || undefined,
+          supplier: String(formData.get("supplier") ?? "").trim() || undefined
+        },
+        create: {
+          productId: product!.id,
+          quantity,
+          status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
+          warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
+          location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"
+        }
+      });
+
+      await tx.productImage.deleteMany({ where: { productId: product!.id } });
+      const images = readImages(formData, product!.id, brand, name, arImageUrl);
+      if (images.length) await tx.productImage.createMany({ data: images });
+
+      await tx.productCategory.deleteMany({ where: { productId: product!.id } });
+      if (selectedCategories.length) {
+        const categoryRows = await tx.category.findMany({
+          where: { slug: { in: selectedCategories } },
+          select: { id: true }
         });
+        if (categoryRows.length) {
+          await tx.productCategory.createMany({
+            data: categoryRows.map((category) => ({ productId: product!.id, categoryId: category.id }))
+          });
+        }
       }
-    }
 
-    // Activity log
-    await prisma.activityLog.create({
-      data: { action: "PRODUCT_UPDATED", entityType: "product", entityId: product!.id, metadata: { slug, name, brand } }
+      await tx.activityLog.create({
+        data: { action: "PRODUCT_UPDATED", entityType: "product", entityId: product!.id, metadata: { slug, name, brand, tryOnEligible } }
+      });
     });
 
     await invalidateProductCache();
@@ -181,11 +233,17 @@ export default async function EditProductPage({ params }: { params: Promise<{ sl
           <h1 className="text-4xl font-extrabold">Edit: {product.brand} {product.name}</h1>
           <p className="mt-2 text-slate-600">Update all product details. Changing the slug will create a 301 redirect from the old URL.</p>
         </div>
+        {errorMessage ? (
+          <div className="mb-6 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+            {errorMessage}
+          </div>
+        ) : null}
         <ProductForm
           product={{
             ...product,
             quantity: product.inventory?.quantity ?? 0,
             linkedCategorySlugs,
+            arImageUrl: product.arImageUrl ?? product.images.find(img => img.role === "ar")?.url ?? "",
             images: product.images.map(img => ({ url: img.url, alt: img.alt, role: img.role, sortOrder: img.sortOrder }))
           }}
           categories={categories}

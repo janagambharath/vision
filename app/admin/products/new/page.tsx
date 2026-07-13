@@ -9,9 +9,58 @@ import { ProductForm } from "@/components/admin/product-form";
 
 export const metadata = { title: "New Product | Admin" };
 
-export default async function NewProductPage() {
+const errorMessages: Record<string, string> = {
+  "missing-fields": "Name, brand, and SKU are required.",
+  "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
+  "duplicate-slug": "Another product already uses that slug.",
+  "duplicate-sku": "Another product already uses that SKU.",
+  "try-on-ar-required": "Virtual try-on requires a transparent AR overlay URL."
+};
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function readImages(formData: FormData, productId: string, brand: string, name: string, arImageUrl: string) {
+  const imageCount = Number(formData.get("image_count") ?? 0);
+  const images: Array<{ productId: string; url: string; alt: string; role: string; sortOrder: number }> = [];
+
+  for (let i = 0; i < imageCount; i += 1) {
+    const url = String(formData.get(`image_url_${i}`) ?? "").trim();
+    const alt = String(formData.get(`image_alt_${i}`) ?? "").trim();
+    const role = String(formData.get(`image_role_${i}`) ?? "gallery");
+    const sortOrder = Number(formData.get(`image_sort_${i}`) ?? i);
+    if (url) {
+      images.push({ productId, url, alt, role, sortOrder });
+    }
+  }
+
+  if (arImageUrl && !images.some((image) => image.role === "ar" && image.url === arImageUrl)) {
+    images.push({
+      productId,
+      url: arImageUrl,
+      alt: `${brand} ${name} AR overlay`,
+      role: "ar",
+      sortOrder: images.length
+    });
+  }
+
+  return images;
+}
+
+export default async function NewProductPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
   await requireAdmin();
   const [categories, brands] = await Promise.all([getCategories(), getBrands()]);
+  const params = (await searchParams) ?? {};
+  const errorMessage = params.error ? errorMessages[params.error] : null;
 
   async function createProduct(formData: FormData) {
     "use server";
@@ -21,12 +70,14 @@ export default async function NewProductPage() {
     const brand = String(formData.get("brand") ?? "").trim();
     const sku = String(formData.get("sku") ?? "").trim();
     const barcode = String(formData.get("barcode") ?? "").trim() || null;
-    const slug = String(formData.get("slug") ?? "").trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const slug = slugify(String(formData.get("slug") ?? "").trim() || `${brand}-${name}`);
     const status = String(formData.get("status") ?? "DRAFT") as "ACTIVE" | "DRAFT" | "ARCHIVED";
     const featured = formData.get("featured") === "on";
     const tryAtHomeEligible = formData.get("tryAtHomeEligible") === "on";
+    const tryOnEligible = formData.get("tryOnEligible") === "on";
     const codAvailable = formData.get("codAvailable") === "on";
     const brandId = String(formData.get("brandId") ?? "").trim() || null;
+    const arImageUrl = String(formData.get("arImageUrl") ?? "").trim();
 
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
@@ -70,63 +121,63 @@ export default async function NewProductPage() {
     const faceShapes = String(formData.get("faceShapes") ?? "").split(",").map(f => f.trim()).filter(Boolean);
     const lensCompatibility = String(formData.get("lensCompatibility") ?? "").split("\n").map(l => l.trim()).filter(Boolean);
 
-    if (!name || !brand || !sku) {
-      redirect("/admin/products/new?error=missing-fields");
-    }
+    if (!name || !brand || !sku) redirect("/admin/products/new?error=missing-fields");
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect("/admin/products/new?error=invalid-slug");
+    if (tryOnEligible && !arImageUrl) redirect("/admin/products/new?error=try-on-ar-required");
 
-    const product = await prisma.product.create({
-      data: {
-        slug, sku, barcode, name, brand, brandId, status, featured, tryAtHomeEligible, codAvailable,
-        pricePaise, compareAtPaise, costPricePaise, taxPct, description, shortDescription,
-        gender, ageGroup, material, colour, finish, shape, rimType, size, measurements,
-        weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight, pdRange,
-        springHinges, blueLightCompatible, prescriptionCompatible,
-        highlights, faceShapes, lensCompatibility,
-        careInstructions, warranty, returnPolicy, deliveryEstimate,
-        seoTitle, seoDescription, seoKeywords,
-        publishedAt: status === "ACTIVE" ? new Date() : null,
-        searchText: [sku, name, brand, material, colour, shape, rimType, gender, selectedCategories.join(" ")].filter(Boolean).join(" ")
-      }
+    const duplicate = await prisma.product.findFirst({
+      where: { OR: [{ slug }, { sku }] },
+      select: { slug: true, sku: true }
     });
+    if (duplicate?.slug === slug) redirect("/admin/products/new?error=duplicate-slug");
+    if (duplicate?.sku === sku) redirect("/admin/products/new?error=duplicate-sku");
 
-    // Inventory
-    await prisma.inventory.create({
-      data: {
-        productId: product.id, quantity,
-        status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
-        warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
-        supplier: String(formData.get("supplier") ?? "").trim() || null,
-        location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"
-      }
-    });
+    await prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          slug, sku, barcode, name, brand, brandId, status, featured, tryAtHomeEligible, tryOnEligible,
+          arImageUrl: arImageUrl || null, codAvailable,
+          pricePaise, compareAtPaise, costPricePaise, taxPct, description, shortDescription,
+          gender, ageGroup, material, colour, finish, shape, rimType, size, measurements,
+          weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight, pdRange,
+          springHinges, blueLightCompatible, prescriptionCompatible,
+          highlights, faceShapes, lensCompatibility,
+          careInstructions, warranty, returnPolicy, deliveryEstimate,
+          seoTitle, seoDescription, seoKeywords,
+          publishedAt: status === "ACTIVE" ? new Date() : null,
+          searchText: [sku, name, brand, material, colour, shape, rimType, gender, selectedCategories.join(" ")].filter(Boolean).join(" ")
+        }
+      });
 
-    // Images from uploader
-    const imageCount = Number(formData.get("image_count") ?? 0);
-    for (let i = 0; i < imageCount; i++) {
-      const url = String(formData.get(`image_url_${i}`) ?? "").trim();
-      const alt = String(formData.get(`image_alt_${i}`) ?? "").trim();
-      const role = String(formData.get(`image_role_${i}`) ?? "gallery");
-      const sortOrder = Number(formData.get(`image_sort_${i}`) ?? i);
-      if (url) {
-        await prisma.productImage.create({
-          data: { productId: product.id, url, alt, role, sortOrder }
+      await tx.inventory.create({
+        data: {
+          productId: product.id,
+          quantity,
+          status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
+          warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
+          supplier: String(formData.get("supplier") ?? "").trim() || null,
+          location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"
+        }
+      });
+
+      const images = readImages(formData, product.id, brand, name, arImageUrl);
+      if (images.length) await tx.productImage.createMany({ data: images });
+
+      if (selectedCategories.length) {
+        const categoryRows = await tx.category.findMany({
+          where: { slug: { in: selectedCategories } },
+          select: { id: true }
         });
+        if (categoryRows.length) {
+          await tx.productCategory.createMany({
+            data: categoryRows.map((category) => ({ productId: product.id, categoryId: category.id }))
+          });
+        }
       }
-    }
 
-    // Categories
-    for (const catSlug of selectedCategories) {
-      const category = await prisma.category.findUnique({ where: { slug: catSlug } });
-      if (category) {
-        await prisma.productCategory.create({
-          data: { productId: product.id, categoryId: category.id }
-        });
-      }
-    }
-
-    // Activity log
-    await prisma.activityLog.create({
-      data: { action: "PRODUCT_CREATED", entityType: "product", entityId: product.id, metadata: { slug, name, brand } }
+      await tx.activityLog.create({
+        data: { action: "PRODUCT_CREATED", entityType: "product", entityId: product.id, metadata: { slug, name, brand, tryOnEligible } }
+      });
     });
 
     await invalidateProductCache();
@@ -145,6 +196,11 @@ export default async function NewProductPage() {
           <h1 className="text-4xl font-extrabold">Add New Product</h1>
           <p className="mt-2 text-slate-600">Fill in all product details across tabs, upload images, and publish.</p>
         </div>
+        {errorMessage ? (
+          <div className="mb-6 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+            {errorMessage}
+          </div>
+        ) : null}
         <ProductForm
           categories={categories}
           brands={brands}

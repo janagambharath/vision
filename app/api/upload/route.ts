@@ -1,9 +1,89 @@
 import { NextRequest, NextResponse } from "next/server";
 import { configureCloudinary } from "@/lib/integrations/cloudinary";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
+import { isRateLimited } from "@/lib/rate-limit";
+import { assertSameOrigin } from "@/lib/request-security";
+
+type UploadResult = {
+  secure_url: string;
+  public_id: string;
+  format: string;
+};
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function updateUploadStatus(
+  uploadId: string | null,
+  data: { status?: string; assetUrl?: string; errorReason?: string; attempt?: number; lastAttempt?: Date }
+) {
+  if (!uploadId) return;
+  await prisma.productImageUpload.update({
+    where: { id: uploadId },
+    data
+  }).catch(() => null);
+}
+
+async function uploadToCloudinaryWithRetry(
+  cloudinary: ReturnType<typeof configureCloudinary>,
+  base64: string,
+  options: Record<string, unknown>,
+  uploadId: string | null,
+  maxRetries = 3
+) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+    await updateUploadStatus(uploadId, {
+      status: "uploading",
+      attempt,
+      lastAttempt: new Date()
+    });
+
+    try {
+      const result = await new Promise<UploadResult>((resolve, reject) => {
+        cloudinary.uploader.upload(base64, options, (error, result) => {
+          if (error || !result) reject(error ?? new Error("Upload failed"));
+          else resolve(result as UploadResult);
+        });
+      });
+
+      await updateUploadStatus(uploadId, {
+        status: "success",
+        assetUrl: result.secure_url,
+        attempt,
+        lastAttempt: new Date()
+      });
+
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        await sleep(750 * 2 ** (attempt - 1));
+      }
+    }
+  }
+
+  const message = lastError instanceof Error ? lastError.message : "Upload failed";
+  await updateUploadStatus(uploadId, {
+    status: "failed",
+    errorReason: message,
+    lastAttempt: new Date()
+  });
+  throw new Error(`Upload failed after ${maxRetries} attempts: ${message}`);
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const originError = assertSameOrigin(request);
+    if (originError) return originError;
+
+    if (await isRateLimited(request, { keyPrefix: "admin-upload", limit: 30, windowSeconds: 60 })) {
+      return NextResponse.json({ error: "Too many upload attempts" }, { status: 429 });
+    }
+
     // Require admin authentication for uploads
     const session = await auth();
     if (!session?.user?.email) {
@@ -14,6 +94,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const folder = String(formData.get("folder") ?? "prescriptions");
+    const productId = String(formData.get("productId") ?? "").trim();
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -25,6 +106,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid file type. Allowed: JPEG, PNG, WebP, PDF." }, { status: 400 });
     }
 
+    if (folder.includes("ar") && !["image/png", "image/webp"].includes(file.type)) {
+      return NextResponse.json({ error: "AR overlays must be PNG or WebP so transparency is preserved." }, { status: 400 });
+    }
+
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "File too large. Max 10MB." }, { status: 400 });
@@ -33,20 +118,26 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-    const result = await new Promise<{ secure_url: string; public_id: string; format: string }>((resolve, reject) => {
-      cloudinary.uploader.upload(
-        base64,
-        {
-          folder: `vision-vistara/${folder}`,
-          resource_type: "auto",
-          transformation: folder === "products" ? [{ width: 1200, height: 1200, crop: "limit", quality: "auto" }] : undefined
-        },
-        (error, result) => {
-          if (error || !result) reject(error ?? new Error("Upload failed"));
-          else resolve(result as { secure_url: string; public_id: string; format: string });
-        }
-      );
-    });
+    const uploadLog = await prisma.productImageUpload.create({
+      data: {
+        productId: productId || undefined,
+        fileName: file.name,
+        status: "uploading",
+        attempt: 0
+      },
+      select: { id: true }
+    }).catch(() => null);
+
+    const result = await uploadToCloudinaryWithRetry(
+      cloudinary,
+      base64,
+      {
+        folder: `vision-vistara/${folder}`,
+        resource_type: "auto",
+        transformation: folder === "products" ? [{ width: 1200, height: 1200, crop: "limit", quality: "auto" }] : undefined
+      },
+      uploadLog?.id ?? null
+    );
 
     return NextResponse.json({
       url: result.secure_url,

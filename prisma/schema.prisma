@@ -109,6 +109,9 @@ model AdminUser {
   passwordHash String
   role         AdminRole     @default(STAFF)
   active       Boolean       @default(true)
+  failedLogins Int           @default(0)
+  lockedUntil  DateTime?
+  lastLoginAt  DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   activityLogs ActivityLog[]
@@ -240,6 +243,8 @@ model Product {
 
   // Flags
   tryAtHomeEligible     Boolean             @default(false)
+  tryOnEligible         Boolean             @default(false)
+  arImageUrl            String?
   whatsappEnabled       Boolean             @default(true)
 
   // SEO
@@ -271,6 +276,7 @@ model Product {
   reviews               Review[]
   wishlistItems         WishlistItem[]
   previewRequests       FramePreviewRequest[]
+  imageUploads       ProductImageUpload[]
 
   @@index([status])
   @@index([brand])
@@ -321,6 +327,24 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@index([productId, role])
+}
+
+model ProductImageUpload {
+  id          String    @id @default(cuid())
+  productId   String?
+  fileName    String
+  status      String    @default("uploading")
+  assetUrl    String?
+  errorReason String?
+  attempt     Int       @default(0)
+  lastAttempt DateTime?
+  product     Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Inventory {

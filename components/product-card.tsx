@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, Home, MessageCircle, ShoppingBag, Star, Heart } from "lucide-react";
+import { Camera, Eye, Home, MessageCircle, ShoppingBag, Star, Heart } from "lucide-react";
 import { addToCart } from "@/lib/cart-actions";
 import { CLINIC_WHATSAPP_NUMBER } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
@@ -97,6 +97,12 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           {product.tryAtHomeEligible ? (
             <span className="rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
               🏠 Home trial
+            </span>
+          ) : null}
+          {product.tryOnEligible && product.arImageUrl ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+              <Camera className="h-2.5 w-2.5" />
+              Try-on
             </span>
           ) : null}
         </div>

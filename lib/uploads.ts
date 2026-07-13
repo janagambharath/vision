@@ -22,7 +22,12 @@ export type UploadedAsset = {
 type UploadOptions = {
   allowedTypes?: Set<string>;
   maxBytes?: number;
+  maxRetries?: number;
 };
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export async function uploadFormFile(
   value: FormDataEntryValue | null,
@@ -44,33 +49,46 @@ export async function uploadFormFile(
 
   const cloudinary = configureCloudinary();
   const buffer = Buffer.from(await value.arrayBuffer());
+  const maxRetries = options.maxRetries ?? 3;
 
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: "auto",
-        use_filename: true,
-        unique_filename: true
-      },
-      (error, result) => {
-        if (error || !result) {
-          reject(error ?? new Error("Cloudinary upload failed."));
-          return;
-        }
+  for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await new Promise<UploadedAsset>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type: "auto",
+            use_filename: true,
+            unique_filename: true
+          },
+          (error, result) => {
+            if (error || !result) {
+              reject(error ?? new Error("Cloudinary upload failed."));
+              return;
+            }
 
-        resolve({
-          secureUrl: result.secure_url,
-          publicId: result.public_id,
-          originalFilename: value.name,
-          bytes: result.bytes,
-          format: result.format
-        });
+            resolve({
+              secureUrl: result.secure_url,
+              publicId: result.public_id,
+              originalFilename: value.name,
+              bytes: result.bytes,
+              format: result.format
+            });
+          }
+        );
+
+        stream.end(buffer);
+      });
+    } catch (error) {
+      if (attempt === maxRetries) {
+        const message = error instanceof Error ? error.message : "Cloudinary upload failed.";
+        throw new Error(`Upload failed after ${maxRetries} attempts: ${message}`);
       }
-    );
+      await sleep(750 * 2 ** (attempt - 1));
+    }
+  }
 
-    stream.end(buffer);
-  });
+  return null;
 }
 
 export function imageUploadOptions(maxBytes = 6 * 1024 * 1024): UploadOptions {

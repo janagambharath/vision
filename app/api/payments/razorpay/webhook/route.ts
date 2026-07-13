@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { verifyRazorpayWebhookSignature } from "@/lib/integrations/razorpay";
+import { isRateLimited } from "@/lib/rate-limit";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -27,6 +28,10 @@ function eventIdFor(request: Request, rawBody: string) {
 }
 
 export async function POST(request: Request) {
+  if (await isRateLimited(request, { keyPrefix: "razorpay-webhook", limit: 120, windowSeconds: 60 })) {
+    return NextResponse.json({ error: "Too many webhook attempts" }, { status: 429 });
+  }
+
   const rawBody = await request.text();
   const signature = request.headers.get("x-razorpay-signature");
 
@@ -54,14 +59,23 @@ export async function POST(request: Request) {
   const providerPaymentId = getString(paymentEntity.id) ?? getString(refundEntity.payment_id);
   const providerOrderId = getString(paymentEntity.order_id);
 
-  const webhookEvent = await prisma.paymentWebhookEvent.create({
-    data: {
-      providerEventId,
-      eventType,
-      paymentId: providerPaymentId,
-      payload: payload as Prisma.InputJsonValue
+  let webhookEvent: { id: string };
+  try {
+    webhookEvent = await prisma.paymentWebhookEvent.create({
+      data: {
+        providerEventId,
+        eventType,
+        paymentId: providerPaymentId,
+        payload: payload as Prisma.InputJsonValue
+      },
+      select: { id: true }
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === "P2002") {
+      return NextResponse.json({ ok: true, duplicate: true });
     }
-  });
+    throw error;
+  }
 
   if (!providerPaymentId && !providerOrderId) {
     await prisma.notification.create({
@@ -120,7 +134,7 @@ export async function POST(request: Request) {
 
   const nextOrderStatus =
     nextPaymentStatus === "PAID"
-      ? "CONFIRMED"
+      ? payment.order.status === "AWAITING_PRESCRIPTION" ? "AWAITING_PRESCRIPTION" : "CONFIRMED"
       : nextPaymentStatus === "FAILED"
         ? "PENDING"
         : nextPaymentStatus === "REFUNDED"

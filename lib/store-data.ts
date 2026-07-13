@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { productMatches, type StoreImage, type StoreProduct, type StoreProductStatus } from "@/lib/inventory";
 import { getCache, setCache } from "@/lib/redis";
 
-// ─── DB RESULT MAPPING ───
+const hasDatabaseUrl = () => Boolean(process.env.DATABASE_URL);
 
 type DbStoreProduct = {
   id: string;
@@ -49,6 +49,8 @@ type DbStoreProduct = {
   returnPolicy: string | null;
   deliveryEstimate: string | null;
   tryAtHomeEligible: boolean;
+  tryOnEligible: boolean;
+  arImageUrl: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   seoKeywords: string[];
@@ -63,6 +65,7 @@ type DbStoreProduct = {
 function mapDbProduct(product: DbStoreProduct): StoreProduct {
   const categories = product.categories?.map((item) => item.category.slug) ?? [];
   const firstImage = product.images?.[0];
+  const arImageUrl = product.arImageUrl ?? product.images?.find((image) => image.role === "ar")?.url ?? null;
 
   return {
     id: product.id,
@@ -104,6 +107,8 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     inventoryQuantity: product.inventory?.quantity ?? 0,
     inventoryStatus: product.inventory?.status ?? "PRICE_REQUIRED",
     tryAtHomeEligible: product.tryAtHomeEligible,
+    tryOnEligible: product.tryOnEligible,
+    arImageUrl,
     shortDescription: product.shortDescription,
     description: product.description,
     highlights: product.highlights ?? [],
@@ -112,7 +117,7 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     careInstructions: product.careInstructions ?? "Clean with microfiber cloth. Store in a hard case.",
     warranty: product.warranty ?? "1-year manufacturer warranty.",
     returnPolicy: product.returnPolicy ?? "7-day easy return on frame-only orders.",
-    deliveryEstimate: product.deliveryEstimate ?? "3–5 business days.",
+    deliveryEstimate: product.deliveryEstimate ?? "3-5 business days.",
     seoTitle: product.seoTitle,
     seoDescription: product.seoDescription,
     seoKeywords: product.seoKeywords ?? [],
@@ -131,8 +136,6 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     reviewSnippet: product.reviews?.[0]?.body
   };
 }
-
-// ─── PRODUCT QUERIES ───
 
 const PRODUCT_INCLUDE = {
   images: { orderBy: { sortOrder: "asc" as const } },
@@ -159,6 +162,8 @@ export type GetStoreProductsOptions = {
 };
 
 export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
+  if (!hasDatabaseUrl()) return [];
+
   const {
     query = "",
     category = "",
@@ -176,7 +181,6 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
     sort = "featured"
   } = options;
 
-  // For simple unfiltered requests, try cache
   const isSimpleRequest = !query && !category && !brand && !gender && !material && !shape && !color && !priceMin && !priceMax;
   if (isSimpleRequest) {
     const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:p${page}:l${limit}`;
@@ -184,7 +188,6 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
     if (cached) return cached;
   }
 
-  // Build where clause
   const where: Record<string, unknown> = { deletedAt: null };
   if (!includeDrafts) where.status = "ACTIVE";
   if (featuredOnly) where.featured = true;
@@ -205,7 +208,6 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
     where.searchText = { contains: query.toLowerCase(), mode: "insensitive" };
   }
 
-  // Build orderBy
   let orderBy: Record<string, string>[] = [{ featured: "desc" }, { createdAt: "desc" }];
   if (sort === "price-asc") orderBy = [{ pricePaise: "asc" }];
   else if (sort === "price-desc") orderBy = [{ pricePaise: "desc" }];
@@ -222,13 +224,11 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
 
   const mapped = products.map(mapDbProduct);
 
-  // Cache simple requests
   if (isSimpleRequest && mapped.length) {
     const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:p${page}:l${limit}`;
     await setCache(cacheKey, mapped, 300);
   }
 
-  // Apply text-based filtering for any remaining fields not covered by DB query
   if (query && !where.searchText) {
     return mapped.filter((product) => productMatches(product, query, ""));
   }
@@ -237,6 +237,8 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
 }
 
 export async function getStoreProductsCount(options: GetStoreProductsOptions = {}) {
+  if (!hasDatabaseUrl()) return 0;
+
   const { includeDrafts = false, category = "", brand = "", gender = "", query = "" } = options;
   const where: Record<string, unknown> = { deletedAt: null };
   if (!includeDrafts) where.status = "ACTIVE";
@@ -248,7 +250,9 @@ export async function getStoreProductsCount(options: GetStoreProductsOptions = {
 }
 
 export async function getStoreProduct(slug: string) {
-  const product = await prisma.product.findUnique({
+  if (!hasDatabaseUrl()) return null;
+
+  const product = await prisma.product.findFirst({
     where: { slug, deletedAt: null },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
@@ -259,7 +263,6 @@ export async function getStoreProduct(slug: string) {
   });
   if (product) return mapDbProduct(product);
 
-  // Check slug redirects for 301
   const redirect = await prisma.slugRedirect.findUnique({ where: { oldSlug: slug } });
   if (redirect) {
     return { __redirect: redirect.newSlug } as unknown as StoreProduct;
@@ -268,7 +271,31 @@ export async function getStoreProduct(slug: string) {
   return null;
 }
 
+export type TryOnFrame = {
+  slug: string;
+  name: string;
+  brand: string;
+  img: string;
+  pricePaise: number | null;
+};
+
+export async function getTryOnFrames(): Promise<TryOnFrame[]> {
+  const products = await getStoreProducts();
+
+  return products
+    .filter((product) => product.status === "ACTIVE" && product.tryOnEligible && Boolean(product.arImageUrl))
+    .map((product) => ({
+      slug: product.slug,
+      name: product.name,
+      brand: product.brand,
+      img: product.arImageUrl!,
+      pricePaise: product.pricePaise
+    }));
+}
+
 export async function getRelatedProducts(product: StoreProduct, limit = 4) {
+  if (!hasDatabaseUrl()) return [];
+
   const products = await prisma.product.findMany({
     where: {
       deletedAt: null,
@@ -285,6 +312,8 @@ export async function getRelatedProducts(product: StoreProduct, limit = 4) {
 }
 
 export async function getFeaturedProducts(limit = 8) {
+  if (!hasDatabaseUrl()) return [];
+
   const products = await prisma.product.findMany({
     where: { deletedAt: null, status: "ACTIVE", featured: true },
     include: PRODUCT_INCLUDE,
@@ -295,6 +324,8 @@ export async function getFeaturedProducts(limit = 8) {
 }
 
 export async function getCategories() {
+  if (!hasDatabaseUrl()) return [];
+
   return prisma.category.findMany({
     orderBy: { sortOrder: "asc" },
     include: {
@@ -306,6 +337,8 @@ export async function getCategories() {
 }
 
 export async function getBrands() {
+  if (!hasDatabaseUrl()) return [];
+
   return prisma.brand.findMany({
     where: { active: true },
     orderBy: { sortOrder: "asc" },
@@ -314,6 +347,8 @@ export async function getBrands() {
 }
 
 export async function getLensOptions() {
+  if (!hasDatabaseUrl()) return [];
+
   return prisma.lensOption.findMany({
     where: { active: true },
     orderBy: { sortOrder: "asc" }
@@ -321,6 +356,17 @@ export async function getLensOptions() {
 }
 
 export async function getFilterOptions() {
+  if (!hasDatabaseUrl()) {
+    return {
+      categories: [],
+      brands: [],
+      genders: [],
+      materials: [],
+      shapes: [],
+      colors: []
+    };
+  }
+
   const [categories, brands, genders, materials, shapes, colors] = await Promise.all([
     prisma.category.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, name: true } }),
     prisma.product.findMany({ where: { status: "ACTIVE", deletedAt: null }, select: { brand: true }, distinct: ["brand"] }),
@@ -341,6 +387,8 @@ export async function getFilterOptions() {
 }
 
 export async function getProductSlugs() {
+  if (!hasDatabaseUrl()) return [];
+
   const products = await prisma.product.findMany({
     where: { status: "ACTIVE", deletedAt: null },
     select: { slug: true }

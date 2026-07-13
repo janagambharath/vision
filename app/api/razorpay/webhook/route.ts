@@ -2,10 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { createShiprocketShipment } from "@/lib/integrations/shiprocket";
+import { isRateLimited } from "@/lib/rate-limit";
 
 // POST /api/razorpay/webhook — Razorpay sends webhooks as POST
 export async function POST(request: NextRequest) {
   try {
+    if (await isRateLimited(request, { keyPrefix: "razorpay-legacy-webhook", limit: 120, windowSeconds: 60 })) {
+      return NextResponse.json({ error: "Too many webhook attempts" }, { status: 429 });
+    }
+
     const body = await request.text();
     const signature = request.headers.get("x-razorpay-signature");
 
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Only process if order is still pending (idempotency guard)
-        if (order.status === "PENDING") {
+        if (["PENDING", "AWAITING_PRESCRIPTION"].includes(order.status)) {
           // Decrement inventory atomically
           for (const item of order.items) {
             if (item.productId) {
@@ -79,7 +84,7 @@ export async function POST(request: NextRequest) {
 
           await tx.order.update({
             where: { id: payment.orderId },
-            data: { status: "CONFIRMED" }
+            data: { status: order.status === "AWAITING_PRESCRIPTION" ? "AWAITING_PRESCRIPTION" : "CONFIRMED" }
           });
         }
 

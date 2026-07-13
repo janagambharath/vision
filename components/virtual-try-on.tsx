@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -13,13 +13,8 @@ import {
   ShoppingBag,
   Sparkles,
   Download,
-  Eye,
   X,
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw,
   Loader2,
-  ImageIcon,
   MessageCircle,
 } from "lucide-react";
 
@@ -38,28 +33,11 @@ interface VirtualTryOnProps {
   frames?: TryOnFrame[];
 }
 
-const defaultFrames: TryOnFrame[] = [
-  {
-    slug: "supersight-b-titanium-6009",
-    name: "B-Titanium IP 6009",
-    brand: "Supersight Evelicar",
-    img: "/assets/inventory/supersight-b-titanium-6009/ar-front.png",
-    pricePaise: 429900,
-  },
-  {
-    slug: "suphous-pink-96409",
-    name: "Suphous 96409",
-    brand: "Suphous Eyewear",
-    img: "/assets/inventory/suphous-pink-96409/ar-front.png",
-    pricePaise: 279900,
-  },
-];
-
 export default function VirtualTryOn({
   productSlug = "",
   frames,
 }: VirtualTryOnProps) {
-  const tryOnFrames = frames && frames.length > 0 ? frames : defaultFrames;
+  const tryOnFrames = useMemo(() => frames ?? [], [frames]);
 
   const [selectedIndex, setSelectedIndex] = useState(() => {
     if (productSlug) {
@@ -71,12 +49,18 @@ export default function VirtualTryOn({
 
   const selectedFrame = tryOnFrames[selectedIndex];
 
+  useEffect(() => {
+    if (!tryOnFrames.length) return;
+    const idx = productSlug ? tryOnFrames.findIndex((f) => f.slug === productSlug) : -1;
+    setSelectedIndex(idx >= 0 ? idx : 0);
+  }, [productSlug, tryOnFrames]);
+
   // Try-On Flow Steps: 'idle' -> 'camera' -> 'adjust' -> 'generating' -> 'result'
   const [step, setStep] = useState<"idle" | "camera" | "adjust" | "generating" | "result">("idle");
   const [error, setError] = useState<string | null>(null);
 
   // Stream & Capture State
-  const [streamActive, setStreamActive] = useState(false);
+  const [, setStreamActive] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null); // Raw user photo
   const [compositePhoto, setCompositePhoto] = useState<string | null>(null); // User photo + overlaid glasses
   const [aiPhoto, setAiPhoto] = useState<string | null>(null); // AI-enhanced image
@@ -323,6 +307,23 @@ export default function VirtualTryOn({
     if (paise === null) return "Price on request";
     return `₹${(paise / 100).toLocaleString("en-IN")}`;
   };
+
+  if (!selectedFrame) {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center">
+        <AlertCircle className="mx-auto h-10 w-10 text-amber-600" />
+        <h2 className="mt-4 text-xl font-extrabold text-amber-950">
+          No frames are ready for virtual try-on
+        </h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm font-semibold text-amber-800">
+          Add a transparent AR overlay image in the product dashboard and enable virtual try-on for at least one active frame.
+        </p>
+        <Link href="/frames" className="vv-button-retail mt-5 inline-flex">
+          Back to frames
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">

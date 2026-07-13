@@ -1,6 +1,7 @@
 import Link from "next/link";
 import VirtualTryOn from "@/components/virtual-try-on";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { getTryOnFrames } from "@/lib/store-data";
 
 export const metadata = {
   title: "Virtual Try-On Camera | Vision Vistara",
@@ -10,6 +11,7 @@ export const metadata = {
 export default async function VirtualTryOnPage({ searchParams }: { searchParams: Promise<{ slug?: string }> }) {
   const params = await searchParams;
   const slug = params.slug ?? "";
+  const frames = await getTryOnFrames();
 
   return (
     <main className="vv-section bg-paper min-h-screen">
@@ -30,7 +32,7 @@ export default async function VirtualTryOnPage({ searchParams }: { searchParams:
           </div>
         </div>
 
-        <VirtualTryOn productSlug={slug} />
+        <VirtualTryOn productSlug={slug} frames={frames} />
       </div>
     </main>
   );

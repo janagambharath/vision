@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { calculateCartTotals, getCartOrNull } from "@/lib/cart";
 import { prisma } from "@/lib/db";
 import { assertSameOrigin } from "@/lib/request-security";
+import { isRateLimited } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  if (await isRateLimited(request, { keyPrefix: "coupon-api", limit: 20, windowSeconds: 60 })) {
+    return NextResponse.json({ error: "Too many coupon attempts" }, { status: 429 });
+  }
+
   const originError = assertSameOrigin(request);
   if (originError) return originError;
 
@@ -20,6 +25,7 @@ export async function POST(request: Request) {
     !coupon ||
     !coupon.active ||
     (coupon.expiresAt && coupon.expiresAt <= now) ||
+    (coupon.maxUses && coupon.usedCount >= coupon.maxUses) ||
     (coupon.minOrderPaise && totals.subtotalPaise + totals.lensTotalPaise < coupon.minOrderPaise)
   ) {
     return NextResponse.redirect(new URL("/frames/cart?error=invalid-coupon", request.url), 303);
