@@ -41,6 +41,13 @@ export async function POST(request: Request) {
         }
       });
     }
+  } else if (method === "DELETE") {
+    // Soft delete
+    const slug = String(formData.get("slug") ?? "");
+    await prisma.product.update({
+      where: { slug },
+      data: { deletedAt: new Date(), status: "ARCHIVED" }
+    });
   } else {
     const slug = `draft-frame-${Date.now()}`;
     await prisma.product.create({
@@ -54,6 +61,7 @@ export async function POST(request: Request) {
         lensCompatibility: [],
         faceShapes: [],
         highlights: [],
+        seoKeywords: [],
         searchText: slug
       }
     });

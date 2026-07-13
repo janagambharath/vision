@@ -1,23 +1,135 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/db";
-import { lensPackages, migratedProducts } from "../lib/inventory";
+
+// ─── SEED DATA (standalone, no dependency on inventory.ts) ───
+
+type SeedProduct = {
+  slug: string;
+  sku: string;
+  name: string;
+  brand: string;
+  status: "ACTIVE" | "DRAFT";
+  featured: boolean;
+  pricePaise: number | null;
+  compareAtPaise: number | null;
+  currency: string;
+  material: string;
+  colour: string;
+  shape: string;
+  rimType: string;
+  size: string;
+  measurements: string;
+  gender: string;
+  description: string;
+  lensCompatibility: string[];
+  faceShapes: string[];
+  highlights: string[];
+  careInstructions: string;
+  warranty: string;
+  returnPolicy: string;
+  deliveryEstimate: string;
+  tryAtHomeEligible: boolean;
+  inventoryQuantity: number;
+  inventoryStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "PRICE_REQUIRED";
+  categories: string[];
+  images: Array<{ url: string; alt: string; role: string; sortOrder: number }>;
+};
+
+const seedProducts: SeedProduct[] = [
+  {
+    slug: "suphous-pink-oval",
+    sku: "VV-SUPH-PK-96409",
+    name: "Suphous Pink Oval",
+    brand: "Vision Vistara",
+    status: "ACTIVE",
+    featured: true,
+    pricePaise: null,
+    compareAtPaise: null,
+    currency: "INR",
+    material: "Metal Alloy",
+    colour: "Pink / Rose Gold",
+    shape: "Oval",
+    rimType: "Full Rim",
+    size: "48-20-140",
+    measurements: "48-20-140",
+    gender: "Women",
+    description: "Soft pink oval frame with rose-gold metal accents. Lightweight alloy build for comfortable all-day wear. Adjustable silicone nose pads ensure a secure fit.",
+    lensCompatibility: ["Single vision prescription lenses", "Anti-reflective coating", "Photochromic lenses", "Blue-light blocking lenses"],
+    faceShapes: ["Oval", "Square", "Heart"],
+    highlights: ["Rose-gold alloy construction", "Adjustable silicone nose pads", "Lightweight all-day comfort", "Corrosion-resistant plating"],
+    careInstructions: "Clean with microfiber cloth. Avoid placing lenses-down. Store in hard case.",
+    warranty: "1-year manufacturer warranty.",
+    returnPolicy: "7-day easy return on frame-only orders.",
+    deliveryEstimate: "3–5 business days for Andhra Pradesh delivery.",
+    tryAtHomeEligible: true,
+    inventoryQuantity: 5,
+    inventoryStatus: "PRICE_REQUIRED",
+    categories: ["women", "full-rim", "round"],
+    images: [
+      { url: "/assets/inventory/suphous-pink-96409/front.png", alt: "Suphous Pink Oval – Front view", role: "front", sortOrder: 0 },
+      { url: "/assets/inventory/suphous-pink-96409/left45.png", alt: "Suphous Pink Oval – Angle view", role: "angle", sortOrder: 1 }
+    ]
+  },
+  {
+    slug: "suphous-gun-aviator",
+    sku: "VV-SUPH-GN-96408",
+    name: "Suphous Gun Aviator",
+    brand: "Vision Vistara",
+    status: "ACTIVE",
+    featured: true,
+    pricePaise: null,
+    compareAtPaise: null,
+    currency: "INR",
+    material: "Metal Alloy",
+    colour: "Gunmetal",
+    shape: "Aviator",
+    rimType: "Full Rim",
+    size: "55-16-145",
+    measurements: "55-16-145",
+    gender: "Unisex",
+    description: "Classic gunmetal aviator with a double bridge design. Durable metal alloy frame with adjustable nose pads. Perfect for everyday prescription or sun lens pairing.",
+    lensCompatibility: ["Single vision prescription lenses", "Progressive lenses", "Photochromic lenses", "Polarised sunglasses lenses"],
+    faceShapes: ["Oval", "Square", "Rectangle", "Heart"],
+    highlights: ["Double bridge aviator design", "Silicone nose pads for comfort", "Corrosion-resistant alloy", "Unisex frame style"],
+    careInstructions: "Clean with microfiber cloth. Store in the provided hard case.",
+    warranty: "1-year manufacturer warranty.",
+    returnPolicy: "7-day easy return on frame-only orders.",
+    deliveryEstimate: "3–5 business days.",
+    tryAtHomeEligible: true,
+    inventoryQuantity: 5,
+    inventoryStatus: "PRICE_REQUIRED",
+    categories: ["men", "women", "aviator", "full-rim"],
+    images: [
+      { url: "/assets/inventory/suphous-gun-96408/front.png", alt: "Suphous Gun Aviator – Front view", role: "front", sortOrder: 0 },
+      { url: "/assets/inventory/suphous-gun-96408/left45.png", alt: "Suphous Gun Aviator – Angle view", role: "angle", sortOrder: 1 }
+    ]
+  }
+];
+
+const seedLensPackages = [
+  { code: "FRAME_ONLY", name: "Frame Only", description: "Frame only — bring your own lenses or visit Vision Vistara clinic for professional fitting.", pricePaise: null, active: true, sortOrder: 0 },
+  { code: "SV_STANDARD", name: "Single Vision – Standard", description: "Standard single-vision CR-39 lenses with scratch-resistant hard coating.", pricePaise: 60000, active: true, sortOrder: 1 },
+  { code: "SV_BLUECUT", name: "Single Vision – Blue-Cut", description: "Blue-light blocking single-vision lenses for screen-heavy days.", pricePaise: 80000, active: true, sortOrder: 2 },
+  { code: "SV_PHOTO", name: "Single Vision – Photochromic", description: "Photochromic single-vision lenses — clear indoors, darken in sunlight.", pricePaise: 120000, active: true, sortOrder: 3 },
+  { code: "PROG_STANDARD", name: "Progressive – Standard", description: "Standard progressive (no-line bifocal) lenses.", pricePaise: 200000, active: true, sortOrder: 4 },
+  { code: "PROG_PREMIUM", name: "Progressive – Premium", description: "Premium freeform progressive lenses with wider corridor.", pricePaise: 350000, active: true, sortOrder: 5 },
+  { code: "BIFOCAL", name: "Bifocal – Standard", description: "Traditional flat-top bifocal lenses.", pricePaise: 120000, active: true, sortOrder: 6 },
+  { code: "ZERO_POWER_BC", name: "Zero Power – Blue-Cut", description: "Non-prescription blue-light filter lenses.", pricePaise: 60000, active: true, sortOrder: 7 },
+];
 
 async function main() {
   console.log("🌱 Seeding Vision Vistara database...");
 
   // ─── Categories ───
   console.log("  → Categories");
-  const allCategorySlugs = [...new Set(migratedProducts.flatMap((p) => p.categories))];
+  const allCategorySlugs = [...new Set(seedProducts.flatMap((p) => p.categories))];
   for (const slug of allCategorySlugs) {
     await prisma.category.upsert({
       where: { slug },
       update: {},
       create: {
         slug,
-        name: slug
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" "),
+        name: slug.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "),
         description: getCategoryDescription(slug)
       }
     });
@@ -25,7 +137,7 @@ async function main() {
 
   // ─── Products ───
   console.log("  → Products");
-  for (const product of migratedProducts) {
+  for (const product of seedProducts) {
     await prisma.product.upsert({
       where: { slug: product.slug },
       update: {
@@ -41,6 +153,7 @@ async function main() {
         rimType: product.rimType,
         size: product.size,
         measurements: product.measurements,
+        gender: product.gender,
         description: product.description,
         lensCompatibility: product.lensCompatibility,
         faceShapes: product.faceShapes,
@@ -68,6 +181,7 @@ async function main() {
         rimType: product.rimType,
         size: product.size,
         measurements: product.measurements,
+        gender: product.gender,
         description: product.description,
         lensCompatibility: product.lensCompatibility,
         faceShapes: product.faceShapes,
@@ -89,13 +203,7 @@ async function main() {
     await prisma.productImage.deleteMany({ where: { productId: dbProduct.id } });
     for (const image of product.images) {
       await prisma.productImage.create({
-        data: {
-          productId: dbProduct.id,
-          url: image.url,
-          alt: image.alt,
-          role: image.role,
-          sortOrder: image.sortOrder
-        }
+        data: { productId: dbProduct.id, url: image.url, alt: image.alt, role: image.role, sortOrder: image.sortOrder }
       });
     }
 
@@ -122,71 +230,34 @@ async function main() {
     for (const slug of product.categories) {
       const category = await prisma.category.findUniqueOrThrow({ where: { slug } });
       await prisma.productCategory.create({
-        data: {
-          productId: dbProduct.id,
-          categoryId: category.id
-        }
+        data: { productId: dbProduct.id, categoryId: category.id }
       });
     }
   }
 
   // ─── Lens Options ───
   console.log("  → Lens options");
-  for (const lens of lensPackages) {
+  for (const lens of seedLensPackages) {
     await prisma.lensOption.upsert({
       where: { code: lens.code },
-      update: {
-        name: lens.name,
-        description: lens.description,
-        pricePaise: lens.pricePaise,
-        active: lens.active,
-        sortOrder: lens.sortOrder
-      },
-      create: {
-        code: lens.code,
-        name: lens.name,
-        description: lens.description,
-        pricePaise: lens.pricePaise,
-        active: lens.active,
-        sortOrder: lens.sortOrder
-      }
+      update: { name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, sortOrder: lens.sortOrder },
+      create: { code: lens.code, name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, sortOrder: lens.sortOrder }
     });
   }
 
   // ─── Coupons ───
   console.log("  → Coupons");
   await prisma.coupon.upsert({
-    where: { code: "WELCOME10" },
-    update: {},
-    create: {
-      code: "WELCOME10",
-      description: "10% off on your first order",
-      active: true,
-      discountPct: 10,
-      minOrderPaise: 100000
-    }
+    where: { code: "WELCOME10" }, update: {},
+    create: { code: "WELCOME10", description: "10% off on your first order", active: true, discountPct: 10, minOrderPaise: 100000 }
   });
   await prisma.coupon.upsert({
-    where: { code: "FIRST500" },
-    update: {},
-    create: {
-      code: "FIRST500",
-      description: "₹500 off on orders above ₹2,000",
-      active: true,
-      discountPaise: 50000,
-      minOrderPaise: 200000
-    }
+    where: { code: "FIRST500" }, update: {},
+    create: { code: "FIRST500", description: "₹500 off on orders above ₹2,000", active: true, discountPaise: 50000, minOrderPaise: 200000 }
   });
   await prisma.coupon.upsert({
-    where: { code: "FREEDELIVERY" },
-    update: {},
-    create: {
-      code: "FREEDELIVERY",
-      description: "Free delivery on any order",
-      active: true,
-      discountPaise: 9900,
-      minOrderPaise: 0
-    }
+    where: { code: "FREEDELIVERY" }, update: {},
+    create: { code: "FREEDELIVERY", description: "Free delivery on any order", active: true, discountPaise: 9900, minOrderPaise: 0 }
   });
 
   // ─── Homepage Sections ───
@@ -212,28 +283,12 @@ async function main() {
   // ─── Banners ───
   console.log("  → Banners");
   await prisma.banner.upsert({
-    where: { id: "banner-welcome" },
-    update: {},
-    create: {
-      id: "banner-welcome",
-      title: "New arrivals: Premium titanium collection",
-      subtitle: "Lightweight frames from ₹1,499",
-      href: "/frames/category/premium",
-      active: true,
-      sortOrder: 0
-    }
+    where: { id: "banner-welcome" }, update: {},
+    create: { id: "banner-welcome", title: "New arrivals: Premium titanium collection", subtitle: "Lightweight frames from ₹1,499", href: "/frames/category/premium", active: true, sortOrder: 0 }
   });
   await prisma.banner.upsert({
-    where: { id: "banner-try-at-home" },
-    update: {},
-    create: {
-      id: "banner-try-at-home",
-      title: "Try at home — select up to 5 frames",
-      subtitle: "Free home trial service starting at ₹199",
-      href: "/frames/try-at-home",
-      active: true,
-      sortOrder: 1
-    }
+    where: { id: "banner-try-at-home" }, update: {},
+    create: { id: "banner-try-at-home", title: "Try at home — select up to 5 frames", subtitle: "Free home trial service starting at ₹199", href: "/frames/try-at-home", active: true, sortOrder: 1 }
   });
 
   // ─── Admin User ───
@@ -242,22 +297,16 @@ async function main() {
   if (adminEmail && adminPassword) {
     console.log("  → Admin user");
     await prisma.adminUser.upsert({
-      where: { email: adminEmail },
-      update: {},
-      create: {
-        email: adminEmail,
-        name: "Vision Vistara Admin",
-        role: "OWNER",
-        passwordHash: await bcrypt.hash(adminPassword, 12)
-      }
+      where: { email: adminEmail }, update: {},
+      create: { email: adminEmail, name: "Vision Vistara Admin", role: "OWNER", passwordHash: await bcrypt.hash(adminPassword, 12) }
     });
   }
 
   console.log("✅ Seed complete!");
 }
 
-function buildSearchText(product: { sku: string; name: string; brand: string; material: string; colour: string; shape: string; rimType: string; categories: string[] }) {
-  return [product.sku, product.name, product.brand, product.material, product.colour, product.shape, product.rimType, product.categories.join(" ")].join(" ");
+function buildSearchText(product: { sku: string; name: string; brand: string; material: string; colour: string; shape: string; rimType: string; categories: string[]; gender?: string }) {
+  return [product.sku, product.name, product.brand, product.material, product.colour, product.shape, product.rimType, product.gender, product.categories.join(" ")].filter(Boolean).join(" ");
 }
 
 function getCategoryDescription(slug: string): string {
@@ -283,11 +332,5 @@ function getCategoryDescription(slug: string): string {
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+  .then(async () => { await prisma.$disconnect(); })
+  .catch(async (error) => { console.error(error); await prisma.$disconnect(); process.exit(1); });

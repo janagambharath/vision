@@ -2,28 +2,34 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts } from "@/lib/store-data";
-import { filterOptions } from "@/lib/inventory";
+import { getStoreProducts, getCategories } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 
 export async function generateStaticParams() {
-  return filterOptions.map((category) => ({ category }));
+  const categories = await getCategories();
+  return categories.map((category) => ({ category: category.slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category } = await params;
-  const label = category.replace(/-/g, " ");
+  const categories = await getCategories();
+  const cat = categories.find(c => c.slug === category);
+  const label = cat?.name ?? category.replace(/-/g, " ");
   return {
-    title: `${label.charAt(0).toUpperCase() + label.slice(1)} Frames`,
-    description: `Shop ${label} eyewear frames at Vision Vistara — verified inventory with lens options, try-at-home, and checkout.`,
+    title: `${label} Frames`,
+    description: cat?.seoDescription ?? `Shop ${label} eyewear frames at Vision Vistara — verified inventory with lens options, try-at-home, and checkout.`,
     alternates: { canonical: `${SITE_URL}/frames/category/${category}` }
   };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
   const { category } = await params;
-  const products = await getStoreProducts({ category });
-  const label = category.replace(/-/g, " ");
+  const [products, categories] = await Promise.all([
+    getStoreProducts({ category }),
+    getCategories()
+  ]);
+  const currentCat = categories.find(c => c.slug === category);
+  const label = currentCat?.name ?? category.replace(/-/g, " ");
 
   return (
     <main className="vv-section bg-paper">
@@ -34,28 +40,31 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         </Link>
 
         <nav className="mb-4 text-sm font-bold text-slate-500" aria-label="Breadcrumb">
-          <Link href="/frames">Frames</Link> / <span className="capitalize text-slate-900">{label}</span>
+          <Link href="/frames">Frames</Link> / <span className="text-slate-900">{label}</span>
         </nav>
 
         <div className="mb-8">
-          <p className="vv-kicker text-retail capitalize">{label}</p>
-          <h1 className="text-4xl font-extrabold capitalize">{label} frames</h1>
+          <p className="vv-kicker text-retail">{label}</p>
+          <h1 className="text-4xl font-extrabold">{label} Frames</h1>
           <p className="mt-2 text-slate-600">{products.length} frame{products.length !== 1 ? "s" : ""} available in this category.</p>
+          {currentCat?.description && (
+            <p className="mt-1 text-sm text-slate-500">{currentCat.description}</p>
+          )}
         </div>
 
         {/* Category Navigation */}
         <div className="mb-8 flex flex-wrap gap-2">
-          {filterOptions.slice(0, 10).map((cat) => (
+          {categories.slice(0, 12).map((cat) => (
             <Link
-              key={cat}
-              href={`/frames/category/${cat}`}
+              key={cat.slug}
+              href={`/frames/category/${cat.slug}`}
               className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
-                cat === category
+                cat.slug === category
                   ? "border-retail bg-teal-50 text-retail"
                   : "border-slate-200 text-slate-600 hover:border-retail hover:text-retail"
               }`}
             >
-              {cat.replace(/-/g, " ")}
+              {cat.name}
             </Link>
           ))}
         </div>

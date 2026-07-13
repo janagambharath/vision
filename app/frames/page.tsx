@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { ArrowRight, Filter, SlidersHorizontal, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getFeaturedProducts, getCategories } from "@/lib/store-data";
-import { filterOptions, productIsSellable } from "@/lib/inventory";
+import { productIsSellable } from "@/lib/inventory";
 import { SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -22,6 +22,7 @@ export default async function FramesPage({
   const isFiltered = !!(params.q || params.category || params.sort);
   const products = await getStoreProducts({ query: params.q, category: params.category });
   const featured = await getFeaturedProducts(6);
+  const categories = await getCategories();
 
   const sortedProducts = [...products].sort((a, b) => {
     if (params.sort === "price-asc") return (a.pricePaise ?? Number.MAX_SAFE_INTEGER) - (b.pricePaise ?? Number.MAX_SAFE_INTEGER);
@@ -88,9 +89,9 @@ export default async function FramesPage({
               Category
               <select className="store-input" name="category" defaultValue={params.category ?? ""}>
                 <option value="">All categories</option>
-                {filterOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option.replace(/-/g, " ")}
+                {categories.map((cat) => (
+                  <option key={cat.slug} value={cat.slug}>
+                    {cat.name}
                   </option>
                 ))}
               </select>

@@ -7,14 +7,14 @@ import { ProductCard } from "@/components/product-card";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import ProductCheckoutPanel from "@/components/product-checkout-panel";
 import { CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
-import { lensPackages, migratedProducts, productIsSellable } from "@/lib/inventory";
+import { productIsSellable } from "@/lib/inventory";
 import { formatMoney } from "@/lib/money";
-import { getRelatedProducts, getStoreProduct, getStoreProducts } from "@/lib/store-data";
+import { getRelatedProducts, getStoreProduct, getStoreProducts, getProductSlugs, getLensOptions } from "@/lib/store-data";
 import { prisma } from "@/lib/db";
 import { addRecentlyViewed, getRecentlyViewed } from "@/lib/recently-viewed";
 
 export async function generateStaticParams() {
-  return migratedProducts.map((product) => ({ slug: product.slug }));
+  return getProductSlugs();
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -50,6 +50,12 @@ export default async function ProductPage({
   const product = await getStoreProduct(slug);
   const query = (await searchParams) ?? {};
 
+  // Handle slug redirects (301)
+  if (product && '__redirect' in (product as Record<string, unknown>)) {
+    const newSlug = (product as unknown as { __redirect: string }).__redirect;
+    redirect(`/frames/${newSlug}`);
+  }
+
   if (!product) {
     return (
       <main className="vv-section">
@@ -63,6 +69,7 @@ export default async function ProductPage({
 
   const sellable = productIsSellable(product);
   const related = await getRelatedProducts(product);
+  const lensPackages = await getLensOptions();
 
   const recentlyViewedSlugs = await getRecentlyViewed();
   const allProductsForRV = await getStoreProducts({ includeDrafts: false });
@@ -233,11 +240,6 @@ export default async function ProductPage({
                   <div>
                     <strong className="block font-bold">Draft product: not published for sale</strong>
                     <p className="mt-1 text-sm leading-normal">This page preserves migrated real inventory data, but checkout is disabled until admin completes every blocker.</p>
-                    <ul className="mt-3 grid gap-1 text-sm font-semibold">
-                      {product.blockers.map((blocker) => (
-                        <li key={blocker}>- {blocker}</li>
-                      ))}
-                    </ul>
                   </div>
                 </div>
               </div>

@@ -114,66 +114,173 @@ model AdminUser {
   activityLogs ActivityLog[]
 }
 
+// ─── BRAND ───
+model Brand {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  name           String
+  logoUrl        String?
+  bannerUrl      String?
+  description    String?
+  seoTitle       String?
+  seoDescription String?
+  active         Boolean   @default(true)
+  sortOrder      Int       @default(0)
+  products       Product[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([active])
+}
+
+// ─── CATEGORY (supports nesting) ───
 model Category {
-  id          String            @id @default(cuid())
-  slug        String            @unique
+  id             String            @id @default(cuid())
+  slug           String            @unique
+  name           String
+  description    String?
+  imageUrl       String?
+  bannerUrl      String?
+  seoTitle       String?
+  seoDescription String?
+  featured       Boolean           @default(false)
+  parentId       String?
+  parent         Category?         @relation("CategoryTree", fields: [parentId], references: [id])
+  children       Category[]        @relation("CategoryTree")
+  sortOrder      Int               @default(0)
+  products       ProductCategory[]
+  banners        Banner[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([parentId])
+  @@index([featured])
+}
+
+// ─── COLLECTION ───
+model Collection {
+  id          String              @id @default(cuid())
+  slug        String              @unique
   name        String
   description String?
   imageUrl    String?
-  sortOrder   Int               @default(0)
-  products    ProductCategory[]
-  banners     Banner[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  active      Boolean             @default(true)
+  sortOrder   Int                 @default(0)
+  products    ProductCollection[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
 }
 
+// ─── TAG ───
+model Tag {
+  id        String       @id @default(cuid())
+  slug      String       @unique
+  name      String
+  products  ProductTag[]
+  createdAt DateTime     @default(now())
+}
+
+// ─── PRODUCT ───
 model Product {
-  id                 String            @id @default(cuid())
-  slug               String            @unique
-  sku                String            @unique
-  name               String
-  brand              String
-  status             ProductStatus     @default(DRAFT)
-  featured           Boolean           @default(false)
-  pricePaise         Int?
-  compareAtPaise     Int?
-  currency           String            @default("INR")
-  description        String
-  material           String?
-  colour             String?
-  shape              String?
-  rimType            String?
-  size               String?
-  measurements       String?
-  lensCompatibility  String[]
-  faceShapes         String[]
-  highlights         String[]
-  careInstructions   String?
-  warranty           String?
-  returnPolicy       String?
-  deliveryEstimate   String?
-  tryAtHomeEligible  Boolean           @default(false)
-  whatsappEnabled    Boolean           @default(true)
-  seoTitle           String?
-  seoDescription     String?
-  searchText         String            @default("")
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  deletedAt          DateTime?
-  images             ProductImage[]
-  categories         ProductCategory[]
-  inventory          Inventory?
-  cartItems          CartItem[]
-  orderItems         OrderItem[]
-  reviews            Review[]
-  wishlistItems      WishlistItem[]
-  previewRequests    FramePreviewRequest[]
+  id                    String              @id @default(cuid())
+  slug                  String              @unique
+  sku                   String              @unique
+  barcode               String?
+  name                  String
+  // Legacy string brand field kept for backward compat; new products should use brandId
+  brand                 String
+  brandId               String?
+  brandRef              Brand?              @relation(fields: [brandId], references: [id])
+  status                ProductStatus       @default(DRAFT)
+  featured              Boolean             @default(false)
+
+  // Pricing
+  pricePaise            Int?
+  compareAtPaise        Int?
+  costPricePaise        Int?
+  taxPct                Int?                @default(18)
+  currency              String              @default("INR")
+  codAvailable          Boolean             @default(true)
+
+  // Descriptions
+  shortDescription      String?
+  description           String
+  highlights            String[]
+  careInstructions      String?
+  warranty              String?
+  returnPolicy          String?
+  deliveryEstimate      String?
+
+  // Classification
+  gender                String?             // "Men", "Women", "Unisex", "Kids"
+  ageGroup              String?             // "Adult", "Kids", "Teen"
+
+  // Frame details
+  material              String?
+  colour                String?
+  finish                String?
+  shape                 String?
+  rimType               String?
+  size                  String?
+  measurements          String?
+  weightGrams           Int?
+
+  // Frame specifications
+  frameWidth            Int?
+  lensWidth             Int?
+  bridgeWidth           Int?
+  templeLength          Int?
+  frameHeight           Int?
+  pdRange               String?
+  springHinges          Boolean             @default(false)
+  blueLightCompatible   Boolean             @default(false)
+  prescriptionCompatible Boolean            @default(true)
+  lensCompatibility     String[]
+  faceShapes            String[]
+
+  // Flags
+  tryAtHomeEligible     Boolean             @default(false)
+  whatsappEnabled       Boolean             @default(true)
+
+  // SEO
+  seoTitle              String?
+  seoDescription        String?
+  seoKeywords           String[]
+
+  // Publishing
+  publishedAt           DateTime?
+  scheduledPublishAt    DateTime?
+
+  // Search
+  searchText            String              @default("")
+  supplierSku           String?
+
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  deletedAt             DateTime?
+
+  // Relations
+  images                ProductImage[]
+  categories            ProductCategory[]
+  collections           ProductCollection[]
+  tags                  ProductTag[]
+  inventory             Inventory?
+  cartItems             CartItem[]
+  orderItems            OrderItem[]
+  reviews               Review[]
+  wishlistItems         WishlistItem[]
+  previewRequests       FramePreviewRequest[]
 
   @@index([status])
   @@index([brand])
+  @@index([brandId])
   @@index([searchText])
   @@index([createdAt])
   @@index([featured])
+  @@index([gender])
+  @@index([deletedAt])
+  @@index([publishedAt])
 }
 
 model ProductCategory {
@@ -183,6 +290,24 @@ model ProductCategory {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([productId, categoryId])
+}
+
+model ProductCollection {
+  productId    String
+  collectionId String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([productId, collectionId])
+}
+
+model ProductTag {
+  productId String
+  tagId     String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([productId, tagId])
 }
 
 model ProductImage {
@@ -202,9 +327,13 @@ model Inventory {
   id                String          @id @default(cuid())
   productId         String          @unique
   quantity          Int             @default(0)
+  reservedStock     Int             @default(0)
   lowStockThreshold Int             @default(2)
+  reorderLevel      Int             @default(5)
   status            InventoryStatus @default(PRICE_REQUIRED)
   supplier          String?
+  supplierSku       String?
+  warehouse         String?
   location          String?
   product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
   updatedAt         DateTime        @updatedAt
@@ -420,6 +549,8 @@ model Review {
   rating    Int
   title     String?
   body      String
+  imageUrls String[]
+  verified  Boolean  @default(false)
   approved  Boolean  @default(false)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id])
@@ -601,4 +732,27 @@ model Refund {
 
   @@index([orderId])
 }
+
+// ─── SLUG REDIRECT (301 redirects for changed slugs) ───
+model SlugRedirect {
+  id        String   @id @default(cuid())
+  oldSlug   String   @unique
+  newSlug   String
+  createdAt DateTime @default(now())
+
+  @@index([oldSlug])
+}
+
+// ─── SEARCH LOG (for autocomplete and trending searches) ───
+model SearchLog {
+  id          String   @id @default(cuid())
+  query       String
+  resultCount Int      @default(0)
+  sessionId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+}
+
 

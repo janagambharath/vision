@@ -1,20 +1,24 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/constants";
-import { filterOptions, migratedProducts } from "@/lib/inventory";
+import { getProductSlugs, getCategories } from "@/lib/store-data";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const clinicRoutes = ["", "/about", "/services", "/diagnostics", "/contact", "/appointments"];
+
+  const [productSlugs, categories] = await Promise.all([
+    getProductSlugs(),
+    getCategories()
+  ]);
+
   const storeRoutes = [
     "/frames",
     "/frames/cart",
     "/frames/checkout",
     "/frames/try-at-home",
     "/frames/search",
-    ...filterOptions.map((category) => `/frames/category/${category}`),
-    ...migratedProducts
-      .filter((product) => product.status === "ACTIVE")
-      .map((product) => `/frames/${product.slug}`)
+    ...categories.map((category) => `/frames/category/${category.slug}`),
+    ...productSlugs.map((p) => `/frames/${p.slug}`)
   ];
 
   return [...clinicRoutes, ...storeRoutes].map((route) => ({

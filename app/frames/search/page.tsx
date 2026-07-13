@@ -2,8 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft, Search, SlidersHorizontal } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts } from "@/lib/store-data";
-import { filterOptions } from "@/lib/inventory";
+import { getStoreProducts, getCategories } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -20,7 +19,11 @@ export default async function SearchPage({
   const params = (await searchParams) ?? {};
   const hasQuery = !!(params.q || params.category || params.material || params.shape);
 
-  let products = await getStoreProducts({ query: params.q, category: params.category });
+  const [rawProducts, categories] = await Promise.all([
+    getStoreProducts({ query: params.q, category: params.category }),
+    getCategories()
+  ]);
+  let products = rawProducts;
 
   // Additional filters
   if (params.material) {
@@ -76,8 +79,8 @@ export default async function SearchPage({
                 Category
                 <select className="store-input" name="category" defaultValue={params.category ?? ""}>
                   <option value="">All</option>
-                  {filterOptions.map((opt) => (
-                    <option key={opt} value={opt}>{opt.replace(/-/g, " ")}</option>
+                  {categories.map((cat) => (
+                    <option key={cat.slug} value={cat.slug}>{cat.name}</option>
                   ))}
                 </select>
               </label>
