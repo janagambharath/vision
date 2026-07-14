@@ -9,13 +9,11 @@ import ProductCheckoutPanel from "@/components/product-checkout-panel";
 import { CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
 import { productIsSellable } from "@/lib/inventory";
 import { formatMoney } from "@/lib/money";
-import { getRelatedProducts, getStoreProduct, getStoreProducts, getProductSlugs, getLensOptions } from "@/lib/store-data";
+import { getRelatedProducts, getStoreProduct, getStoreProducts, getLensOptions } from "@/lib/store-data";
 import { prisma } from "@/lib/db";
 import { addRecentlyViewed, getRecentlyViewed } from "@/lib/recently-viewed";
 
-export async function generateStaticParams() {
-  return getProductSlugs();
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

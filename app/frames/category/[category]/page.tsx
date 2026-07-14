@@ -5,10 +5,7 @@ import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getCategories } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 
-export async function generateStaticParams() {
-  const categories = await getCategories();
-  return categories.map((category) => ({ category: category.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ category: string }> }): Promise<Metadata> {
   const { category } = await params;

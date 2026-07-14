@@ -1,4 +1,4 @@
-import { redis } from "@/lib/redis";
+import { getRedisClient } from "@/lib/redis";
 
 type RateLimitOptions = {
   keyPrefix: string;
@@ -20,6 +20,7 @@ export async function rateLimit(
   limit: number,
   windowSeconds: number
 ): Promise<{ allowed: boolean; remaining: number }> {
+  const redis = await getRedisClient();
   if (!redis) {
     return { allowed: true, remaining: limit };
   }
@@ -48,7 +49,7 @@ export async function isRateLimited(request: Request, options: RateLimitOptions)
   const ip = getClientIp(request);
   const key = `${options.keyPrefix}:${ip}`;
 
-  if (redis) {
+  if (await getRedisClient()) {
     const result = await rateLimit(key, options.limit, options.windowSeconds);
     return !result.allowed;
   }

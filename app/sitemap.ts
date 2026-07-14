@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/constants";
 import { getProductSlugs, getCategories } from "@/lib/store-data";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const clinicRoutes = ["", "/about", "/services", "/diagnostics", "/contact", "/appointments"];

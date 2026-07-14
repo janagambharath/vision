@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "prisma migrate deploy && next start",
     "test": "node --import tsx --test tests/cart.test.ts tests/razorpay.test.ts",
     "lint": "eslint .",
     "db:generate": "prisma generate",

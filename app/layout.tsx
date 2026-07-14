@@ -4,6 +4,9 @@ import "./globals.css";
 import { CLINIC_NAME, SITE_URL } from "@/lib/constants";
 import { WhatsAppFloat } from "@/components/whatsapp-float";
 
+// Product, account, and admin pages read private services that are unavailable during Railway builds.
+export const dynamic = "force-dynamic";
+
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",

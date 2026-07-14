@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { authConfig } from "@/auth.config";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -13,12 +14,7 @@ const MAX_FAILED_ADMIN_LOGINS = 5;
 const ADMIN_LOCKOUT_MS = 15 * 60 * 1000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
-  trustHost: true,
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/admin/login"
-  },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -87,21 +83,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       }
     })
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        if (typeof token.id === "string") session.user.id = token.id;
-        if (typeof token.role === "string") session.user.role = token.role;
-      }
-      return session;
-    }
-  }
+  ]
 });
