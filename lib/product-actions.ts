@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { invalidateProductCache } from "@/lib/inventory-actions";
+import { getProductPublishBlockers } from "@/lib/product-publishing";
 
 // ─── SINGLE PRODUCT ACTIONS ───
 
@@ -58,6 +59,9 @@ export async function archiveProduct(slug: string) {
 export async function publishProduct(slug: string) {
   await requireAdmin();
 
+  const blockers = await getProductPublishBlockers(slug);
+  if (blockers.length) return { published: false as const, blockers };
+
   await prisma.product.update({
     where: { slug },
     data: { status: "ACTIVE", publishedAt: new Date() }
@@ -75,6 +79,7 @@ export async function publishProduct(slug: string) {
   await invalidateProductCache();
   revalidatePath("/admin/products");
   revalidatePath("/frames");
+  return { published: true as const, blockers: [] };
 }
 
 export async function unpublishProduct(slug: string) {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ImageUploader, type UploadedImage } from "@/components/admin/image-uploader";
+import type { ProductAiDraft } from "@/lib/product-ai";
 
 type Category = { id: string; slug: string; name: string };
 type Brand = { id: string; slug: string; name: string };
@@ -68,20 +69,23 @@ type Props = {
 };
 
 const TABS = [
-  { key: "general", label: "General" },
+  { key: "general", label: "Product basics" },
   { key: "pricing", label: "Pricing & Inventory" },
-  { key: "specs", label: "Specifications" },
-  { key: "images", label: "Images" },
-  { key: "seo", label: "SEO" },
-  { key: "policy", label: "Policy" },
+  { key: "specs", label: "Optional frame specs" },
+  { key: "images", label: "Images & AI" },
+  { key: "seo", label: "Optional SEO" },
+  { key: "policy", label: "Optional policies" },
 ];
 
 export function ProductForm({ product, categories, brands, action, submitLabel }: Props) {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState(product ? "general" : "images");
   const [images, setImages] = useState<UploadedImage[]>(product?.images ?? []);
   const [slug, setSlug] = useState(product?.slug ?? "");
   const [name, setName] = useState(product?.name ?? "");
   const [brand, setBrand] = useState(product?.brand ?? "");
+  const [aiState, setAiState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [aiMessage, setAiMessage] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const autoSlug = () => {
     if (!slug || slug === product?.slug) {
@@ -90,8 +94,89 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
     }
   };
 
+  const firstProductImage = images.find((image) => image.role === "front") ?? images.find((image) => image.role !== "ar");
+
+  const fieldIsBlank = (fieldName: string) => {
+    const control = formRef.current?.elements.namedItem(fieldName);
+    if (!(control instanceof HTMLInputElement) && !(control instanceof HTMLTextAreaElement) && !(control instanceof HTMLSelectElement)) {
+      return true;
+    }
+    return !control.value.trim();
+  };
+
+  const fillTextField = (fieldName: string, value: string) => {
+    if (!value || !fieldIsBlank(fieldName)) return;
+    const control = formRef.current?.elements.namedItem(fieldName);
+    if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement) {
+      control.value = value;
+    }
+  };
+
+  const applyAiDraft = (draft: ProductAiDraft) => {
+    if (!name.trim() && draft.name) setName(draft.name);
+    if (!brand.trim() && draft.brand) setBrand(draft.brand);
+
+    const proposedName = name.trim() || draft.name;
+    const proposedBrand = brand.trim() || draft.brand;
+    if (!slug.trim() && proposedName && proposedBrand) {
+      setSlug(`${proposedBrand}-${proposedName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""));
+    }
+
+    fillTextField("shortDescription", draft.shortDescription);
+    fillTextField("description", draft.description);
+    fillTextField("material", draft.material);
+    fillTextField("colour", draft.colour);
+    fillTextField("finish", draft.finish);
+    fillTextField("shape", draft.shape);
+    fillTextField("rimType", draft.rimType);
+    fillTextField("gender", draft.gender);
+    fillTextField("ageGroup", draft.ageGroup);
+    fillTextField("highlights", draft.highlights.join("\n"));
+    fillTextField("faceShapes", draft.faceShapes.join(", "));
+    fillTextField("lensCompatibility", draft.lensCompatibility.join("\n"));
+    fillTextField("seoTitle", draft.seoTitle);
+    fillTextField("seoDescription", draft.seoDescription);
+    fillTextField("seoKeywords", draft.seoKeywords.join(", "));
+
+    const reviewSummary = [
+      `AI confidence: ${draft.confidence}.`,
+      draft.categoryHint ? `Suggested category: ${draft.categoryHint}.` : "",
+      ...draft.needsReview
+    ].filter(Boolean).join(" ");
+    setAiState("ready");
+    setAiMessage(`${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
+  };
+
+  const generateAiDraft = async () => {
+    if (!firstProductImage) {
+      setAiState("error");
+      setAiMessage("Upload a clear front or gallery image first.");
+      return;
+    }
+
+    setAiState("loading");
+    setAiMessage("Inspecting the uploaded frame and drafting catalog details…");
+    try {
+      const response = await fetch("/api/admin/product-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: firstProductImage.url })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.draft) throw new Error(result.error || "AI product enrichment failed.");
+      applyAiDraft(result.draft as ProductAiDraft);
+    } catch (error) {
+      setAiState("error");
+      setAiMessage(error instanceof Error ? error.message : "AI product enrichment failed.");
+    }
+  };
+
   return (
-    <form action={action} className="grid gap-6">
+    <form ref={formRef} action={action} className="grid gap-6">
+      <section className="rounded-vv border border-teal-200 bg-teal-50/60 p-4 text-sm text-teal-950">
+        <strong className="block font-extrabold">Fast catalog workflow</strong>
+        <p className="mt-1">Upload a clear front image, let AI draft visual details, then confirm the essentials: name, brand, SKU, price, stock, and category. The remaining fields are optional refinements.</p>
+      </section>
       {/* Tab navigation */}
       <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-0">
         {TABS.map((tab) => (
@@ -401,12 +486,33 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       <div className={activeTab === "images" ? "" : "hidden"}>
         <section className="vv-card p-6 grid gap-4">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">Product Images</h2>
-          <p className="text-sm text-slate-500">Upload images via Cloudinary. Assign roles (Front, Angle, Side, etc.) and drag to reorder. First image is used as the primary display image.</p>
+          <p className="text-sm text-slate-500">Upload images via Cloudinary. Assign roles (Front, Angle, Side, etc.) and drag to reorder. The front image is used for the first AI catalog draft and the first image is the primary display image.</p>
           <ImageUploader
             images={images}
             onChange={setImages}
             productName={`${brand} ${name}`.trim() || "Product"}
           />
+          <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-extrabold text-violet-950">AI product draft</h3>
+                <p className="mt-1 text-xs font-medium text-violet-800">Uses the uploaded front frame image to fill empty visual, description, fit-suggestion, and SEO fields. It never invents pricing, SKU, stock, measurements, or policies.</p>
+              </div>
+              <button
+                type="button"
+                onClick={generateAiDraft}
+                disabled={!firstProductImage || aiState === "loading"}
+                className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {aiState === "loading" ? "Drafting…" : "Generate AI draft"}
+              </button>
+            </div>
+            {aiMessage ? (
+              <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-semibold ${aiState === "error" ? "bg-red-50 text-red-800" : "bg-white/80 text-violet-950"}`} aria-live="polite">
+                {aiMessage}
+              </p>
+            ) : null}
+          </div>
           <label className="grid gap-1 text-sm font-extrabold text-slate-600">
             AR Overlay Image URL
             <input

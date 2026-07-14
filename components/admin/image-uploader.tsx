@@ -70,7 +70,7 @@ export function ImageUploader({ images, onChange, productName = "Product" }: Pro
         newImages.push({
           url: data.url,
           alt: `${productName} ${file.name.replace(/\.[^.]+$/, "")}`,
-          role: "gallery",
+          role: images.length === 0 && newImages.length === 0 ? "front" : "gallery",
           sortOrder: images.length + newImages.length,
         });
       } catch (err) {

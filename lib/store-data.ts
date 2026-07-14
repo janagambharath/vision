@@ -152,6 +152,7 @@ export type GetStoreProductsOptions = {
   material?: string;
   shape?: string;
   color?: string;
+  status?: StoreProductStatus;
   priceMin?: number;
   priceMax?: number;
   includeDrafts?: boolean;
@@ -172,6 +173,7 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
     material = "",
     shape = "",
     color = "",
+    status,
     priceMin,
     priceMax,
     includeDrafts = false,
@@ -181,7 +183,7 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
     sort = "featured"
   } = options;
 
-  const isSimpleRequest = !query && !category && !brand && !gender && !material && !shape && !color && !priceMin && !priceMax;
+  const isSimpleRequest = !query && !category && !brand && !gender && !material && !shape && !color && !status && !priceMin && !priceMax;
   if (isSimpleRequest) {
     const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:p${page}:l${limit}`;
     const cached = await getCache<StoreProduct[]>(cacheKey);
@@ -190,6 +192,7 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
 
   const where: Record<string, unknown> = { deletedAt: null };
   if (!includeDrafts) where.status = "ACTIVE";
+  else if (status) where.status = status;
   if (featuredOnly) where.featured = true;
   if (gender) where.gender = gender;
   if (shape) where.shape = { contains: shape, mode: "insensitive" };
@@ -239,9 +242,10 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
 export async function getStoreProductsCount(options: GetStoreProductsOptions = {}) {
   if (!hasDatabaseUrl()) return 0;
 
-  const { includeDrafts = false, category = "", brand = "", gender = "", query = "" } = options;
+  const { includeDrafts = false, category = "", brand = "", gender = "", query = "", status } = options;
   const where: Record<string, unknown> = { deletedAt: null };
   if (!includeDrafts) where.status = "ACTIVE";
+  else if (status) where.status = status;
   if (category) where.categories = { some: { category: { slug: category } } };
   if (brand) where.brand = { contains: brand, mode: "insensitive" };
   if (gender) where.gender = gender;

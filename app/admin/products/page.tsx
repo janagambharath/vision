@@ -13,33 +13,36 @@ const PAGE_SIZE = 50;
 export default async function AdminProductsPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; status?: string; page?: string; error?: string }>;
 }) {
   await requireAdmin();
   const params = (await searchParams) ?? {};
   const currentPage = Math.max(1, Number(params.page ?? 1));
+  const status = ["ACTIVE", "DRAFT", "ARCHIVED"].includes(params.status ?? "")
+    ? params.status as "ACTIVE" | "DRAFT" | "ARCHIVED"
+    : undefined;
 
   const options = {
     query: params.q,
     includeDrafts: true,
+    status,
     page: currentPage,
     limit: PAGE_SIZE,
     sort: "new" as const
   };
 
-  let products = await getStoreProducts(options);
-  const totalCount = await getStoreProductsCount({ includeDrafts: true, query: params.q });
-
-  if (params.status) {
-    products = products.filter((p) => p.status === params.status);
-  }
+  const products = await getStoreProducts(options);
+  const totalCount = await getStoreProductsCount({ includeDrafts: true, query: params.q, status });
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   async function handlePublish(formData: FormData) {
     "use server";
     const slug = String(formData.get("slug"));
-    await publishProduct(slug);
+    const result = await publishProduct(slug);
+    if (!result.published) {
+      redirect(`/admin/products?error=${encodeURIComponent(result.blockers.join(", "))}`);
+    }
     redirect("/admin/products");
   }
   async function handleUnpublish(formData: FormData) {
@@ -132,6 +135,12 @@ export default async function AdminProductsPage({
             Add New Product
           </Link>
         </div>
+
+        {params.error ? (
+          <div className="mb-6 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">
+            Cannot publish this product: {params.error}
+          </div>
+        ) : null}
 
         <div className="vv-card mb-6 p-4">
           <form className="grid gap-3 md:grid-cols-3" method="get" action="/admin/products">

@@ -6,15 +6,18 @@ import { prisma } from "@/lib/db";
 import { getCategories, getBrands } from "@/lib/store-data";
 import { invalidateProductCache } from "@/lib/inventory-actions";
 import { ProductForm } from "@/components/admin/product-form";
+import { getPublishBlockersForDraft } from "@/lib/product-publishing";
 
 export const metadata = { title: "Edit Product | Admin" };
 
 const errorMessages: Record<string, string> = {
   "missing-fields": "Name, brand, and SKU are required.",
   "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
+  "invalid-values": "Check prices, inventory, and measurements. Values must be valid non-negative numbers.",
   "duplicate-slug": "Another product already uses that slug.",
   "duplicate-sku": "Another product already uses that SKU.",
-  "try-on-ar-required": "Virtual try-on requires a transparent AR overlay URL."
+  "try-on-ar-required": "Virtual try-on requires a transparent AR overlay URL.",
+  "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
 
 function slugify(value: string) {
@@ -26,7 +29,8 @@ function slugify(value: string) {
 }
 
 function readImages(formData: FormData, productId: string, brand: string, name: string, arImageUrl: string) {
-  const imageCount = Number(formData.get("image_count") ?? 0);
+  const requestedImageCount = Number(formData.get("image_count") ?? 0);
+  const imageCount = Number.isInteger(requestedImageCount) && requestedImageCount >= 0 ? Math.min(requestedImageCount, 24) : 0;
   const images: Array<{ productId: string; url: string; alt: string; role: string; sortOrder: number }> = [];
 
   for (let i = 0; i < imageCount; i += 1) {
@@ -88,7 +92,9 @@ export default async function EditProductPage({
     const sku = String(formData.get("sku") ?? "").trim();
     const barcode = String(formData.get("barcode") ?? "").trim() || null;
     const slug = slugify(String(formData.get("slug") ?? "").trim() || `${brand}-${name}`);
-    const status = String(formData.get("status") ?? "DRAFT") as "ACTIVE" | "DRAFT" | "ARCHIVED";
+    const statusValue = String(formData.get("status") ?? "DRAFT");
+    if (!["ACTIVE", "DRAFT", "ARCHIVED"].includes(statusValue)) redirect(`/admin/products/${currentSlug}/edit?error=invalid-values`);
+    const status = statusValue as "ACTIVE" | "DRAFT" | "ARCHIVED";
     const featured = formData.get("featured") === "on";
     const tryAtHomeEligible = formData.get("tryAtHomeEligible") === "on";
     const tryOnEligible = formData.get("tryOnEligible") === "on";
@@ -141,6 +147,11 @@ export default async function EditProductPage({
     if (!name || !brand || !sku) redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect(`/admin/products/${currentSlug}/edit?error=invalid-slug`);
     if (tryOnEligible && !arImageUrl) redirect(`/admin/products/${currentSlug}/edit?error=try-on-ar-required`);
+    if (
+      [pricePaise, compareAtPaise, costPricePaise, taxPct, weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight]
+        .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
+      !Number.isInteger(quantity) || quantity < 0
+    ) redirect(`/admin/products/${currentSlug}/edit?error=invalid-values`);
 
     const duplicate = await prisma.product.findFirst({
       where: {
@@ -151,6 +162,17 @@ export default async function EditProductPage({
     });
     if (duplicate?.slug === slug) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-slug`);
     if (duplicate?.sku === sku) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-sku`);
+
+    const requestedImageCount = Number(formData.get("image_count") ?? 0);
+    const imageCount = Number.isInteger(requestedImageCount) && requestedImageCount >= 0 ? Math.min(requestedImageCount, 24) : 0;
+    const imageRoles = Array.from({ length: imageCount }, (_, index) => String(formData.get(`image_role_${index}`) ?? "gallery"));
+    if (arImageUrl) imageRoles.push("ar");
+    const categoryCount = selectedCategories.length
+      ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
+      : 0;
+    if (status === "ACTIVE" && getPublishBlockersForDraft({
+      name, brand, sku, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
+    }).length) redirect(`/admin/products/${currentSlug}/edit?error=publish-incomplete`);
 
     await prisma.$transaction(async (tx) => {
       if (slug !== currentSlug) {
