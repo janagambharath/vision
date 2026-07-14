@@ -26,12 +26,35 @@ Before launch:
 - Keep at least 14 days of hourly/daily backups.
 - Add provider snapshots or object storage replication for off-host copies.
 
+## Database Migration Baseline
+
+New databases are bootstrapped by the checked-in initial migration. Railway
+runs `prisma migrate deploy` before starting the application, so do not use
+`prisma db push` in production.
+
+For an existing database created before migrations were tracked:
+
+1. Take and verify a backup.
+2. Compare the live schema with `prisma/schema.prisma` in staging.
+3. Mark only the baseline as applied, then deploy the later migrations:
+
+```powershell
+npx prisma migrate resolve --applied 20260712000000_initial_baseline
+npx prisma migrate deploy
+```
+
+Never run the initial baseline SQL directly against a populated database.
+
 ## Payment Recovery
 
 - Check `PaymentWebhookEvent` for unprocessed or unmatched webhook events.
 - Check `Notification` rows with `entityType = "PaymentWebhookEvent"`.
 - Reconcile Razorpay order/payment IDs against local `Payment.providerOrderId` and `Payment.providerPaymentId`.
 - Never manually mark an order paid without confirming the Razorpay signature or dashboard payment state.
+- Online checkout stock is reserved for 30 minutes; COD/manual checkout stock is reserved for 48 hours. The `worker:reconcile-payments` job releases unpaid expired checkouts.
+- A captured payment that cannot consume its allocation creates a `PaymentReconciliation`. The worker makes one guarded refund attempt. Do not retry an `REFUNDING` or `REQUIRES_REVIEW` record until an owner has checked Razorpay, because a timed-out provider response can be ambiguous.
+- `REFUND_PENDING` is not a completed refund. Keep payment and fulfillment closed until the signed `refund.processed` webhook moves it to `REFUNDED`; Razorpay can return a pending normal refund before the final provider result.
+- Do not create a shipment while an order has an open payment reconciliation.
 
 ## Product Launch Gate
 

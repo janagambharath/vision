@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireManager } from "@/lib/admin-auth";
 import { invalidateProductCache } from "@/lib/inventory-actions";
 import { getProductPublishBlockers } from "@/lib/product-publishing";
 
 // ─── SINGLE PRODUCT ACTIONS ───
 
 export async function deleteProduct(slug: string) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const product = await prisma.product.findUnique({ where: { slug } });
   if (!product) throw new Error("Product not found");
@@ -22,6 +22,7 @@ export async function deleteProduct(slug: string) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "PRODUCT_DELETED",
       entityType: "product",
       entityId: product.id,
@@ -35,7 +36,7 @@ export async function deleteProduct(slug: string) {
 }
 
 export async function archiveProduct(slug: string) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   await prisma.product.update({
     where: { slug },
@@ -44,6 +45,7 @@ export async function archiveProduct(slug: string) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "PRODUCT_ARCHIVED",
       entityType: "product",
       entityId: slug,
@@ -57,7 +59,7 @@ export async function archiveProduct(slug: string) {
 }
 
 export async function publishProduct(slug: string) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const blockers = await getProductPublishBlockers(slug);
   if (blockers.length) return { published: false as const, blockers };
@@ -69,6 +71,7 @@ export async function publishProduct(slug: string) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "PRODUCT_PUBLISHED",
       entityType: "product",
       entityId: slug,
@@ -83,7 +86,7 @@ export async function publishProduct(slug: string) {
 }
 
 export async function unpublishProduct(slug: string) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   await prisma.product.update({
     where: { slug },
@@ -92,6 +95,7 @@ export async function unpublishProduct(slug: string) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "PRODUCT_UNPUBLISHED",
       entityType: "product",
       entityId: slug,
@@ -105,7 +109,7 @@ export async function unpublishProduct(slug: string) {
 }
 
 export async function duplicateProduct(slug: string) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -213,6 +217,7 @@ export async function duplicateProduct(slug: string) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "PRODUCT_DUPLICATED",
       entityType: "product",
       entityId: duplicate.id,
@@ -229,7 +234,7 @@ export async function duplicateProduct(slug: string) {
 // ─── BULK ACTIONS ───
 
 export async function bulkUpdateStatus(slugs: string[], status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const updateData: Record<string, unknown> = { status };
   if (status === "ACTIVE") updateData.publishedAt = new Date();
@@ -241,6 +246,7 @@ export async function bulkUpdateStatus(slugs: string[], status: "ACTIVE" | "DRAF
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "BULK_STATUS_UPDATE",
       entityType: "product",
       metadata: { slugs, status, count: slugs.length }
@@ -253,7 +259,7 @@ export async function bulkUpdateStatus(slugs: string[], status: "ACTIVE" | "DRAF
 }
 
 export async function bulkDelete(slugs: string[]) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   await prisma.product.updateMany({
     where: { slug: { in: slugs } },
@@ -262,6 +268,7 @@ export async function bulkDelete(slugs: string[]) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "BULK_DELETE",
       entityType: "product",
       metadata: { slugs, count: slugs.length }
@@ -274,7 +281,7 @@ export async function bulkDelete(slugs: string[]) {
 }
 
 export async function bulkCategoryChange(slugs: string[], categoryIds: string[]) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const products = await prisma.product.findMany({
     where: { slug: { in: slugs } },
@@ -295,6 +302,7 @@ export async function bulkCategoryChange(slugs: string[], categoryIds: string[])
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "BULK_CATEGORY_CHANGE",
       entityType: "product",
       metadata: { slugs, categoryIds, count: slugs.length }
@@ -310,7 +318,7 @@ export async function bulkPriceUpdate(
   adjustmentType: "percentage" | "fixed",
   value: number
 ) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const products = await prisma.product.findMany({
     where: { slug: { in: slugs }, pricePaise: { not: null } },
@@ -337,6 +345,7 @@ export async function bulkPriceUpdate(
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "BULK_PRICE_UPDATE",
       entityType: "product",
       metadata: { slugs, adjustmentType, value, count: products.length }
@@ -351,7 +360,7 @@ export async function bulkInventoryUpdate(
   slugs: string[],
   quantity: number
 ) {
-  await requireAdmin();
+  const admin = await requireManager();
 
   const products = await prisma.product.findMany({
     where: { slug: { in: slugs } },
@@ -371,6 +380,7 @@ export async function bulkInventoryUpdate(
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "BULK_INVENTORY_UPDATE",
       entityType: "product",
       metadata: { slugs, quantity, count: products.length }

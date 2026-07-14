@@ -1,10 +1,11 @@
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminRole, isManagerOrOwner, requireAdmin } from "@/lib/admin-auth";
 import { getStoreProducts } from "@/lib/store-data";
 import { updateInventoryAction, receiveStockAction } from "@/lib/inventory-actions";
 import { AlertTriangle, Plus, Package } from "lucide-react";
 
 export default async function AdminInventoryPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const canManage = isManagerOrOwner(getAdminRole(session));
   const products = await getStoreProducts({ includeDrafts: true });
 
   const lowStockProducts = products.filter(
@@ -39,7 +40,7 @@ export default async function AdminInventoryPage() {
             return (
               <article
                 key={product.slug}
-                className={`vv-card p-6 grid gap-6 md:grid-cols-[1fr_auto_auto] items-center hover:shadow-md transition-all ${
+                className={`vv-card p-6 grid gap-6 ${canManage ? "md:grid-cols-[1fr_auto_auto]" : ""} items-center hover:shadow-md transition-all ${
                   isLow ? "border-l-4 border-l-amber-500 bg-amber-50/10" : ""
                 }`}
               >
@@ -62,6 +63,7 @@ export default async function AdminInventoryPage() {
                   </span>
                 </div>
 
+                {canManage ? <>
                 {/* Direct Set Stock Form */}
                 <form action={updateInventoryAction} className="flex items-center gap-2">
                   <input type="hidden" name="slug" value={product.slug} />
@@ -102,6 +104,7 @@ export default async function AdminInventoryPage() {
                     Add
                   </button>
                 </form>
+                </> : <p className="text-sm text-slate-500">Inventory is read-only for staff accounts.</p>}
               </article>
             );
           })}

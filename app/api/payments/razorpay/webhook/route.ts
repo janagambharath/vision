@@ -92,6 +92,8 @@ export async function POST(request: Request) {
   const refundEntity = getRefundEntity(payload);
   const providerPaymentId = asString(paymentEntity.id) ?? asString(refundEntity.payment_id);
   const providerOrderId = asString(paymentEntity.order_id);
+  const providerRefundId = asString(refundEntity.id);
+  const refundAmountPaise = asPaise(refundEntity.amount);
 
   try {
     if (eventType === "payment.captured" || eventType === "order.paid") {
@@ -133,35 +135,98 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, matched: false });
     }
 
+    const isRefundEvent = eventType.startsWith("refund.");
     const status = eventType === "payment.authorized"
-      ? "AUTHORIZED"
+      ? payment.status === "PAID" ? "PAID" : "AUTHORIZED"
       : eventType === "payment.failed"
-        ? "FAILED"
-        : eventType.startsWith("refund.")
-          ? "REFUNDED"
-          : payment.status;
-    await prisma.$transaction([
-      prisma.payment.update({
+        ? payment.status === "PAID" ? "PAID" : "FAILED"
+        : payment.status;
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
         where: { id: payment.id },
         data: {
           status,
           providerPaymentId: providerPaymentId ?? payment.providerPaymentId,
           rawPayload: payload as Prisma.InputJsonValue
         }
-      }),
-      prisma.paymentWebhookEvent.update({
+      });
+
+      if (isRefundEvent && providerRefundId && refundAmountPaise !== null) {
+        const refundStatus = eventType === "refund.processed"
+          ? "processed"
+          : eventType === "refund.failed"
+            ? "failed"
+            : "pending";
+        const existingRefund = await tx.refund.findFirst({
+          where: {
+            OR: [
+              { providerRefundId },
+              {
+                paymentId: payment.id,
+                providerRefundId: null,
+                status: { in: ["initiated", "pending"] }
+              }
+            ]
+          },
+          orderBy: { createdAt: "desc" }
+        });
+        if (existingRefund) {
+          await tx.refund.update({
+            where: { id: existingRefund.id },
+            data: { providerRefundId, status: refundStatus }
+          });
+        } else {
+          await tx.refund.create({
+            data: {
+              orderId: payment.orderId,
+              paymentId: payment.id,
+              providerRefundId,
+              amountPaise: refundAmountPaise,
+              reason: "Razorpay webhook refund",
+              status: refundStatus
+            }
+          });
+        }
+
+        if (eventType === "refund.processed") {
+          const processedRefunds = await tx.refund.aggregate({
+            where: { paymentId: payment.id, status: "processed" },
+            _sum: { amountPaise: true }
+          });
+          if ((processedRefunds._sum.amountPaise ?? 0) >= payment.amountPaise) {
+            await tx.payment.update({ where: { id: payment.id }, data: { status: "REFUNDED" } });
+            await tx.order.update({ where: { id: payment.orderId }, data: { status: "REFUNDED" } });
+            await tx.paymentReconciliation.updateMany({
+              where: { paymentId: payment.id, status: { not: "REFUNDED" } },
+              data: { status: "REFUNDED", lastError: null }
+            });
+          }
+        } else if (eventType === "refund.created") {
+          await tx.paymentReconciliation.updateMany({
+            where: { paymentId: payment.id, status: "REFUNDING" },
+            data: { status: "REFUND_PENDING", lastError: null }
+          });
+        } else if (eventType === "refund.failed") {
+          await tx.paymentReconciliation.updateMany({
+            where: { paymentId: payment.id, status: { in: ["REFUNDING", "REFUND_PENDING"] } },
+            data: { status: "REQUIRES_REVIEW", lastError: "Razorpay reported that the refund failed." }
+          });
+        }
+      }
+
+      await tx.paymentWebhookEvent.update({
         where: { id: webhookEvent.id },
         data: { processed: true, paymentId: payment.id, orderId: payment.orderId }
-      }),
-      prisma.activityLog.create({
+      });
+      await tx.activityLog.create({
         data: {
           action: "PAYMENT_WEBHOOK_PROCESSED",
           entityType: "Payment",
           entityId: payment.id,
-          metadata: { eventType, providerEventId, providerPaymentId, providerOrderId }
+          metadata: { eventType, providerEventId, providerPaymentId, providerOrderId, providerRefundId, refundAmountPaise }
         }
-      })
-    ]);
+      });
+    });
     return NextResponse.json({ ok: true, matched: true });
   } catch (error) {
     if (error instanceof PaymentIntegrityError) {

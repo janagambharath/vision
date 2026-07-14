@@ -1,5 +1,5 @@
 import { Plus, Edit, Trash2, FolderTree, Save } from "lucide-react";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminRole, isManagerOrOwner, requireAdmin, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -7,7 +7,8 @@ import { revalidatePath } from "next/cache";
 export const metadata = { title: "Categories | Admin" };
 
 export default async function AdminCategoriesPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const canManage = isManagerOrOwner(getAdminRole(session));
 
   const categories = await prisma.category.findMany({
     orderBy: { sortOrder: "asc" },
@@ -23,7 +24,7 @@ export default async function AdminCategoriesPage() {
 
   async function createCategory(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const name = String(formData.get("name") ?? "").trim();
     const slug = String(formData.get("slug") ?? "").trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -45,7 +46,7 @@ export default async function AdminCategoriesPage() {
     });
 
     await prisma.activityLog.create({
-      data: { action: "CATEGORY_CREATED", entityType: "category", metadata: { slug, name } }
+      data: { adminUserId: admin.user?.id, action: "CATEGORY_CREATED", entityType: "category", metadata: { slug, name } }
     });
 
     revalidatePath("/admin/categories");
@@ -54,7 +55,7 @@ export default async function AdminCategoriesPage() {
 
   async function updateCategory(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const id = String(formData.get("id")).trim();
     const name = String(formData.get("name") ?? "").trim();
@@ -73,13 +74,17 @@ export default async function AdminCategoriesPage() {
       data: { name, slug, description, parentId: parentId || null, imageUrl, bannerUrl, seoTitle, seoDescription, featured, sortOrder }
     });
 
+    await prisma.activityLog.create({
+      data: { adminUserId: admin.user?.id, action: "CATEGORY_UPDATED", entityType: "category", entityId: id, metadata: { slug, name } }
+    });
+
     revalidatePath("/admin/categories");
     redirect("/admin/categories");
   }
 
   async function deleteCategory(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const id = String(formData.get("id")).trim();
 
@@ -92,6 +97,10 @@ export default async function AdminCategoriesPage() {
     // Remove product associations first
     await prisma.productCategory.deleteMany({ where: { categoryId: id } });
     await prisma.category.delete({ where: { id } });
+
+    await prisma.activityLog.create({
+      data: { adminUserId: admin.user?.id, action: "CATEGORY_DELETED", entityType: "category", entityId: id }
+    });
 
     revalidatePath("/admin/categories");
     redirect("/admin/categories");
@@ -110,6 +119,7 @@ export default async function AdminCategoriesPage() {
         </div>
 
         {/* Create New Category */}
+        {canManage ? (
         <details className="vv-card mb-6 group">
           <summary className="flex cursor-pointer items-center gap-2 p-4 text-sm font-extrabold text-teal-700 hover:text-teal-900">
             <Plus className="h-4 w-4" />
@@ -170,12 +180,13 @@ export default async function AdminCategoriesPage() {
             </div>
           </form>
         </details>
+        ) : null}
 
         {/* Category List */}
         <div className="grid gap-2">
           {rootCategories.map((category) => (
             <div key={category.id}>
-              <CategoryRow category={category} allCategories={allForParentSelect} updateAction={updateCategory} deleteAction={deleteCategory} depth={0} />
+              <CategoryRow category={category} allCategories={allForParentSelect} updateAction={updateCategory} deleteAction={deleteCategory} depth={0} canManage={canManage} />
               {category.children.map((child) => {
                 const childWithCount = categories.find(c => c.id === child.id);
                 return (
@@ -186,6 +197,7 @@ export default async function AdminCategoriesPage() {
                     updateAction={updateCategory}
                     deleteAction={deleteCategory}
                     depth={1}
+                    canManage={canManage}
                   />
                 );
               })}
@@ -216,9 +228,10 @@ type CategoryRowProps = {
   updateAction: (formData: FormData) => Promise<void>;
   deleteAction: (formData: FormData) => Promise<void>;
   depth: number;
+  canManage: boolean;
 };
 
-function CategoryRow({ category, allCategories, updateAction, deleteAction, depth }: CategoryRowProps) {
+function CategoryRow({ category, allCategories, updateAction, deleteAction, depth, canManage }: CategoryRowProps) {
   return (
     <details className="vv-card group">
       <summary className="flex cursor-pointer items-center justify-between p-3 hover:bg-slate-50 transition rounded-xl"
@@ -235,11 +248,11 @@ function CategoryRow({ category, allCategories, updateAction, deleteAction, dept
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold text-slate-500">{category._count.products} products</span>
-          <Edit className="h-4 w-4 text-slate-400" />
+          {canManage ? <Edit className="h-4 w-4 text-slate-400" /> : null}
         </div>
       </summary>
 
-      <div className="border-t border-slate-100 p-4">
+      {canManage ? <div className="border-t border-slate-100 p-4">
         <form action={updateAction} className="grid gap-3">
           <input type="hidden" name="id" value={category.id} />
           <div className="grid gap-3 sm:grid-cols-3">
@@ -297,7 +310,7 @@ function CategoryRow({ category, allCategories, updateAction, deleteAction, dept
             <Trash2 className="h-3.5 w-3.5" /> Delete Category
           </button>
         </form>
-      </div>
+      </div> : <p className="border-t border-slate-100 p-4 text-sm text-slate-500">Catalog data is read-only for staff accounts.</p>}
     </details>
   );
 }

@@ -12,6 +12,7 @@ import { formatMoney } from "@/lib/money";
 import { getRelatedProducts, getStoreProduct, getStoreProducts, getLensOptions } from "@/lib/store-data";
 import { prisma } from "@/lib/db";
 import { getRecentlyViewed } from "@/lib/recently-viewed";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -178,8 +179,8 @@ export default async function ProductPage({
 
   return (
     <main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(productSchema) }} />
       
       <section className="vv-section bg-white/40">
         <FadeIn className="vv-container grid gap-10 lg:grid-cols-[1.05fr_.95fr]">

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     if (!payment || payment.order.publicId !== orderPublicId) {
       return NextResponse.json({ error: "Payment does not belong to this order" }, { status: 400 });
     }
-    if (payment.providerPaymentId && payment.providerPaymentId !== razorpay_payment_id) {
+    if (payment.providerPaymentId && payment.providerPaymentId !== razorpay_payment_id && payment.status !== "FAILED") {
       return NextResponse.json({ error: "A different payment is already attached to this order" }, { status: 409 });
     }
 

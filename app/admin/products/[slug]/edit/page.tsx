@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { getCategories, getBrands } from "@/lib/store-data";
 import { invalidateProductCache } from "@/lib/inventory-actions";
@@ -60,7 +60,7 @@ export default async function EditProductPage({
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{ error?: string }>;
 }) {
-  await requireAdmin();
+  await requireManager();
   const { slug: currentSlug } = await params;
   const query = (await searchParams) ?? {};
   const errorMessage = query.error ? errorMessages[query.error] : null;
@@ -84,7 +84,7 @@ export default async function EditProductPage({
 
   async function updateProduct(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const name = String(formData.get("name") ?? "").trim();
     const brand = String(formData.get("brand") ?? "").trim();
@@ -233,7 +233,7 @@ export default async function EditProductPage({
       }
 
       await tx.activityLog.create({
-        data: { action: "PRODUCT_UPDATED", entityType: "product", entityId: product!.id, metadata: { slug, name, brand, tryOnEligible } }
+        data: { adminUserId: admin.user?.id, action: "PRODUCT_UPDATED", entityType: "product", entityId: product!.id, metadata: { slug, name, brand, tryOnEligible } }
       });
     });
 

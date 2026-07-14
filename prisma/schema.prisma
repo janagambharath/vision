@@ -20,6 +20,13 @@ enum InventoryStatus {
   PRICE_REQUIRED
 }
 
+enum InventoryReservationStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
+  EXPIRED
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -40,6 +47,14 @@ enum PaymentStatus {
   PAID
   FAILED
   REFUNDED
+}
+
+enum PaymentReconciliationStatus {
+  PENDING_REFUND
+  REFUNDING
+  REFUND_PENDING
+  REFUNDED
+  REQUIRES_REVIEW
 }
 
 enum PaymentMethod {
@@ -266,17 +281,18 @@ model Product {
   deletedAt DateTime?
 
   // Relations
-  images          ProductImage[]
-  categories      ProductCategory[]
-  collections     ProductCollection[]
-  tags            ProductTag[]
-  inventory       Inventory?
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
-  reviews         Review[]
-  wishlistItems   WishlistItem[]
-  previewRequests FramePreviewRequest[]
-  imageUploads    ProductImageUpload[]
+  images                ProductImage[]
+  categories            ProductCategory[]
+  collections           ProductCollection[]
+  tags                  ProductTag[]
+  inventory             Inventory?
+  cartItems             CartItem[]
+  orderItems            OrderItem[]
+  reviews               Review[]
+  wishlistItems         WishlistItem[]
+  previewRequests       FramePreviewRequest[]
+  imageUploads          ProductImageUpload[]
+  inventoryReservations InventoryReservation[]
 
   @@index([status])
   @@index([brand])
@@ -363,6 +379,25 @@ model Inventory {
   updatedAt         DateTime        @updatedAt
 }
 
+// An allocation holds stock during checkout. It is consumed only after a
+// payment webhook is verified, or released when the checkout expires.
+model InventoryReservation {
+  id        String                     @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  status    InventoryReservationStatus @default(ACTIVE)
+  expiresAt DateTime
+  order     Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product                    @relation(fields: [productId], references: [id], onDelete: Restrict)
+  createdAt DateTime                   @default(now())
+  updatedAt DateTime                   @updatedAt
+
+  @@unique([orderId, productId])
+  @@index([status, expiresAt])
+  @@index([productId, status])
+}
+
 model LensOption {
   id          String      @id @default(cuid())
   code        String      @unique
@@ -410,35 +445,37 @@ model CartItem {
 }
 
 model Order {
-  id               String            @id @default(cuid())
-  publicId         String            @unique
-  userId           String?
-  user             User?             @relation(fields: [userId], references: [id])
-  customerName     String
-  phone            String
-  email            String?
-  status           OrderStatus       @default(PENDING)
-  deliveryMethod   DeliveryMethod    @default(DELIVERY)
-  paymentMethod    PaymentMethod     @default(RAZORPAY)
-  subtotalPaise    Int
-  lensTotalPaise   Int               @default(0)
-  shippingPaise    Int               @default(0)
-  taxPaise         Int               @default(0)
-  discountPaise    Int               @default(0)
-  grandTotalPaise  Int
-  notes            String?
-  prescriptionNote String?
-  couponCode       String?
-  items            OrderItem[]
-  payments         Payment[]
-  shippingAddress  ShippingAddress?
-  tryAtHomeRequest TryAtHomeRequest?
-  prescriptions    Prescription[]
-  shipments        Shipment[]
-  notifications    Notification[]
-  refunds          Refund[]
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id                     String                  @id @default(cuid())
+  publicId               String                  @unique
+  userId                 String?
+  user                   User?                   @relation(fields: [userId], references: [id])
+  customerName           String
+  phone                  String
+  email                  String?
+  status                 OrderStatus             @default(PENDING)
+  deliveryMethod         DeliveryMethod          @default(DELIVERY)
+  paymentMethod          PaymentMethod           @default(RAZORPAY)
+  subtotalPaise          Int
+  lensTotalPaise         Int                     @default(0)
+  shippingPaise          Int                     @default(0)
+  taxPaise               Int                     @default(0)
+  discountPaise          Int                     @default(0)
+  grandTotalPaise        Int
+  notes                  String?
+  prescriptionNote       String?
+  couponCode             String?
+  items                  OrderItem[]
+  payments               Payment[]
+  shippingAddress        ShippingAddress?
+  tryAtHomeRequest       TryAtHomeRequest?
+  prescriptions          Prescription[]
+  shipments              Shipment[]
+  notifications          Notification[]
+  refunds                Refund[]
+  inventoryReservations  InventoryReservation[]
+  paymentReconciliations PaymentReconciliation[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
 
   @@index([status])
   @@index([phone])
@@ -461,22 +498,43 @@ model OrderItem {
 }
 
 model Payment {
-  id                String        @id @default(cuid())
+  id                String                 @id @default(cuid())
   orderId           String
-  provider          String        @default("razorpay")
+  provider          String                 @default("razorpay")
   providerOrderId   String?
   providerPaymentId String?
   signature         String?
-  status            PaymentStatus @default(PENDING)
+  status            PaymentStatus          @default(PENDING)
   amountPaise       Int
   rawPayload        Json?
-  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  order             Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reconciliation    PaymentReconciliation?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
 
   @@index([providerOrderId])
   @@index([providerPaymentId])
   @@index([status])
+}
+
+// Captured payments that cannot safely be fulfilled are held here until the
+// one-time refund workflow succeeds or an owner resolves the exception.
+model PaymentReconciliation {
+  id        String                      @id @default(cuid())
+  paymentId String                      @unique
+  orderId   String
+  reason    String
+  status    PaymentReconciliationStatus @default(PENDING_REFUND)
+  attempts  Int                         @default(0)
+  lastError String?
+  payment   Payment                     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  order     Order                       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refund    Refund?
+  createdAt DateTime                    @default(now())
+  updatedAt DateTime                    @updatedAt
+
+  @@index([status, createdAt])
+  @@index([orderId])
 }
 
 model PaymentWebhookEvent {
@@ -772,17 +830,19 @@ model GuestWishlist {
 
 // Refund records
 model Refund {
-  id                 String   @id @default(cuid())
+  id                 String                 @id @default(cuid())
   orderId            String
   paymentId          String
   providerRefundId   String?
   amountPaise        Int
   reason             String
   initiatedByAdminId String?
-  status             String   @default("pending")
-  order              Order    @relation(fields: [orderId], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  reconciliationId   String?                @unique
+  status             String                 @default("pending")
+  order              Order                  @relation(fields: [orderId], references: [id])
+  reconciliation     PaymentReconciliation? @relation(fields: [reconciliationId], references: [id], onDelete: SetNull)
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
 
   @@index([orderId])
 }

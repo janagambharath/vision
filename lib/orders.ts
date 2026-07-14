@@ -2,17 +2,28 @@
 
 import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { HOME_TRIAL_DEPOSIT_PAISE, HOME_TRIAL_SERVICE_FEE_PAISE } from "@/lib/constants";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
 import { prisma } from "@/lib/db";
 import { checkoutSchema, tryAtHomeSchema } from "@/lib/validations";
-import { createRazorpayOrder } from "@/lib/integrations/razorpay";
 import { uploadFormFile } from "@/lib/uploads";
 import { grantOrderAccess } from "@/lib/order-access";
+import {
+  getCheckoutReservationExpiry,
+  InventoryReservationConflictError,
+  InventoryUnavailableError,
+  isOnlinePaymentMethod,
+  releaseOrderInventoryReservations,
+  reserveOrderInventory
+} from "@/lib/inventory-reservations";
 
 function makePublicOrderId() {
   return `VV-${randomBytes(16).toString("hex").toUpperCase()}`;
+}
+
+function isSerializationFailure(error: unknown) {
+  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2034";
 }
 
 export async function checkoutAction(formData: FormData) {
@@ -33,6 +44,7 @@ export async function checkoutAction(formData: FormData) {
 
   const totals = calculateCartTotals(cart);
   const publicId = makePublicOrderId();
+  const isOnlinePayment = isOnlinePaymentMethod(parsed.data.paymentMethod);
 
   // Handle Prescription logic
   const file = formData.get("prescription") as File | null;
@@ -53,56 +65,81 @@ export async function checkoutAction(formData: FormData) {
     ? "AWAITING_PRESCRIPTION"
     : "PENDING";
 
-  const order = await prisma.order.create({
-    data: {
-      publicId,
-      customerName: parsed.data.name,
-      phone: parsed.data.phone,
-      email: parsed.data.email || null,
-      deliveryMethod: parsed.data.deliveryMethod,
-      paymentMethod: parsed.data.paymentMethod,
-      status: orderStatus,
-      subtotalPaise: totals.subtotalPaise,
-      lensTotalPaise: totals.lensTotalPaise,
-      shippingPaise: totals.shippingPaise,
-      taxPaise: totals.taxPaise,
-      discountPaise: totals.discountPaise,
-      grandTotalPaise: totals.grandTotalPaise,
-      notes: parsed.data.notes,
-      shippingAddress: {
-        create: {
-          name: parsed.data.name,
-          phone: parsed.data.phone,
-          line1: parsed.data.line1,
-          line2: parsed.data.line2 || null,
-          city: parsed.data.city,
-          state: parsed.data.state || null,
-          pincode: parsed.data.pincode
-        }
-      },
-      items: {
-        create: cart.items.map((item) => ({
-          productId: item.productId,
-          lensOptionId: item.lensOptionId,
-          quantity: item.quantity,
-          unitPricePaise: item.product.pricePaise ?? 0,
-          lensPricePaise: item.lensOption?.pricePaise ?? 0,
-          productSnapshot: {
-            slug: item.product.slug,
-            sku: item.product.sku,
-            name: item.product.name,
-            brand: item.product.brand
-          },
-          lensSnapshot: item.lensOption
-            ? {
-                code: item.lensOption.code,
-                name: item.lensOption.name
+  let order: { id: string; publicId: string } | null = null;
+  const reservationExpiresAt = getCheckoutReservationExpiry(parsed.data.paymentMethod);
+
+  // Creating the order and allocating stock must be one serializable unit.
+  // A short retry handles two customers buying the last frame at once.
+  for (let attempt = 0; attempt < 3 && !order; attempt += 1) {
+    try {
+      order = await prisma.$transaction(async (tx) => {
+        const created = await tx.order.create({
+          data: {
+            publicId,
+            customerName: parsed.data.name,
+            phone: parsed.data.phone,
+            email: parsed.data.email || null,
+            deliveryMethod: parsed.data.deliveryMethod,
+            paymentMethod: parsed.data.paymentMethod,
+            status: orderStatus,
+            subtotalPaise: totals.subtotalPaise,
+            lensTotalPaise: totals.lensTotalPaise,
+            shippingPaise: totals.shippingPaise,
+            taxPaise: totals.taxPaise,
+            discountPaise: totals.discountPaise,
+            grandTotalPaise: totals.grandTotalPaise,
+            notes: parsed.data.notes,
+            shippingAddress: {
+              create: {
+                name: parsed.data.name,
+                phone: parsed.data.phone,
+                line1: parsed.data.line1,
+                line2: parsed.data.line2 || null,
+                city: parsed.data.city,
+                state: parsed.data.state || null,
+                pincode: parsed.data.pincode
               }
-            : undefined
-        }))
+            },
+            items: {
+              create: cart.items.map((item) => ({
+                productId: item.productId,
+                lensOptionId: item.lensOptionId,
+                quantity: item.quantity,
+                unitPricePaise: item.product.pricePaise ?? 0,
+                lensPricePaise: item.lensOption?.pricePaise ?? 0,
+                productSnapshot: {
+                  slug: item.product.slug,
+                  sku: item.product.sku,
+                  name: item.product.name,
+                  brand: item.product.brand
+                },
+                lensSnapshot: item.lensOption
+                  ? {
+                      code: item.lensOption.code,
+                      name: item.lensOption.name
+                    }
+                  : undefined
+              }))
+            }
+          }
+        });
+
+        await reserveOrderInventory(tx, created.id, cart.items, reservationExpiresAt);
+        return { id: created.id, publicId: created.publicId };
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof InventoryUnavailableError) {
+        redirect("/frames/cart?error=out-of-stock");
+      }
+      if (!(error instanceof InventoryReservationConflictError || isSerializationFailure(error)) || attempt === 2) {
+        throw error;
       }
     }
-  });
+  }
+
+  if (!order) {
+    redirect("/frames/cart?error=out-of-stock");
+  }
 
   // A prescription upload must either persist successfully or the just-created
   // order is removed. Placeholder URLs are never acceptable medical records.
@@ -120,54 +157,11 @@ export async function checkoutAction(formData: FormData) {
       });
     } catch (uploadError) {
       console.error("Prescription upload to Cloudinary failed:", uploadError);
-      await prisma.order.delete({ where: { id: order.id } });
+      await prisma.$transaction(async (tx) => {
+        await releaseOrderInventoryReservations(tx, order!.id);
+        await tx.order.delete({ where: { id: order!.id } });
+      });
       redirect("/frames/checkout?error=prescription-upload-failed");
-    }
-  }
-
-  const isOnlinePayment = ["RAZORPAY", "UPI", "CARD", "NETBANKING"].includes(parsed.data.paymentMethod);
-
-  if (isOnlinePayment) {
-    try {
-      const razorpayOrder = await createRazorpayOrder({
-        amountPaise: totals.grandTotalPaise,
-        receipt: publicId,
-        notes: { orderId: order.id, publicId }
-      });
-
-      await prisma.payment.create({
-        data: {
-          id: `payment-${order.id}`,
-          orderId: order.id,
-          providerOrderId: razorpayOrder.id,
-          amountPaise: totals.grandTotalPaise,
-          status: "PENDING",
-          rawPayload: JSON.parse(JSON.stringify(razorpayOrder)) as Prisma.InputJsonValue
-        }
-      });
-    } catch (error) {
-      await prisma.payment.create({
-        data: {
-          id: `payment-${order.id}`,
-          orderId: order.id,
-          amountPaise: totals.grandTotalPaise,
-          status: "PENDING",
-          rawPayload: { note: "Razorpay order initialization failed. Retry is required before online payment." }
-        }
-      });
-      await prisma.notification.create({
-        data: {
-          orderId: order.id,
-          channel: "SYSTEM",
-          status: "PENDING",
-          recipient: "admin",
-          subject: "Razorpay initialization failed",
-          body: `Order ${order.publicId} was created but no provider order was issued. Do not mark it paid manually without reconciliation.`,
-          entityType: "Order",
-          entityId: order.id,
-          metadata: { error: error instanceof Error ? error.message : "Unknown Razorpay initialization error" }
-        }
-      });
     }
   }
 

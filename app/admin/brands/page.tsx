@@ -1,5 +1,5 @@
 import { Plus, Edit, Trash2, Gem, Save } from "lucide-react";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminRole, isManagerOrOwner, requireAdmin, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -7,7 +7,8 @@ import { revalidatePath } from "next/cache";
 export const metadata = { title: "Brands | Admin" };
 
 export default async function AdminBrandsPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const canManage = isManagerOrOwner(getAdminRole(session));
 
   const brands = await prisma.brand.findMany({
     orderBy: { sortOrder: "asc" },
@@ -16,7 +17,7 @@ export default async function AdminBrandsPage() {
 
   async function createBrand(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const name = String(formData.get("name") ?? "").trim();
     const slug = String(formData.get("slug") ?? "").trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -37,7 +38,7 @@ export default async function AdminBrandsPage() {
     });
 
     await prisma.activityLog.create({
-      data: { action: "BRAND_CREATED", entityType: "brand", metadata: { slug, name } }
+      data: { adminUserId: admin.user?.id, action: "BRAND_CREATED", entityType: "brand", metadata: { slug, name } }
     });
 
     revalidatePath("/admin/brands");
@@ -46,7 +47,7 @@ export default async function AdminBrandsPage() {
 
   async function updateBrand(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const id = String(formData.get("id")).trim();
     const name = String(formData.get("name") ?? "").trim();
@@ -64,13 +65,17 @@ export default async function AdminBrandsPage() {
       data: { name, slug, description, logoUrl, bannerUrl, seoTitle, seoDescription, active, sortOrder }
     });
 
+    await prisma.activityLog.create({
+      data: { adminUserId: admin.user?.id, action: "BRAND_UPDATED", entityType: "brand", entityId: id, metadata: { slug, name } }
+    });
+
     revalidatePath("/admin/brands");
     redirect("/admin/brands");
   }
 
   async function deleteBrand(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const id = String(formData.get("id")).trim();
 
@@ -81,6 +86,10 @@ export default async function AdminBrandsPage() {
     });
 
     await prisma.brand.delete({ where: { id } });
+
+    await prisma.activityLog.create({
+      data: { adminUserId: admin.user?.id, action: "BRAND_DELETED", entityType: "brand", entityId: id }
+    });
 
     revalidatePath("/admin/brands");
     redirect("/admin/brands");
@@ -99,6 +108,7 @@ export default async function AdminBrandsPage() {
         </div>
 
         {/* Create New Brand */}
+        {canManage ? (
         <details className="vv-card mb-6 group">
           <summary className="flex cursor-pointer items-center gap-2 p-4 text-sm font-extrabold text-teal-700 hover:text-teal-900">
             <Plus className="h-4 w-4" />
@@ -152,6 +162,7 @@ export default async function AdminBrandsPage() {
             </div>
           </form>
         </details>
+        ) : null}
 
         {/* Brand List */}
         <div className="grid gap-2">
@@ -177,11 +188,11 @@ export default async function AdminBrandsPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-slate-500">{brand._count.products} products</span>
-                  <Edit className="h-4 w-4 text-slate-400" />
+                  {canManage ? <Edit className="h-4 w-4 text-slate-400" /> : null}
                 </div>
               </summary>
 
-              <div className="border-t border-slate-100 p-4">
+              {canManage ? <div className="border-t border-slate-100 p-4">
                 <form action={updateBrand} className="grid gap-3">
                   <input type="hidden" name="id" value={brand.id} />
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -228,7 +239,7 @@ export default async function AdminBrandsPage() {
                     <Trash2 className="h-3.5 w-3.5" /> Delete Brand
                   </button>
                 </form>
-              </div>
+              </div> : <p className="border-t border-slate-100 p-4 text-sm text-slate-500">Catalog data is read-only for staff accounts.</p>}
             </details>
           ))}
 

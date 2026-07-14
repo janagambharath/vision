@@ -27,9 +27,55 @@ export async function createRazorpayOrder(input: { amountPaise: number; receipt:
   });
 }
 
-export async function refundRazorpayPayment(paymentId: string, amountPaise: number) {
-  const razorpay = getRazorpayClient();
-  return razorpay.payments.refund(paymentId, { amount: amountPaise });
+export type RazorpayRefundResponse = {
+  id: string;
+  status?: string;
+};
+
+/**
+ * Razorpay's SDK does not expose per-request headers for refunds. Use the
+ * documented idempotency header directly so a retry can never create a
+ * second refund for the same durable local refund attempt.
+ */
+export async function refundRazorpayPayment(paymentId: string, amountPaise: number, idempotencyKey: string) {
+  if (!razorpayConfigured()) {
+    throw new Error("Razorpay credentials are not configured.");
+  }
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(idempotencyKey)) {
+    throw new Error("Razorpay refund idempotency key is invalid.");
+  }
+
+  const credentials = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
+  let response: Response;
+  try {
+    response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/refund`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/json",
+        "X-Refund-Idempotency": idempotencyKey
+      },
+      body: JSON.stringify({ amount: amountPaise })
+    });
+  } catch {
+    throw new Error("Razorpay refund request could not be confirmed.");
+  }
+
+  const body = await response.json().catch(() => null) as { id?: unknown; status?: unknown; error?: { description?: unknown } } | null;
+  if (!response.ok) {
+    const message = typeof body?.error?.description === "string"
+      ? body.error.description
+      : `Razorpay refund request failed with status ${response.status}.`;
+    throw new Error(message);
+  }
+  if (!body || typeof body.id !== "string" || !body.id) {
+    throw new Error("Razorpay refund response did not include a refund identifier.");
+  }
+
+  return {
+    id: body.id,
+    status: typeof body.status === "string" ? body.status : undefined
+  } satisfies RazorpayRefundResponse;
 }
 
 export function verifyRazorpayWebhookSignature(body: string, signature: string | null) {

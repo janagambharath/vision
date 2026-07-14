@@ -5,6 +5,7 @@ import { createRazorpayOrder } from "@/lib/integrations/razorpay";
 import { hasOrderAccess } from "@/lib/order-access";
 import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
+import { isOnlinePaymentMethod } from "@/lib/inventory-reservations";
 
 // Checkout setup is restricted to the short-lived signed checkout session set
 // after the order is created. Internal database IDs are never accepted here.
@@ -23,13 +24,29 @@ export async function POST(request: NextRequest) {
 
     const order = await prisma.order.findUnique({ where: { publicId: publicOrderId } });
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (!isOnlinePaymentMethod(order.paymentMethod)) {
+      return NextResponse.json({ error: "This order is not configured for online payment." }, { status: 409 });
+    }
     if (!['PENDING', 'AWAITING_PRESCRIPTION'].includes(order.status)) {
       return NextResponse.json({ error: "Payment cannot be initialized for this order status" }, { status: 409 });
     }
 
     const paymentId = `payment-${order.id}`;
     const existingPayment = await prisma.payment.findUnique({ where: { id: paymentId } });
-    if (existingPayment?.providerOrderId && existingPayment.status === "PENDING") {
+    if (existingPayment?.status === "PAID" || existingPayment?.status === "REFUNDED" || existingPayment?.status === "AUTHORIZED") {
+      return NextResponse.json({ error: "This order already has a payment outcome and cannot be charged again." }, { status: 409 });
+    }
+
+    // New checkouts always have a live allocation. Legacy orders without an
+    // allocation remain payable so a migration does not strand customers.
+    const reservations = await prisma.inventoryReservation.findMany({
+      where: { orderId: order.id },
+      select: { status: true, expiresAt: true }
+    });
+    if (reservations.length && reservations.some((reservation) => reservation.status !== "ACTIVE" || reservation.expiresAt <= new Date())) {
+      return NextResponse.json({ error: "This checkout has expired. Return to the cart to reserve stock again." }, { status: 409 });
+    }
+    if (existingPayment?.providerOrderId) {
       return NextResponse.json({
         razorpayOrderId: existingPayment.providerOrderId,
         amount: existingPayment.amountPaise,
@@ -46,7 +63,14 @@ export async function POST(request: NextRequest) {
     const rawPayload = JSON.parse(JSON.stringify(razorpayOrder)) as Prisma.InputJsonValue;
     await prisma.payment.upsert({
       where: { id: paymentId },
-      update: { providerOrderId: razorpayOrder.id, amountPaise: order.grandTotalPaise, rawPayload, status: "PENDING" },
+      update: {
+        providerOrderId: razorpayOrder.id,
+        providerPaymentId: null,
+        signature: null,
+        amountPaise: order.grandTotalPaise,
+        rawPayload,
+        status: "PENDING"
+      },
       create: {
         id: paymentId,
         orderId: order.id,

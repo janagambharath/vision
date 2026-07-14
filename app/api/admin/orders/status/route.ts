@@ -1,14 +1,21 @@
 import { NextResponse } from "next/server";
 import { OrderStatus } from "@prisma/client";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminAccess, isManagerOrOwner } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { assertSameOrigin } from "@/lib/request-security";
+import {
+  OrderInventoryAllocationError,
+  OrderStatusTransitionError,
+  updateOrderStatusWithInventory
+} from "@/lib/order-status";
 
 export async function POST(request: Request) {
   const originError = assertSameOrigin(request);
   if (originError) return originError;
 
-  const admin = await requireAdmin();
+  const access = await getAdminAccess();
+  if (!access) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  if (!isManagerOrOwner(access.role)) return NextResponse.json({ error: "Manager access required" }, { status: 403 });
   const formData = await request.formData();
   const publicId = String(formData.get("publicId") ?? "");
   const status = String(formData.get("status") ?? "");
@@ -17,14 +24,26 @@ export async function POST(request: Request) {
     return NextResponse.redirect(new URL("/admin/orders?error=invalid-status", request.url), 303);
   }
 
-  const order = await prisma.order.update({
-    where: { publicId },
-    data: { status: status as OrderStatus }
-  });
+  const existingOrder = await prisma.order.findUnique({ where: { publicId }, select: { id: true } });
+  if (!existingOrder) return NextResponse.redirect(new URL("/admin/orders?error=order-not-found", request.url), 303);
+
+  let order;
+  try {
+    order = await updateOrderStatusWithInventory({
+      orderId: existingOrder.id,
+      status: status as OrderStatus
+    });
+  } catch (error) {
+    if (error instanceof OrderInventoryAllocationError || error instanceof OrderStatusTransitionError) {
+      const reason = error instanceof OrderStatusTransitionError ? "order-transition" : "stock-allocation";
+      return NextResponse.redirect(new URL(`/admin/orders?error=${reason}&publicId=${encodeURIComponent(publicId)}`, request.url), 303);
+    }
+    throw error;
+  }
 
   await prisma.activityLog.create({
     data: {
-      adminUserId: admin.user?.id,
+      adminUserId: access.session.user?.id,
       action: "order.status.update",
       entityType: "Order",
       entityId: order.id,

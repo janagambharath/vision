@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireManager } from "@/lib/admin-auth";
 import { deleteCacheByPrefix } from "@/lib/redis";
 import type { InventoryStatus } from "@prisma/client";
+
+const MAX_INVENTORY_QUANTITY = 1_000_000;
 
 export async function invalidateProductCache() {
   await deleteCacheByPrefix("store:products:");
@@ -12,9 +14,10 @@ export async function invalidateProductCache() {
 }
 
 export async function updateInventoryAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireManager();
   const slug = String(formData.get("slug"));
   const quantity = Number(formData.get("quantity"));
+  if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > MAX_INVENTORY_QUANTITY) return;
   
   const product = await prisma.product.findUnique({ 
     where: { slug }, 
@@ -35,6 +38,7 @@ export async function updateInventoryAction(formData: FormData) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "INVENTORY_UPDATED",
       entityType: "product",
       entityId: product.id,
@@ -47,10 +51,10 @@ export async function updateInventoryAction(formData: FormData) {
 }
 
 export async function receiveStockAction(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireManager();
   const slug = String(formData.get("slug"));
   const addQty = Number(formData.get("addQuantity"));
-  if (Number.isNaN(addQty) || addQty <= 0) return;
+  if (!Number.isSafeInteger(addQty) || addQty <= 0 || addQty > MAX_INVENTORY_QUANTITY) return;
 
   const product = await prisma.product.findUnique({ 
     where: { slug }, 
@@ -60,6 +64,7 @@ export async function receiveStockAction(formData: FormData) {
 
   const currentQty = product.inventory?.quantity ?? 0;
   const quantity = currentQty + addQty;
+  if (quantity > MAX_INVENTORY_QUANTITY) return;
 
   const status: InventoryStatus =
     quantity === 0 ? "OUT_OF_STOCK" :
@@ -74,6 +79,7 @@ export async function receiveStockAction(formData: FormData) {
 
   await prisma.activityLog.create({
     data: {
+      adminUserId: admin.user?.id,
       action: "INVENTORY_RECEIVED",
       entityType: "product",
       entityId: product.id,

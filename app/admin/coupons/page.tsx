@@ -1,13 +1,14 @@
 import { Plus, Tag } from "lucide-react";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminRole, isManagerOrOwner, requireAdmin, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 
 export const metadata = { title: "Admin Coupons" };
 
 export default async function AdminCouponsPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const canManage = isManagerOrOwner(getAdminRole(session));
 
   const coupons = await prisma.coupon.findMany({
     orderBy: { createdAt: "desc" }
@@ -15,7 +16,7 @@ export default async function AdminCouponsPage() {
 
   async function createCoupon(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const code = String(formData.get("code") ?? "").trim().toUpperCase();
     const description = String(formData.get("description") ?? "").trim();
@@ -31,7 +32,7 @@ export default async function AdminCouponsPage() {
 
     if (!code) redirect("/admin/coupons?error=missing-code");
 
-    await prisma.coupon.create({
+    const coupon = await prisma.coupon.create({
       data: {
         code,
         description,
@@ -41,6 +42,10 @@ export default async function AdminCouponsPage() {
         expiresAt,
         active: true
       }
+    });
+
+    await prisma.activityLog.create({
+      data: { adminUserId: admin.user?.id, action: "COUPON_CREATED", entityType: "coupon", entityId: coupon.id, metadata: { code } }
     });
 
     redirect("/admin/coupons");
@@ -95,7 +100,7 @@ export default async function AdminCouponsPage() {
         </div>
 
         {/* Add Coupon Sidebar */}
-        <aside className="vv-card p-6 self-start sticky top-28 bg-slate-50">
+        {canManage ? <aside className="vv-card p-6 self-start sticky top-28 bg-slate-50">
           <h2 className="text-xl font-extrabold mb-4 border-b border-slate-100 pb-2">Create Coupon</h2>
           <form action={createCoupon} className="grid gap-4">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
@@ -129,7 +134,7 @@ export default async function AdminCouponsPage() {
               Create Coupon
             </button>
           </form>
-        </aside>
+        </aside> : null}
       </div>
     </main>
   );

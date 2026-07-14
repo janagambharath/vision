@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate application
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vision
+          POSTGRES_PASSWORD: vision
+          POSTGRES_DB: vision
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vision -d vision"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://vision:vision@localhost:5432/vision?schema=public
+      AUTH_SECRET: ci-only-auth-secret-not-for-production
+      NEXTAUTH_SECRET: ci-only-nextauth-secret-not-for-production
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations to a fresh PostgreSQL database
+        run: npx prisma migrate deploy
+
+      - name: Verify migrations match the Prisma schema
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build production application
+        run: npm run build

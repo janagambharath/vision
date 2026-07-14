@@ -29,6 +29,7 @@ import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import { AppointmentForm } from "@/components/appointment-form";
 import { CLINIC_NAME, CLINIC_PHONE, CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
 import { prisma } from "@/lib/db";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 export default function ClinicHomePage() {
   const schema = {
@@ -87,7 +88,7 @@ export default function ClinicHomePage() {
       <main>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         />
 
         {/* ───────────── HERO ───────────── */}

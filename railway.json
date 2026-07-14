@@ -25,6 +25,14 @@
     {
       "schedule": "0 3 * * *",
       "command": "npm run worker:purge-previews"
+    },
+    {
+      "schedule": "*/15 * * * *",
+      "command": "npm run worker:retry-shipments"
+    },
+    {
+      "schedule": "*/10 * * * *",
+      "command": "npm run worker:reconcile-payments"
     }
   ]
 }

@@ -6,10 +6,22 @@ import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
 import { refundRazorpayPayment } from "@/lib/integrations/razorpay";
-import { createShiprocketShipment } from "@/lib/integrations/shiprocket";
+import {
+  attemptShiprocketShipment,
+  markShipmentForReconciliation,
+  reconcileShipmentFromProvider,
+  releaseShipmentReconciliationForRetry
+} from "@/lib/shipment-fulfillment";
+import { getShiprocketOrderReference } from "@/lib/integrations/shiprocket";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
 import { sendEmail } from "@/lib/integrations/resend";
-import type { OrderStatus } from "@prisma/client";
+import { Prisma, type OrderStatus } from "@prisma/client";
+import {
+  OrderInventoryAllocationError,
+  OrderStatusTransitionError,
+  updateOrderStatusWithInventory
+} from "@/lib/order-status";
+import { releaseOrderInventoryReservations } from "@/lib/inventory-reservations";
 
 export const metadata = { title: "Order Details | Admin" };
 
@@ -27,7 +39,9 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       shippingAddress: true,
       tryAtHomeRequest: true,
       prescriptions: true,
-      refunds: true
+      refunds: true,
+      shipments: true,
+      paymentReconciliations: { include: { refund: true } }
     }
   });
 
@@ -42,13 +56,19 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     const newStatus = String(formData.get("status") ?? order!.status) as OrderStatus;
     const adminNotes = String(formData.get("adminNotes") ?? "").trim();
 
-    await prisma.order.update({
-      where: { id: order!.id },
-      data: {
+    try {
+      await updateOrderStatusWithInventory({
+        orderId: order!.id,
         status: newStatus,
         notes: adminNotes || undefined
+      });
+    } catch (error) {
+      if (error instanceof OrderInventoryAllocationError || error instanceof OrderStatusTransitionError) {
+        const reason = error instanceof OrderStatusTransitionError ? "order-transition" : "stock-allocation";
+        redirect(`/admin/orders/${order!.publicId}?error=${reason}`);
       }
-    });
+      throw error;
+    }
 
     await prisma.activityLog.create({
       data: {
@@ -64,7 +84,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   async function verifyPrescriptionAction(formData: FormData) {
     "use server";
-    await requireAdmin();
+    await requireManager();
 
     const rxId = String(formData.get("rxId") ?? "");
     if (!rxId) return;
@@ -81,10 +101,14 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     const allVerified = allRxs.every((r) => r.verified);
 
     if (allVerified) {
-      await prisma.order.update({
-        where: { id: order!.id },
-        data: { status: "LENS_IN_PROCESSING" }
-      });
+      try {
+        await updateOrderStatusWithInventory({ orderId: order!.id, status: "LENS_IN_PROCESSING" });
+      } catch (error) {
+        if (error instanceof OrderInventoryAllocationError || error instanceof OrderStatusTransitionError) {
+          redirect(`/admin/orders/${order!.publicId}?error=stock-allocation`);
+        }
+        throw error;
+      }
     }
 
     await prisma.activityLog.create({
@@ -125,44 +149,146 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       redirect(`/admin/orders/${order!.publicId}?error=invalid-amount`);
     }
 
+    const claimedForManualRefund = await prisma.paymentReconciliation.updateMany({
+      where: { paymentId: latestPayment.id, status: "PENDING_REFUND" },
+      data: {
+        status: "REQUIRES_REVIEW",
+        lastError: "An owner is issuing a manual refund."
+      }
+    });
+    const reconciliation = await prisma.paymentReconciliation.findUnique({
+      where: { paymentId: latestPayment.id },
+      include: { refund: true }
+    });
+    if (reconciliation?.status === "REFUNDING" || reconciliation?.status === "REFUND_PENDING") {
+      redirect(`/admin/orders/${order!.publicId}?error=refund-reconciliation-in-progress`);
+    }
+    if (reconciliation?.refund && ["initiated", "pending"].includes(reconciliation.refund.status) && claimedForManualRefund.count === 0) {
+      redirect(`/admin/orders/${order!.publicId}?error=refund-provider-verification-required`);
+    }
+    if (reconciliation && amountPaise !== latestPayment.amountPaise) {
+      redirect(`/admin/orders/${order!.publicId}?error=reconciliation-requires-full-refund`);
+    }
+
+    type RefundAttempt =
+      | { kind: "READY"; id: string; fullRefund: boolean }
+      | { kind: "PENDING" }
+      | { kind: "INVALID_AMOUNT" };
+
+    const refundAttempt = await prisma.$transaction(async (tx): Promise<RefundAttempt> => {
+      const pendingRefund = await tx.refund.findFirst({
+        where: { paymentId: latestPayment.id, status: { in: ["initiated", "pending"] } },
+        select: { id: true }
+      });
+      if (pendingRefund) return { kind: "PENDING" };
+
+      const completedRefunds = await tx.refund.aggregate({
+        where: { paymentId: latestPayment.id, status: "processed" },
+        _sum: { amountPaise: true }
+      });
+      const alreadyRefunded = completedRefunds._sum.amountPaise ?? 0;
+      const remainingAmount = latestPayment.amountPaise - alreadyRefunded;
+      if (amountPaise > remainingAmount) return { kind: "INVALID_AMOUNT" };
+
+      const refund = reconciliation?.refund
+        ? await tx.refund.update({
+            where: { id: reconciliation.refund.id },
+            data: { amountPaise, reason, providerRefundId: null, status: "initiated" }
+          })
+        : await tx.refund.create({
+            data: {
+              orderId: order!.id,
+              paymentId: latestPayment.id,
+              amountPaise,
+              reason,
+              reconciliationId: reconciliation?.id,
+              status: "initiated"
+            }
+          });
+
+      return { kind: "READY", id: refund.id, fullRefund: amountPaise === remainingAmount };
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+    if (refundAttempt.kind === "PENDING") {
+      redirect(`/admin/orders/${order!.publicId}?error=refund-reconciliation-in-progress`);
+    }
+    if (refundAttempt.kind === "INVALID_AMOUNT") {
+      redirect(`/admin/orders/${order!.publicId}?error=invalid-amount`);
+    }
+
     let isSuccessful = false;
+    let isPending = false;
     try {
-      // Call Razorpay Refund API
-      const rzpRefund = await refundRazorpayPayment(latestPayment.providerPaymentId, amountPaise);
+      const rzpRefund = await refundRazorpayPayment(
+        latestPayment.providerPaymentId,
+        amountPaise,
+        `vv-refund-${refundAttempt.id}`
+      );
+      const providerStatus = rzpRefund.status;
+      if (providerStatus !== "processed" && providerStatus !== "pending") {
+        throw new Error(`Razorpay returned an unresolved refund status: ${String(providerStatus ?? "missing")}.`);
+      }
 
-      // Create local Refund record
-      await prisma.refund.create({
-        data: {
-          orderId: order!.id,
-          paymentId: latestPayment.id,
-          providerRefundId: rzpRefund.id,
-          amountPaise,
-          reason,
-          status: "processed"
+      const localRefundStatus = await prisma.$transaction(async (tx) => {
+        const localRefund = await tx.refund.findUnique({ where: { id: refundAttempt.id } });
+        if (!localRefund) throw new Error("The local refund attempt no longer exists.");
+        if (localRefund.status === "processed" && localRefund.providerRefundId === rzpRefund.id) {
+          return "processed" as const;
         }
-      });
-
-      await prisma.order.update({
-        where: { id: order!.id },
-        data: { status: "REFUNDED" }
-      });
-
-      await prisma.payment.update({
-        where: { id: latestPayment.id },
-        data: { status: "REFUNDED" }
-      });
-
-      await prisma.activityLog.create({
-        data: {
-          action: "REFUND_ISSUED",
-          entityType: "order",
-          entityId: order!.id,
-          metadata: { amountPaise, reason, refundId: rzpRefund.id }
+        if (!["initiated", "pending"].includes(localRefund.status)) {
+          throw new Error("The local refund attempt is no longer eligible for completion.");
         }
-      });
+        await tx.refund.update({
+          where: { id: refundAttempt.id },
+          data: { providerRefundId: rzpRefund.id, status: providerStatus }
+        });
 
-      // Notify customer
-      if (order!.email) {
+        if (providerStatus === "pending") {
+          if (reconciliation) {
+            await tx.paymentReconciliation.update({
+              where: { id: reconciliation.id },
+              data: { status: "REFUND_PENDING", lastError: null }
+            });
+          }
+          await tx.activityLog.create({
+            data: {
+              action: "REFUND_PENDING",
+              entityType: "order",
+              entityId: order!.id,
+              metadata: { amountPaise, reason, refundId: rzpRefund.id }
+            }
+          });
+          return "pending" as const;
+        }
+
+        if (refundAttempt.fullRefund) {
+          await releaseOrderInventoryReservations(tx, order!.id);
+          await tx.order.update({ where: { id: order!.id }, data: { status: "REFUNDED" } });
+          await tx.payment.update({ where: { id: latestPayment.id }, data: { status: "REFUNDED" } });
+          if (reconciliation) {
+            await tx.paymentReconciliation.update({
+              where: { id: reconciliation.id },
+              data: { status: "REFUNDED", lastError: null }
+            });
+          }
+        }
+
+        await tx.activityLog.create({
+          data: {
+            action: "REFUND_ISSUED",
+            entityType: "order",
+            entityId: order!.id,
+            metadata: { amountPaise, reason, refundId: rzpRefund.id, fullRefund: refundAttempt.fullRefund }
+          }
+        });
+        return "processed" as const;
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+      isPending = localRefundStatus === "pending";
+
+      // Notify only once Razorpay reports the refund as processed. A pending
+      // refund is finalized by the signed refund.processed webhook.
+      if (!isPending && order!.email) {
         try {
           await sendEmail(
             order!.email,
@@ -174,7 +300,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
         }
       }
 
-      if (order!.phone) {
+      if (!isPending && order!.phone) {
         try {
           await sendWhatsAppTemplate(order!.phone, "refund_processed", [
             order!.customerName,
@@ -192,7 +318,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     }
 
     if (isSuccessful) {
-      redirect(`/admin/orders/${order!.publicId}?refundSuccess=true`);
+      redirect(`/admin/orders/${order!.publicId}?${isPending ? "refundPending" : "refundSuccess"}=true`);
     } else {
       redirect(`/admin/orders/${order!.publicId}?error=refund-failed`);
     }
@@ -201,86 +327,85 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   async function createShipmentTrigger() {
     "use server";
     await requireManager();
-    if (!["CONFIRMED", "PACKED"].includes(order!.status)) {
-      redirect(`/admin/orders/${order!.publicId}?error=shipment-not-ready`);
-    }
-
-    const mappedOrder = {
-      publicId: order!.publicId,
-      customerName: order!.customerName,
-      phone: order!.phone,
-      shippingAddress: order!.shippingAddress
-        ? {
-            name: order!.shippingAddress.name,
-            phone: order!.shippingAddress.phone,
-            line1: order!.shippingAddress.line1,
-            line2: order!.shippingAddress.line2,
-            city: order!.shippingAddress.city,
-            state: order!.shippingAddress.state,
-            pincode: order!.shippingAddress.pincode
-          }
-        : null,
-      items: order!.items.map((item) => ({
-        unitPricePaise: item.unitPricePaise,
-        quantity: item.quantity,
-        productSnapshot: item.productSnapshot
-      })),
-      grandTotalPaise: order!.grandTotalPaise,
-      paymentMethod: order!.paymentMethod
-    };
-
-    try {
-      await prisma.shipment.create({
-        data: { orderId: order!.id, provider: "shiprocket", status: "CREATING" }
-      });
-    } catch (error) {
-      if ((error as { code?: string }).code === "P2002") {
-        redirect(`/admin/orders/${order!.publicId}?error=shipment-already-created`);
-      }
-      throw error;
-    }
-
-    try {
-      const res = await createShiprocketShipment(mappedOrder);
-      if (!res.success) throw new Error("Shiprocket rejected shipment creation.");
-
-      await prisma.order.update({
-        where: { id: order!.id },
-        data: { status: "SHIPPED", notes: `Shipment ID: ${res.shipmentId || "pending-provider-id"}` }
-      });
-
-      await prisma.shipment.update({
-        where: { orderId: order!.id },
-        data: {
-          status: "CREATED",
-          providerShipmentId: res.shipmentId ? String(res.shipmentId) : null,
-          rawPayload: JSON.parse(JSON.stringify(res))
-        }
-      });
-
-      await prisma.activityLog.create({
-        data: {
-          action: "SHIPMENT_CREATED",
-          entityType: "order",
-          entityId: order!.id,
-          metadata: { shipmentId: res.shipmentId }
-        }
-      });
-
+    const result = await attemptShiprocketShipment(order!.id, "MANUAL");
+    if (result.kind === "CREATED") {
       redirect(`/admin/orders/${order!.publicId}?shipmentSuccess=true`);
-    } catch (error) {
-      await prisma.shipment.update({
-        where: { orderId: order!.id },
-        data: {
-          status: "FAILED",
-          error: error instanceof Error ? error.message : "Shipment creation failed"
-        }
-      }).catch(() => undefined);
-      redirect(`/admin/orders/${order!.publicId}?error=shipment-failed`);
     }
+    if (result.kind === "ALREADY_CREATED") {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-already-created`);
+    }
+    if (result.kind === "IN_PROGRESS") {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-in-progress`);
+    }
+    if (result.kind === "RECONCILIATION_REQUIRED") {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-reconciliation-required`);
+    }
+    redirect(`/admin/orders/${order!.publicId}?error=shipment-not-ready`);
+  }
+
+  async function retryShipmentTrigger() {
+    "use server";
+    await requireManager();
+    const result = await attemptShiprocketShipment(order!.id, "MANUAL");
+    if (result.kind === "CREATED") {
+      redirect(`/admin/orders/${order!.publicId}?shipmentRetrySuccess=true`);
+    }
+    if (result.kind === "RECONCILIATION_REQUIRED") {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-reconciliation-required`);
+    }
+    if (result.kind === "IN_PROGRESS") {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-in-progress`);
+    }
+    redirect(`/admin/orders/${order!.publicId}?error=shipment-retry-failed`);
+  }
+
+  async function flagShipmentForReconciliationAction() {
+    "use server";
+    await requireManager();
+    await markShipmentForReconciliation(
+      order!.id,
+      "Manager requested provider reconciliation before any retry."
+    );
+    redirect(`/admin/orders/${order!.publicId}?shipmentReconciliation=true`);
+  }
+
+  async function reconcileShipmentAction(formData: FormData) {
+    "use server";
+    await requireManager();
+    const providerShipmentId = String(formData.get("providerShipmentId") ?? "");
+    const result = await reconcileShipmentFromProvider(order!.id, providerShipmentId);
+    if (result.ok) {
+      redirect(`/admin/orders/${order!.publicId}?shipmentReconciled=true`);
+    }
+    redirect(`/admin/orders/${order!.publicId}?error=shipment-reconciliation-failed`);
+  }
+
+  async function retryAfterReconciliationAction(formData: FormData) {
+    "use server";
+    await requireManager();
+    if (String(formData.get("providerChecked")) !== "yes") {
+      redirect(`/admin/orders/${order!.publicId}?error=provider-check-required`);
+    }
+    const released = await releaseShipmentReconciliationForRetry(order!.id);
+    if (!released) {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-state-changed`);
+    }
+    const result = await attemptShiprocketShipment(order!.id, "MANUAL");
+    if (result.kind === "CREATED") {
+      redirect(`/admin/orders/${order!.publicId}?shipmentRetrySuccess=true`);
+    }
+    if (result.kind === "RECONCILIATION_REQUIRED") {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-reconciliation-required`);
+    }
+    redirect(`/admin/orders/${order!.publicId}?error=shipment-retry-failed`);
   }
 
   const latestPayment = order.payments[0];
+  const activePaymentReconciliation = order.paymentReconciliations.find((entry) => entry.status !== "REFUNDED");
+  const shipment = order.shipments[0] ?? null;
+  const canManageFulfillment = ["OWNER", "MANAGER"].includes(role);
+  const shipmentCanBeCreated = ["CONFIRMED", "PACKED"].includes(order.status) && !activePaymentReconciliation;
+  const shiprocketOrderReference = getShiprocketOrderReference(order.publicId);
 
   return (
     <main className="vv-section bg-paper">
@@ -319,7 +444,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                     <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                       Order status
                       <select className="store-input" name="status" defaultValue={order.status}>
-                        {Object.entries(ORDER_STATUS_LABELS).map(([val, label]) => (
+                        {Object.entries(ORDER_STATUS_LABELS).filter(([val]) => val !== "REFUNDED").map(([val, label]) => (
                           <option key={val} value={val}>{label}</option>
                         ))}
                       </select>
@@ -336,20 +461,96 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               </section>
             ) : null}
 
-            {/* Shiprocket Section */}
-            {order.status !== "SHIPPED" && order.status !== "DELIVERED" && order.status !== "CANCELLED" ? (
-              <section className="vv-card p-6 border-l-4 border-l-retail flex items-center justify-between gap-4">
-                <div>
-                  <h3 className="font-extrabold text-lg">Shiprocket Fulfillment</h3>
-                  <p className="text-sm text-slate-500">Dispatch items and create cargo pickup slips.</p>
-                </div>
-                <form action={createShipmentTrigger}>
-                  <button className="vv-button-retail" type="submit">
-                    Create Shipment
-                  </button>
-                </form>
+            {activePaymentReconciliation ? (
+              <section className="vv-card border border-red-300 bg-red-50 p-6">
+                <h2 className="text-xl font-extrabold text-red-950">Captured payment reconciliation</h2>
+                <p className="mt-2 text-sm text-red-900">
+                  This order cannot be fulfilled. Status: <strong>{activePaymentReconciliation.status.replaceAll("_", " ")}</strong>.
+                </p>
+                <p className="mt-1 text-sm text-red-800">{activePaymentReconciliation.reason}</p>
+                {activePaymentReconciliation.lastError ? (
+                  <p className="mt-2 text-xs font-bold text-red-800">Provider note: {activePaymentReconciliation.lastError}</p>
+                ) : null}
+                <p className="mt-3 text-xs text-red-800">
+                  Do not create a shipment. An owner must verify any provider outcome before issuing another refund.
+                </p>
               </section>
             ) : null}
+
+            {/* Shiprocket Section */}
+            <section className="vv-card p-6 border-l-4 border-l-retail">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-extrabold text-lg">Shiprocket Fulfillment</h3>
+                  <p className="text-sm text-slate-500">
+                    A shipment is created once per order. Unknown provider outcomes must be reconciled before they are retried.
+                  </p>
+                </div>
+                {shipment ? (
+                  <span className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                    shipment.status === "CREATED"
+                      ? "bg-emerald-50 text-emerald-700"
+                      : shipment.status === "FAILED" || shipment.status === "RECONCILIATION_REQUIRED"
+                      ? "bg-red-50 text-red-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}>
+                    {shipment.status.replaceAll("_", " ")}
+                  </span>
+                ) : null}
+              </div>
+
+              {shipment ? (
+                <div className="mt-4 grid gap-1 rounded-vv bg-slate-50 p-4 text-sm text-slate-600">
+                  <p><strong className="text-slate-800">Provider shipment ID:</strong> {shipment.providerShipmentId ?? "Not yet confirmed"}</p>
+                  <p><strong className="text-slate-800">Shiprocket order reference:</strong> {shiprocketOrderReference}</p>
+                  <p><strong className="text-slate-800">Last update:</strong> {new Date(shipment.updatedAt).toLocaleString("en-IN")}</p>
+                  {shipment.error ? <p className="text-red-700"><strong>Action required:</strong> {shipment.error}</p> : null}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-600">No provider shipment has been requested yet.</p>
+              )}
+
+              {canManageFulfillment ? (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {!shipment && shipmentCanBeCreated ? (
+                    <form action={createShipmentTrigger}>
+                      <button className="vv-button-retail" type="submit">Create Shipment</button>
+                    </form>
+                  ) : null}
+
+                  {shipment?.status === "FAILED" ? (
+                    <form action={retryShipmentTrigger}>
+                      <button className="vv-button-retail" type="submit">Retry Shiprocket Shipment</button>
+                    </form>
+                  ) : null}
+
+                  {shipment?.status === "CREATING" ? (
+                    <form action={flagShipmentForReconciliationAction}>
+                      <button className="vv-button-light" type="submit">Flag for Provider Reconciliation</button>
+                    </form>
+                  ) : null}
+
+                  {shipment?.status === "RECONCILIATION_REQUIRED" ? (
+                    <>
+                      <form action={reconcileShipmentAction} className="flex flex-wrap items-end gap-2">
+                        <label className="grid gap-1 text-xs font-bold text-slate-600">
+                          Verified Shiprocket shipment ID
+                          <input className="store-input min-w-52" name="providerShipmentId" required maxLength={80} />
+                        </label>
+                        <button className="vv-button-retail" type="submit">Record Verified Shipment</button>
+                      </form>
+                      <form action={retryAfterReconciliationAction} className="flex items-center gap-2 text-xs text-slate-600">
+                        <input id="providerChecked" name="providerChecked" type="checkbox" value="yes" required />
+                        <label htmlFor="providerChecked">I checked Shiprocket and confirmed no shipment exists.</label>
+                        <button className="vv-button-light" type="submit">Retry after check</button>
+                      </form>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-4 text-xs font-bold text-slate-500">Manager or owner permission is required to create, retry, or reconcile shipments.</p>
+              )}
+            </section>
 
             {/* Products list */}
             <section className="vv-card p-6">
@@ -403,7 +604,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                         <a href={presc.fileUrl} target="_blank" rel="noopener noreferrer" className="vv-button-light text-sm py-2">
                           View prescription file
                         </a>
-                        {!presc.verified ? (
+                        {!presc.verified && ["OWNER", "MANAGER"].includes(role) ? (
                           <form action={verifyPrescriptionAction}>
                             <input type="hidden" name="rxId" value={presc.id} />
                             <button className="vv-button-retail text-sm py-2" type="submit">

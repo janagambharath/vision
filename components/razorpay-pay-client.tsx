@@ -34,7 +34,8 @@ export default function RazorpayPayClient({ order }: { order: OrderDetail }) {
       });
 
       if (!configRes.ok) {
-        throw new Error("Failed to initialize payment configuration.");
+        const failure = await configRes.json().catch(() => null) as { error?: unknown } | null;
+        throw new Error(typeof failure?.error === "string" ? failure.error : "Failed to initialize payment configuration.");
       }
 
       const config = await configRes.json();

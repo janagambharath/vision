@@ -1,12 +1,13 @@
 import { Plus, LayoutTemplate } from "lucide-react";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminRole, isManagerOrOwner, requireAdmin, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 
 export const metadata = { title: "Admin Promotions" };
 
 export default async function AdminPromotionsPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const canManage = isManagerOrOwner(getAdminRole(session));
 
   const [banners, homepageSections] = await Promise.all([
     prisma.banner.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -15,7 +16,7 @@ export default async function AdminPromotionsPage() {
 
   async function createBanner(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const title = String(formData.get("title") ?? "").trim();
     const subtitle = String(formData.get("subtitle") ?? "").trim();
@@ -25,7 +26,7 @@ export default async function AdminPromotionsPage() {
 
     if (!title) redirect("/admin/promotions?error=missing-title");
 
-    await prisma.banner.create({
+    const banner = await prisma.banner.create({
       data: {
         title,
         subtitle: subtitle || null,
@@ -34,6 +35,10 @@ export default async function AdminPromotionsPage() {
         sortOrder,
         active: true
       }
+    });
+
+    await prisma.activityLog.create({
+      data: { adminUserId: admin.user?.id, action: "BANNER_CREATED", entityType: "banner", entityId: banner.id, metadata: { title } }
     });
 
     redirect("/admin/promotions");
@@ -100,7 +105,7 @@ export default async function AdminPromotionsPage() {
         </div>
 
         {/* Add Banner Sidebar */}
-        <aside className="vv-card p-6 self-start sticky top-28 bg-slate-50">
+        {canManage ? <aside className="vv-card p-6 self-start sticky top-28 bg-slate-50">
           <h2 className="text-xl font-extrabold mb-4 border-b border-slate-100 pb-2">Add Promo Banner</h2>
           <form action={createBanner} className="grid gap-4">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
@@ -128,7 +133,7 @@ export default async function AdminPromotionsPage() {
               Add Banner
             </button>
           </form>
-        </aside>
+        </aside> : null}
       </div>
     </main>
   );

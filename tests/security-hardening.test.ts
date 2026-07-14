@@ -3,6 +3,7 @@ import test from "node:test";
 import { createOrderAccessToken, verifyOrderAccessToken } from "../lib/order-access";
 import { uploadedFileMatchesType } from "../lib/uploads";
 import { verifyRazorpayWebhookSignature } from "../lib/integrations/razorpay";
+import { serializeJsonLd } from "../lib/json-ld";
 
 test("order-access tokens are scoped, signed, and short-lived", () => {
   process.env.AUTH_SECRET = "test-auth-secret";
@@ -26,4 +27,24 @@ test("webhook verification never falls back to the Razorpay API secret", () => {
   process.env.RAZORPAY_KEY_SECRET = "api-secret-is-not-a-webhook-secret";
   assert.equal(verifyRazorpayWebhookSignature("{}", "00"), false);
   process.env.RAZORPAY_WEBHOOK_SECRET = previousWebhook;
+});
+
+test("JSON-LD serialization cannot terminate its inline script element", () => {
+  const lineSeparator = String.fromCharCode(0x2028);
+  const paragraphSeparator = String.fromCharCode(0x2029);
+  const schema = {
+    name: '</script><img src=x onerror="alert(1)">',
+    description: `Frames & lenses${lineSeparator}${paragraphSeparator}`,
+  };
+
+  const serialized = serializeJsonLd(schema);
+
+  assert.equal(serialized.includes("</script"), false);
+  assert.equal(serialized.includes("<"), false);
+  assert.equal(serialized.includes(">"), false);
+  assert.equal(serialized.includes("&"), false);
+  assert.equal(serialized.includes(lineSeparator), false);
+  assert.equal(serialized.includes(paragraphSeparator), false);
+  assert.deepEqual(JSON.parse(serialized), schema);
+  assert.throws(() => serializeJsonLd(undefined), TypeError);
 });

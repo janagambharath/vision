@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { getCategories, getBrands } from "@/lib/store-data";
 import { invalidateProductCache } from "@/lib/inventory-actions";
@@ -60,14 +60,14 @@ export default async function NewProductPage({
 }: {
   searchParams?: Promise<{ error?: string }>;
 }) {
-  await requireAdmin();
+  await requireManager();
   const [categories, brands] = await Promise.all([getCategories(), getBrands()]);
   const params = (await searchParams) ?? {};
   const errorMessage = params.error ? errorMessages[params.error] : null;
 
   async function createProduct(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const admin = await requireManager();
 
     const name = String(formData.get("name") ?? "").trim();
     const brand = String(formData.get("brand") ?? "").trim();
@@ -196,7 +196,7 @@ export default async function NewProductPage({
       }
 
       await tx.activityLog.create({
-        data: { action: "PRODUCT_CREATED", entityType: "product", entityId: product.id, metadata: { slug, name, brand, tryOnEligible } }
+        data: { adminUserId: admin.user?.id, action: "PRODUCT_CREATED", entityType: "product", entityId: product.id, metadata: { slug, name, brand, tryOnEligible } }
       });
     });
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, Edit, Eye, Star, Search, Filter, AlertTriangle, Archive, Copy, Trash2, CheckCircle, XCircle, Camera } from "lucide-react";
-import { requireAdmin } from "@/lib/admin-auth";
+import { getAdminRole, isManagerOrOwner, requireAdmin } from "@/lib/admin-auth";
 import { formatMoney } from "@/lib/money";
 import { getStoreProducts, getStoreProductsCount } from "@/lib/store-data";
 import { deleteProduct, archiveProduct, publishProduct, unpublishProduct, duplicateProduct } from "@/lib/product-actions";
@@ -15,7 +15,8 @@ export default async function AdminProductsPage({
 }: {
   searchParams?: Promise<{ q?: string; status?: string; page?: string; error?: string }>;
 }) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const canManage = isManagerOrOwner(getAdminRole(session));
   const params = (await searchParams) ?? {};
   const currentPage = Math.max(1, Number(params.page ?? 1));
   const status = ["ACTIVE", "DRAFT", "ARCHIVED"].includes(params.status ?? "")
@@ -131,10 +132,12 @@ export default async function AdminProductsPage({
               {totalCount} total products · {activeCount} active · {draftCount} drafts · {archivedCount} archived
             </p>
           </div>
-          <Link href="/admin/products/new" className="vv-button-retail inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add New Product
-          </Link>
+          {canManage ? (
+            <Link href="/admin/products/new" className="vv-button-retail inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add New Product
+            </Link>
+          ) : null}
         </div>
 
         {params.error ? (
@@ -227,48 +230,52 @@ export default async function AdminProductsPage({
                   <Link className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:border-teal-300 hover:text-teal-700 transition" href={`/frames/${product.slug}`} target="_blank">
                     <Eye className="h-3.5 w-3.5" /> Preview
                   </Link>
-                  <Link className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-xs font-bold text-teal-700 hover:bg-teal-100 transition" href={`/admin/products/${product.slug}/edit`}>
-                    <Edit className="h-3.5 w-3.5" /> Edit
-                  </Link>
+                  {canManage ? (
+                    <>
+                      <Link className="inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2.5 py-1.5 text-xs font-bold text-teal-700 hover:bg-teal-100 transition" href={`/admin/products/${product.slug}/edit`}>
+                        <Edit className="h-3.5 w-3.5" /> Edit
+                      </Link>
 
-                  {product.status === "DRAFT" ? (
-                    <form action={handlePublish}>
-                      <input type="hidden" name="slug" value={product.slug} />
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition" type="submit">
-                        <CheckCircle className="h-3.5 w-3.5" /> Publish
-                      </button>
-                    </form>
-                  ) : product.status === "ACTIVE" ? (
-                    <form action={handleUnpublish}>
-                      <input type="hidden" name="slug" value={product.slug} />
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition" type="submit">
-                        <XCircle className="h-3.5 w-3.5" /> Unpublish
-                      </button>
-                    </form>
+                      {product.status === "DRAFT" ? (
+                        <form action={handlePublish}>
+                          <input type="hidden" name="slug" value={product.slug} />
+                          <button className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition" type="submit">
+                            <CheckCircle className="h-3.5 w-3.5" /> Publish
+                          </button>
+                        </form>
+                      ) : product.status === "ACTIVE" ? (
+                        <form action={handleUnpublish}>
+                          <input type="hidden" name="slug" value={product.slug} />
+                          <button className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-700 hover:bg-amber-100 transition" type="submit">
+                            <XCircle className="h-3.5 w-3.5" /> Unpublish
+                          </button>
+                        </form>
+                      ) : null}
+
+                      <form action={handleDuplicate}>
+                        <input type="hidden" name="slug" value={product.slug} />
+                        <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:border-slate-300 transition" type="submit">
+                          <Copy className="h-3.5 w-3.5" /> Duplicate
+                        </button>
+                      </form>
+
+                      {product.status !== "ARCHIVED" && (
+                        <form action={handleArchive}>
+                          <input type="hidden" name="slug" value={product.slug} />
+                          <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-amber-700 hover:border-amber-300 transition" type="submit">
+                            <Archive className="h-3.5 w-3.5" /> Archive
+                          </button>
+                        </form>
+                      )}
+
+                      <form action={handleDelete}>
+                        <input type="hidden" name="slug" value={product.slug} />
+                        <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-700 hover:border-red-300 transition" type="submit">
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </button>
+                      </form>
+                    </>
                   ) : null}
-
-                  <form action={handleDuplicate}>
-                    <input type="hidden" name="slug" value={product.slug} />
-                    <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 hover:border-slate-300 transition" type="submit">
-                      <Copy className="h-3.5 w-3.5" /> Duplicate
-                    </button>
-                  </form>
-
-                  {product.status !== "ARCHIVED" && (
-                    <form action={handleArchive}>
-                      <input type="hidden" name="slug" value={product.slug} />
-                      <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-amber-700 hover:border-amber-300 transition" type="submit">
-                        <Archive className="h-3.5 w-3.5" /> Archive
-                      </button>
-                    </form>
-                  )}
-
-                  <form action={handleDelete}>
-                    <input type="hidden" name="slug" value={product.slug} />
-                    <button className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold text-slate-500 hover:text-red-700 hover:border-red-300 transition" type="submit">
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </button>
-                  </form>
                 </div>
               </article>
             ))
