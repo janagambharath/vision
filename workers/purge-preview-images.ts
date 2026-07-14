@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { deleteTryOnAsset } from "@/lib/integrations/flux-try-on";
+import { deleteTryOnAsset } from "@/lib/ai/gemini";
 
 async function main() {
   const expired = await prisma.framePreviewRequest.findMany({

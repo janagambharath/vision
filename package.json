@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "prisma migrate deploy && next start",
-    "test": "node --import tsx --test tests/cart.test.ts tests/razorpay.test.ts tests/product-publishing.test.ts tests/product-ai.test.ts tests/flux-try-on.test.ts tests/security-hardening.test.ts tests/shipment-retry.test.ts tests/inventory-reservations.test.ts",
+    "test": "node --import tsx --test tests/cart.test.ts tests/razorpay.test.ts tests/product-publishing.test.ts tests/product-ai.test.ts tests/gemini-try-on.test.ts tests/security-hardening.test.ts tests/shipment-retry.test.ts tests/inventory-reservations.test.ts",
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
+    "@google/genai": "^2.11.0",
     "@mediapipe/camera_utils": "^0.3.1675466862",
     "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/face_mesh": "^0.4.1633559619",

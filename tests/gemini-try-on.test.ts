@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  buildFluxTryOnPrompt,
+  buildGeminiTryOnPrompt,
   parseDataImage,
   selectTryOnProductImage
-} from "../lib/integrations/flux-try-on";
+} from "../lib/ai/gemini";
 
 test("try-on selects a transparent product asset before front and gallery images", () => {
   const selected = selectTryOnProductImage([
@@ -32,7 +32,7 @@ test("try-on validates compact customer image data and produces an exact-frame p
   assert.equal(image?.bytes, 5);
   assert.equal(parseDataImage("data:image/gif;base64,aGVsbG8="), null);
 
-  const prompt = buildFluxTryOnPrompt({
+  const prompt = buildGeminiTryOnPrompt({
     brand: "Vision Vistara",
     name: "Classic Rectangle",
     sku: "VV-001",

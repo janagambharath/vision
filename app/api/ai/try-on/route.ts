@@ -2,21 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
 import {
-  buildFluxTryOnPrompt,
-  fluxTryOnConfigured,
-  generateFluxTryOn,
+  buildGeminiTryOnPrompt,
+  geminiTryOnConfigured,
+  generateGeminiTryOn,
   parseDataImage,
   selectTryOnProductImage,
-  storeFluxResult,
+  storeGeminiResult,
   uploadTryOnDataImage
-} from "@/lib/integrations/flux-try-on";
+} from "@/lib/ai/gemini";
 import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 import { slugSchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
 
-const PROMPT_VERSION = "vision-vistara-flux-kontext-v1";
+const PROMPT_VERSION = "vision-vistara-gemini-v1";
 const PREVIEW_DISCLAIMER =
   "AI try-on is an appearance preview only. It does not guarantee exact fit, lens thickness, prescription suitability, or the final manufactured frame alignment.";
 const CUSTOMER_IMAGE_RETENTION_DAYS = 30;
@@ -29,11 +29,11 @@ export async function POST(request: NextRequest) {
   const originError = assertSameOrigin(request);
   if (originError) return originError;
 
-  if (await isRateLimited(request, { keyPrefix: "flux-try-on", limit: 5, windowSeconds: 60 * 60 })) {
+  if (await isRateLimited(request, { keyPrefix: "gemini-try-on", limit: 5, windowSeconds: 60 * 60 })) {
     return NextResponse.json({ error: "You can generate up to 5 AI previews per hour. Please try again later." }, { status: 429 });
   }
 
-  if (!fluxTryOnConfigured()) {
+  if (!geminiTryOnConfigured()) {
     return NextResponse.json({ error: "AI try-on is not configured yet. Please try again later." }, { status: 503 });
   }
 
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     }, { headers: { "Cache-Control": "no-store" } });
   }
 
-  const prompt = buildFluxTryOnPrompt(product);
+  const prompt = buildGeminiTryOnPrompt(product);
   let previewRequestId: string | null = null;
 
   try {
@@ -114,27 +114,27 @@ export async function POST(request: NextRequest) {
         disclaimer: PREVIEW_DISCLAIMER,
         promptVersion: PROMPT_VERSION,
         prompt,
-        model: "flux-kontext-pro",
+        model: "gemini-2.5-flash-image",
         expiresAt: new Date(Date.now() + CUSTOMER_IMAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000)
       },
       select: { id: true }
     });
     previewRequestId = previewRequest.id;
 
-    let fluxResult: Awaited<ReturnType<typeof generateFluxTryOn>> | null = null;
+    let geminiResult: Awaited<ReturnType<typeof generateGeminiTryOn>> | null = null;
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        fluxResult = await generateFluxTryOn({ conditioningImage, prompt, signal: request.signal });
+        geminiResult = await generateGeminiTryOn({ customerImage, frameImageUrl: frameImage.url, prompt, signal: request.signal });
         break;
       } catch (error) {
         if (request.signal.aborted) throw error;
         lastError = error;
       }
     }
-    if (!fluxResult) throw lastError instanceof Error ? lastError : new Error("FLUX generation failed.");
+    if (!geminiResult) throw lastError instanceof Error ? lastError : new Error("Gemini generation failed.");
 
-    const storedResult = await storeFluxResult(fluxResult.sampleUrl);
+    const storedResult = await storeGeminiResult(geminiResult.sampleUrl);
     await prisma.framePreviewRequest.update({
       where: { id: previewRequest.id },
       data: {
@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
         resultImageUrl: storedResult.url,
         resultImagePublicId: storedResult.publicId,
         resultBytes: storedResult.bytes,
-        providerRequestId: fluxResult.providerRequestId,
-        providerCost: fluxResult.providerCost,
-        generationMs: fluxResult.generationMs
+        providerRequestId: geminiResult.providerRequestId,
+        providerCost: geminiResult.providerCost,
+        generationMs: geminiResult.generationMs
       }
     });
 
@@ -152,12 +152,12 @@ export async function POST(request: NextRequest) {
       requestId: previewRequest.id,
       image: storedResult.url,
       cached: false,
-      generationMs: fluxResult.generationMs,
+      generationMs: geminiResult.generationMs,
       frameImageUrl: frameImage.url,
       disclaimer: PREVIEW_DISCLAIMER
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("FLUX AI try-on failed", error);
+    console.error("Gemini AI try-on failed", error);
     if (previewRequestId) {
       await prisma.framePreviewRequest.update({
         where: { id: previewRequestId },

@@ -3,7 +3,7 @@ import { ImageIcon, Sparkles } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import { deleteTryOnAsset } from "@/lib/integrations/flux-try-on";
+import { deleteTryOnAsset } from "@/lib/ai/gemini";
 
 async function deletePreviewImages(formData: FormData) {
   "use server";
@@ -64,7 +64,7 @@ export default async function AdminPreviewsPage() {
         <p className="vv-kicker text-retail">AI previews</p>
         <h1 className="text-4xl font-extrabold">Frame preview requests</h1>
         <p className="mt-2 max-w-2xl text-slate-600">
-          Review FLUX-generated previews, failure reasons, cache reuse, and temporary customer-photo retention.
+          Review Gemini-generated previews, failure reasons, cache reuse, and temporary customer-photo retention.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

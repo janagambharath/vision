@@ -1,11 +1,9 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
 import { configureCloudinary, cloudinaryConfigured } from "@/lib/integrations/cloudinary";
+import { GoogleGenAI } from "@google/genai";
 
-const BFL_KONTEXT_ENDPOINT = "https://api.bfl.ai/v1/flux-kontext-pro";
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
-const POLL_INTERVAL_MS = 750;
-const POLL_TIMEOUT_MS = 45_000;
 
 type ProductImage = { url: string; role: string; sortOrder: number };
 
@@ -28,15 +26,15 @@ export type StoredTryOnImage = {
   bytes: number;
 };
 
-export type FluxTryOnResult = {
+export type GeminiTryOnResult = {
   providerRequestId: string;
   providerCost: number | null;
   sampleUrl: string;
   generationMs: number;
 };
 
-export function fluxTryOnConfigured() {
-  return Boolean(process.env.BFL_API_KEY) && cloudinaryConfigured();
+export function geminiTryOnConfigured() {
+  return Boolean(process.env.GEMINI_API_KEY) && cloudinaryConfigured();
 }
 
 /** Selects only an existing product asset; customers never provide frame images. */
@@ -72,7 +70,7 @@ export function parseDataImage(value: unknown, maxBytes = MAX_IMAGE_BYTES): Data
   };
 }
 
-export function buildFluxTryOnPrompt(product: {
+export function buildGeminiTryOnPrompt(product: {
   brand: string;
   name: string;
   sku: string;
@@ -84,7 +82,7 @@ export function buildFluxTryOnPrompt(product: {
 }) {
   return [
     "Create a photorealistic optical try-on image edit.",
-    "The input image contains the customer's original selfie and the selected spectacle frame as an automatic reference.",
+    "The input contains the customer's original selfie and the selected spectacle frame as a reference.",
     "Keep the person exactly the same: preserve identity, skin tone, age, hair, eyes, expression, clothing, pose, lighting, background, and camera perspective.",
     "Do not beautify, redesign the face, alter ethnicity, add duplicate glasses, or create sunglasses unless the selected frame is sunglasses.",
     "Place only the selected spectacle frame naturally and precisely on the face. Preserve its shape, lens shape, bridge, temples, thickness, material, colour, finish, and any visible brand markings.",
@@ -93,95 +91,77 @@ export function buildFluxTryOnPrompt(product: {
   ].join(" ");
 }
 
-function assertBflPollingUrl(value: unknown) {
-  if (typeof value !== "string") throw new Error("FLUX did not return a polling URL.");
-  const url = new URL(value);
-  if (url.protocol !== "https:" || !url.hostname.endsWith(".bfl.ai")) {
-    throw new Error("FLUX returned an invalid polling URL.");
-  }
-  return url.toString();
-}
-
-function timeoutSignal(signal: AbortSignal | undefined, ms: number) {
-  const timeout = AbortSignal.timeout(ms);
-  return signal ? AbortSignal.any([signal, timeout]) : timeout;
-}
-
-function sleep(ms: number, signal?: AbortSignal) {
-  return new Promise<void>((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(signal.reason ?? new DOMException("Generation cancelled.", "AbortError"));
-      return;
-    }
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(timer);
-      reject(signal.reason ?? new DOMException("Generation cancelled.", "AbortError"));
-    }, { once: true });
-  });
-}
-
-export async function generateFluxTryOn(input: {
-  conditioningImage: DataImage;
+export async function generateGeminiTryOn(input: {
+  customerImage: DataImage;
+  frameImageUrl: string;
   prompt: string;
   signal?: AbortSignal;
-}): Promise<FluxTryOnResult> {
-  const apiKey = process.env.BFL_API_KEY;
-  if (!apiKey) throw new Error("FLUX try-on is not configured.");
+}): Promise<GeminiTryOnResult> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini try-on is not configured.");
 
   const startedAt = Date.now();
-  const response = await fetch(BFL_KONTEXT_ENDPOINT, {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      "x-key": apiKey
-    },
-    body: JSON.stringify({
-      prompt: input.prompt,
-      input_image: input.conditioningImage.base64,
-      prompt_upsampling: false,
-      safety_tolerance: 2,
-      output_format: "jpeg"
-    }),
-    signal: timeoutSignal(input.signal, 20_000)
+  
+  // Fetch frame image as base64
+  const frameRes = await fetch(input.frameImageUrl, { signal: input.signal });
+  if (!frameRes.ok) throw new Error("Could not fetch frame image.");
+  const frameBuffer = Buffer.from(await frameRes.arrayBuffer());
+  const frameBase64 = frameBuffer.toString("base64");
+  const frameContentType = frameRes.headers.get("content-type") || "image/png";
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: input.prompt },
+        { inlineData: { mimeType: input.customerImage.mimeType, data: input.customerImage.base64 } },
+        { inlineData: { mimeType: frameContentType, data: frameBase64 } }
+      ]
+    }],
+    config: {
+      temperature: 0.2
+    }
   });
 
-  const body = await response.json().catch(() => null) as { id?: unknown; polling_url?: unknown; cost?: unknown } | null;
-  if (!response.ok || !body) {
-    throw new Error(`FLUX request failed (${response.status}).`);
+  const outputBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  let outputText = "";
+  try {
+    outputText = response.text() || "";
+  } catch (e) {
+    // text() might throw if there is no text
   }
-  if (typeof body.id !== "string") throw new Error("FLUX did not return a request ID.");
-
-  const pollingUrl = assertBflPollingUrl(body.polling_url);
-  const providerCost = typeof body.cost === "number" && Number.isFinite(body.cost) ? body.cost : null;
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-
-  while (Date.now() < deadline) {
-    await sleep(POLL_INTERVAL_MS, input.signal);
-    const poll = await fetch(pollingUrl, {
-      headers: { accept: "application/json", "x-key": apiKey },
-      signal: timeoutSignal(input.signal, 10_000)
-    });
-    const result = await poll.json().catch(() => null) as {
-      status?: unknown;
-      result?: { sample?: unknown } | null;
-    } | null;
-    const status = typeof result?.status === "string" ? result.status : "";
-
-    if (status === "Ready") {
-      const sampleUrl = result?.result?.sample;
-      if (typeof sampleUrl !== "string" || !sampleUrl.startsWith("https://")) {
-        throw new Error("FLUX completed without a usable image.");
-      }
-      return { providerRequestId: body.id, providerCost, sampleUrl, generationMs: Date.now() - startedAt };
-    }
-    if (["Error", "Failed", "Content Moderated", "Request Moderated", "Task not found"].includes(status)) {
-      throw new Error("FLUX could not generate this preview.");
+  
+  let resultBase64 = outputBase64;
+  
+  if (!resultBase64 && outputText) {
+    if (outputText.startsWith('http')) {
+      return { 
+        providerRequestId: "gemini-" + crypto.randomUUID(), 
+        providerCost: null, 
+        sampleUrl: outputText.trim(), 
+        generationMs: Date.now() - startedAt 
+      };
+    } else {
+      resultBase64 = outputText.replace(/^data:image\/(png|jpeg|webp);base64,/, '').trim();
     }
   }
 
-  throw new Error("FLUX preview timed out.");
+  if (!resultBase64) {
+    throw new Error("Gemini did not return a valid image.");
+  }
+  
+  const mimeType = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/jpeg';
+  const dataUri = `data:${mimeType};base64,${resultBase64}`;
+  
+  return {
+    providerRequestId: "gemini-" + crypto.randomUUID(),
+    providerCost: null,
+    sampleUrl: dataUri,
+    generationMs: Date.now() - startedAt
+  };
 }
 
 export async function uploadTryOnDataImage(input: {
@@ -205,18 +185,26 @@ export async function uploadTryOnDataImage(input: {
   return { url: result.secure_url, publicId: result.public_id, bytes: result.bytes };
 }
 
-export async function storeFluxResult(sampleUrl: string): Promise<StoredTryOnImage> {
+export async function storeGeminiResult(sampleUrlOrDataUri: string): Promise<StoredTryOnImage> {
   if (!cloudinaryConfigured()) throw new Error("Image storage is not configured.");
-  const response = await fetch(sampleUrl, { signal: AbortSignal.timeout(20_000) });
-  const contentType = response.headers.get("content-type")?.split(";")[0];
-  if (!response.ok || !contentType || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
-    throw new Error("FLUX returned an invalid preview image.");
-  }
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (!buffer.length || buffer.length > 15 * 1024 * 1024) throw new Error("FLUX preview image is too large.");
+  
+  let dataImage: DataImage | null = null;
+  
+  if (sampleUrlOrDataUri.startsWith('data:')) {
+    dataImage = parseDataImage(sampleUrlOrDataUri, 15 * 1024 * 1024);
+  } else {
+    const response = await fetch(sampleUrlOrDataUri, { signal: AbortSignal.timeout(20_000) });
+    const contentType = response.headers.get("content-type")?.split(";")[0];
+    if (!response.ok || !contentType || !["image/jpeg", "image/png", "image/webp"].includes(contentType)) {
+      throw new Error("Gemini returned an invalid preview image URL.");
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (!buffer.length || buffer.length > 15 * 1024 * 1024) throw new Error("Gemini preview image is too large.");
 
-  const dataImage = parseDataImage(`data:${contentType};base64,${buffer.toString("base64")}`, 15 * 1024 * 1024);
-  if (!dataImage) throw new Error("FLUX preview image is invalid.");
+    dataImage = parseDataImage(`data:${contentType};base64,${buffer.toString("base64")}`, 15 * 1024 * 1024);
+  }
+
+  if (!dataImage) throw new Error("Gemini preview image is invalid.");
   return uploadTryOnDataImage({
     dataImage,
     folder: "vision-vistara/ai-try-on-results",
