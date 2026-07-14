@@ -133,8 +133,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File content does not match its declared type" }, { status: 400 });
     }
     if (["products", "ar"].includes(folder)) {
-      if (!productId || !(await prisma.product.findUnique({ where: { id: productId }, select: { id: true } }))) {
-        return NextResponse.json({ error: "A valid product is required for this upload" }, { status: 400 });
+      if (productId && !(await prisma.product.findUnique({ where: { id: productId }, select: { id: true } }))) {
+        return NextResponse.json({ error: "The provided product ID is invalid" }, { status: 400 });
       }
     }
     const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
