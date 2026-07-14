@@ -31,51 +31,10 @@ export default async function FramesPage({
     return Number(b.featured) - Number(a.featured) || Number(productIsSellable(b)) - Number(productIsSellable(a));
   });
 
-  const dbCategories = await getCategories();
-  const categoryEmojis: Record<string, string> = {
-    men: "👔",
-    women: "👗",
-    kids: "🧒",
-    premium: "✨",
-    sunglasses: "🕶️",
-    rimless: "👓",
-    "full-rim": "👓",
-    "half-rim": "👓",
-    titanium: "🔩",
-  };
 
   return (
     <main>
 
-      {/* Categories */}
-      <section className="border-b border-slate-200 bg-white">
-        <div className="vv-container py-6">
-          <div className="flex flex-wrap gap-3">
-            {dbCategories.map((cat) => {
-              const emoji = categoryEmojis[cat.slug] || "👓";
-              return (
-                <Link
-                  key={cat.slug}
-                  href={`/frames?category=${cat.slug}`}
-                  className={`inline-flex items-center gap-2 rounded-full border px-5 py-3 text-sm font-extrabold transition hover:-translate-y-0.5 ${
-                    params.category === cat.slug
-                      ? "border-retail bg-teal-50 text-retail"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-retail hover:text-retail"
-                  }`}
-                >
-                  <span>{emoji}</span>
-                  {cat.name}
-                </Link>
-              );
-            })}
-            {params.category ? (
-              <Link href="/frames" className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-3 text-sm font-bold text-slate-500 hover:text-slate-900">
-                Clear filter ×
-              </Link>
-            ) : null}
-          </div>
-        </div>
-      </section>
 
       {/* Search & Filter Bar */}
       <section className="store-band">
