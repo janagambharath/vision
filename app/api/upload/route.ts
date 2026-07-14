@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { configureCloudinary } from "@/lib/integrations/cloudinary";
+import { cloudinaryConfigured, configureCloudinary } from "@/lib/integrations/cloudinary";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
+import { uploadedFileMatchesType } from "@/lib/uploads";
 
 type UploadResult = {
   secure_url: string;
@@ -89,12 +90,24 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+    const role = (session.user as { role?: string }).role;
+    if (!role || !["OWNER", "MANAGER"].includes(role)) {
+      return NextResponse.json({ error: "Manager access is required for uploads" }, { status: 403 });
+    }
+    if (!cloudinaryConfigured()) {
+      return NextResponse.json({ error: "Upload storage is not configured" }, { status: 503 });
+    }
 
     const cloudinary = configureCloudinary();
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const folder = String(formData.get("folder") ?? "prescriptions");
     const productId = String(formData.get("productId") ?? "").trim();
+    const allowedFolders = new Set(["products", "ar", "prescriptions"]);
+
+    if (!allowedFolders.has(folder)) {
+      return NextResponse.json({ error: "Invalid upload folder" }, { status: 400 });
+    }
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -116,6 +129,14 @@ export async function POST(request: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (!uploadedFileMatchesType(file.type, buffer)) {
+      return NextResponse.json({ error: "File content does not match its declared type" }, { status: 400 });
+    }
+    if (["products", "ar"].includes(folder)) {
+      if (!productId || !(await prisma.product.findUnique({ where: { id: productId }, select: { id: true } }))) {
+        return NextResponse.json({ error: "A valid product is required for this upload" }, { status: 400 });
+      }
+    }
     const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
 
     const uploadLog = await prisma.productImageUpload.create({
@@ -133,7 +154,7 @@ export async function POST(request: NextRequest) {
       base64,
       {
         folder: `vision-vistara/${folder}`,
-        resource_type: "auto",
+        resource_type: file.type === "application/pdf" ? "raw" : "image",
         transformation: folder === "products" ? [{ width: 1200, height: 1200, crop: "limit", quality: "auto" }] : undefined
       },
       uploadLog?.id ?? null

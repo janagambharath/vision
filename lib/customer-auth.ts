@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 export interface CustomerSession {
   userId: string;
   phone: string;
+  expiresAt: number;
 }
 
 export async function getCustomerSession(): Promise<CustomerSession | null> {
@@ -20,9 +21,13 @@ export async function getCustomerSession(): Promise<CustomerSession | null> {
   try {
     const str = Buffer.from(parts[0], "base64").toString("utf8");
     const computedSig = crypto.createHmac("sha256", secret).update(str).digest("hex");
-    if (computedSig !== parts[1]) return null;
+    const expected = Buffer.from(computedSig, "hex");
+    const received = Buffer.from(parts[1], "hex");
+    if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) return null;
 
-    return JSON.parse(str) as CustomerSession;
+    const payload = JSON.parse(str) as CustomerSession;
+    if (!Number.isSafeInteger(payload.expiresAt) || payload.expiresAt <= Date.now()) return null;
+    return payload;
   } catch (err) {
     console.error("Failed to decode customer session cookie:", err);
     return null;

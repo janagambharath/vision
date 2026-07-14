@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
-import { CreditCard, Upload, Lock, ShieldCheck, RefreshCw, Smartphone, HelpCircle, CheckCircle2 } from "lucide-react";
+import { CreditCard, Lock, ShieldCheck, RefreshCw, Smartphone, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { checkoutAction } from "@/lib/orders";
 

@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, Boxes, ClipboardList, Home, Package, ShoppingBag, Tag, TrendingUp, Users, Calendar, Eye, ShieldAlert, Star } from "lucide-react";
+import { ArrowRight, Boxes, ClipboardList, Home, ShoppingBag, TrendingUp, Users, Calendar, ShieldAlert, Star } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { getStoreProducts } from "@/lib/store-data";
 import { formatMoney } from "@/lib/money";
-import { ORDER_STATUS_LABELS } from "@/lib/constants";
 
 export const metadata = { title: "Admin Dashboard | Vision Vistara" };
 
@@ -27,8 +26,6 @@ export default async function AdminDashboardPage() {
     leadCount,
     tryAtHomeCount,
     totalRevenue,
-    recentOrders,
-    recentLeads,
     chartOrders,
     confirmedOrdersCount,
     deliveredOrdersCount,
@@ -41,8 +38,6 @@ export default async function AdminDashboardPage() {
     prisma.lead.count().catch(() => 0),
     prisma.tryAtHomeRequest.count().catch(() => 0),
     prisma.order.aggregate({ _sum: { grandTotalPaise: true }, where: { status: { in: ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] } } }).catch(() => ({ _sum: { grandTotalPaise: 0 } })),
-    prisma.order.findMany({ orderBy: { createdAt: "desc" }, take: 5 }).catch(() => []),
-    prisma.lead.findMany({ orderBy: { createdAt: "desc" }, take: 5 }).catch(() => []),
     // Chart Orders
     prisma.order.findMany({
       where: {
@@ -69,10 +64,6 @@ export default async function AdminDashboardPage() {
       orderBy: { preferredSlot: "asc" }
     }).catch(() => [])
   ]);
-
-  const draftCount = products.filter((p) => p.status !== "ACTIVE" || p.pricePaise === null).length;
-  const lowStockCount = products.filter((p) => p.inventoryStatus === "LOW_STOCK").length;
-  const outOfStockCount = products.filter((p) => p.inventoryStatus === "OUT_OF_STOCK").length;
 
   // Process 30-day Chart Data
   const revenueByDate: Record<string, number> = {};

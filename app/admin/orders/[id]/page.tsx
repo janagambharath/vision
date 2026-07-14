@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, MessageCircle, Package, ShieldCheck, Truck, User, AlertTriangle, CreditCard } from "lucide-react";
+import { ArrowLeft, MessageCircle, Package, ShieldCheck, Truck, User, CreditCard } from "lucide-react";
 import { redirect, notFound } from "next/navigation";
 import { requireAdmin, requireOwner, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
@@ -69,7 +69,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
     const rxId = String(formData.get("rxId") ?? "");
     if (!rxId) return;
 
-    const rx = await prisma.prescription.update({
+    await prisma.prescription.update({
       where: { id: rxId },
       data: { verified: true }
     });
@@ -200,7 +200,10 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
   async function createShipmentTrigger() {
     "use server";
-    await requireAdmin();
+    await requireManager();
+    if (!["CONFIRMED", "PACKED"].includes(order!.status)) {
+      redirect(`/admin/orders/${order!.publicId}?error=shipment-not-ready`);
+    }
 
     const mappedOrder = {
       publicId: order!.publicId,
@@ -226,12 +229,33 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       paymentMethod: order!.paymentMethod
     };
 
-    const res = await createShiprocketShipment(mappedOrder);
+    try {
+      await prisma.shipment.create({
+        data: { orderId: order!.id, provider: "shiprocket", status: "CREATING" }
+      });
+    } catch (error) {
+      if ((error as { code?: string }).code === "P2002") {
+        redirect(`/admin/orders/${order!.publicId}?error=shipment-already-created`);
+      }
+      throw error;
+    }
 
-    if (res.success || res.simulated) {
+    try {
+      const res = await createShiprocketShipment(mappedOrder);
+      if (!res.success) throw new Error("Shiprocket rejected shipment creation.");
+
       await prisma.order.update({
         where: { id: order!.id },
-        data: { status: "SHIPPED", notes: `Shipment ID: ${res.shipmentId || "simulated"}` }
+        data: { status: "SHIPPED", notes: `Shipment ID: ${res.shipmentId || "pending-provider-id"}` }
+      });
+
+      await prisma.shipment.update({
+        where: { orderId: order!.id },
+        data: {
+          status: "CREATED",
+          providerShipmentId: res.shipmentId ? String(res.shipmentId) : null,
+          rawPayload: JSON.parse(JSON.stringify(res))
+        }
       });
 
       await prisma.activityLog.create({
@@ -239,12 +263,19 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           action: "SHIPMENT_CREATED",
           entityType: "order",
           entityId: order!.id,
-          metadata: { shipmentId: res.shipmentId, simulated: res.simulated }
+          metadata: { shipmentId: res.shipmentId }
         }
       });
 
       redirect(`/admin/orders/${order!.publicId}?shipmentSuccess=true`);
-    } else {
+    } catch (error) {
+      await prisma.shipment.update({
+        where: { orderId: order!.id },
+        data: {
+          status: "FAILED",
+          error: error instanceof Error ? error.message : "Shipment creation failed"
+        }
+      }).catch(() => undefined);
       redirect(`/admin/orders/${order!.publicId}?error=shipment-failed`);
     }
   }

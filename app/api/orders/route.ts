@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isRateLimited } from "@/lib/rate-limit";
-import { orderTrackingSchema } from "@/lib/validations";
+import { orderPublicIdSchema } from "@/lib/validations";
+import { hasOrderAccess } from "@/lib/order-access";
 
 export async function GET(request: Request) {
   if (await isRateLimited(request, { keyPrefix: "order-tracking-api", limit: 20, windowSeconds: 60 })) {
@@ -9,16 +10,15 @@ export async function GET(request: Request) {
   }
 
   const url = new URL(request.url);
-  const parsed = orderTrackingSchema.safeParse({
-    id: url.searchParams.get("id") ?? "",
-    phone: url.searchParams.get("phone") ?? ""
-  });
-  if (!parsed.success) return NextResponse.json({ error: "Order id and phone are required" }, { status: 400 });
+  const parsed = orderPublicIdSchema.safeParse(url.searchParams.get("id") ?? "");
+  if (!parsed.success) return NextResponse.json({ error: "A valid order id is required" }, { status: 400 });
+  if (!(await hasOrderAccess(parsed.data, "tracking"))) {
+    return NextResponse.json({ error: "Order verification is required" }, { status: 403 });
+  }
 
   const order = await prisma.order.findFirst({
     where: {
-      publicId: parsed.data.id,
-      phone: parsed.data.phone
+      publicId: parsed.data
     },
     select: {
       publicId: true,

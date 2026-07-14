@@ -7,7 +7,6 @@ import { CreditCard, ArrowRight, MessageCircle, AlertTriangle, RefreshCw } from 
 import { formatMoney } from "@/lib/money";
 
 interface OrderDetail {
-  id: string;
   publicId: string;
   customerName: string;
   phone: string;
@@ -31,7 +30,7 @@ export default function RazorpayPayClient({ order }: { order: OrderDetail }) {
       const configRes = await fetch("/api/razorpay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: order.id })
+        body: JSON.stringify({ publicOrderId: order.publicId })
       });
 
       if (!configRes.ok) {
@@ -66,7 +65,7 @@ export default function RazorpayPayClient({ order }: { order: OrderDetail }) {
               throw new Error("Payment signature verification failed.");
             }
 
-            router.push(`/frames/orders/${order.publicId}?payment=success`);
+            router.push(`/frames/orders/${order.publicId}?payment=pending`);
           } catch (err) {
             setError(err instanceof Error ? err.message : "Payment verification failed.");
             setLoading(false);
@@ -146,6 +145,10 @@ export default function RazorpayPayClient({ order }: { order: OrderDetail }) {
               {error}
             </div>
           ) : null}
+
+          <p className="text-xs leading-5 text-slate-500">
+            Your order is confirmed only after Razorpay&apos;s secure payment webhook validates the payment. Do not make a duplicate payment while confirmation is pending.
+          </p>
 
           <div className="grid gap-2">
             <button className="vv-button-retail py-3 justify-center w-full font-bold" onClick={startPayment}>

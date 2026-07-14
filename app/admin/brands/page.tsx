@@ -1,4 +1,4 @@
-import { Plus, Edit, Trash2, Gem, Save, ExternalLink } from "lucide-react";
+import { Plus, Edit, Trash2, Gem, Save } from "lucide-react";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";

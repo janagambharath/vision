@@ -33,8 +33,9 @@ export async function refundRazorpayPayment(paymentId: string, amountPaise: numb
 }
 
 export function verifyRazorpayWebhookSignature(body: string, signature: string | null) {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!secret || !signature) return false;
+  if (!/^[a-f0-9]{64}$/i.test(signature)) return false;
 
   const expected = createHmac("sha256", secret).update(body).digest("hex");
   const receivedBuffer = Buffer.from(signature, "hex");

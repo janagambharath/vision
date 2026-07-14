@@ -5,17 +5,27 @@ async function main() {
   const expired = await prisma.framePreviewRequest.findMany({
     where: {
       expiresAt: { lte: new Date() },
-      customerImagePublicId: { not: null }
+      OR: [
+        { customerImagePublicId: { not: null } },
+        { resultImagePublicId: { not: null } }
+      ]
     },
-    select: { id: true, customerImagePublicId: true },
+    select: { id: true, customerImagePublicId: true, resultImagePublicId: true },
     take: 100
   });
 
   for (const request of expired) {
     if (request.customerImagePublicId) await deleteTryOnAsset(request.customerImagePublicId);
+    if (request.resultImagePublicId) await deleteTryOnAsset(request.resultImagePublicId);
     await prisma.framePreviewRequest.update({
       where: { id: request.id },
-      data: { customerImageUrl: null, customerImagePublicId: null }
+      data: {
+        customerImageUrl: null,
+        customerImagePublicId: null,
+        resultImageUrl: null,
+        resultImagePublicId: null,
+        resultBytes: null
+      }
     });
   }
 

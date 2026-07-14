@@ -1,16 +1,18 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { randomBytes } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { HOME_TRIAL_DEPOSIT_PAISE, HOME_TRIAL_SERVICE_FEE_PAISE } from "@/lib/constants";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
 import { prisma } from "@/lib/db";
 import { checkoutSchema, tryAtHomeSchema } from "@/lib/validations";
 import { createRazorpayOrder } from "@/lib/integrations/razorpay";
-import { configureCloudinary } from "@/lib/integrations/cloudinary";
+import { uploadFormFile } from "@/lib/uploads";
+import { grantOrderAccess } from "@/lib/order-access";
 
 function makePublicOrderId() {
-  return `VV-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+  return `VV-${randomBytes(16).toString("hex").toUpperCase()}`;
 }
 
 export async function checkoutAction(formData: FormData) {
@@ -102,28 +104,24 @@ export async function checkoutAction(formData: FormData) {
     }
   });
 
-  // Handle Prescription Upload
+  // A prescription upload must either persist successfully or the just-created
+  // order is removed. Placeholder URLs are never acceptable medical records.
   if (prescriptionUploaded && file) {
     try {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
-      const cloudinary = configureCloudinary();
-      const uploadResult = await new Promise<any>((resolve, reject) => {
-        cloudinary.uploader.upload(base64, { folder: "prescriptions" }, (err, res) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
-      });
+      const uploadResult = await uploadFormFile(file, "vision-vistara/prescriptions");
+      if (!uploadResult) throw new Error("Prescription file was empty.");
 
       await prisma.prescription.create({
         data: {
           orderId: order.id,
-          fileUrl: uploadResult.secure_url,
+          fileUrl: uploadResult.secureUrl,
           fileName: file.name
         }
       });
     } catch (uploadError) {
       console.error("Prescription upload to Cloudinary failed:", uploadError);
+      await prisma.order.delete({ where: { id: order.id } });
+      redirect("/frames/checkout?error=prescription-upload-failed");
     }
   }
 
@@ -147,14 +145,27 @@ export async function checkoutAction(formData: FormData) {
           rawPayload: JSON.parse(JSON.stringify(razorpayOrder)) as Prisma.InputJsonValue
         }
       });
-    } catch {
+    } catch (error) {
       await prisma.payment.create({
         data: {
           id: `payment-${order.id}`,
           orderId: order.id,
           amountPaise: totals.grandTotalPaise,
           status: "PENDING",
-          rawPayload: { note: "Razorpay not configured; WhatsApp-assisted fallback required." }
+          rawPayload: { note: "Razorpay order initialization failed. Retry is required before online payment." }
+        }
+      });
+      await prisma.notification.create({
+        data: {
+          orderId: order.id,
+          channel: "SYSTEM",
+          status: "PENDING",
+          recipient: "admin",
+          subject: "Razorpay initialization failed",
+          body: `Order ${order.publicId} was created but no provider order was issued. Do not mark it paid manually without reconciliation.`,
+          entityType: "Order",
+          entityId: order.id,
+          metadata: { error: error instanceof Error ? error.message : "Unknown Razorpay initialization error" }
         }
       });
     }
@@ -178,6 +189,9 @@ export async function checkoutAction(formData: FormData) {
       data: { couponId: null }
     });
   }
+
+  await grantOrderAccess(order.publicId, "tracking", 30 * 60);
+  await grantOrderAccess(order.publicId, "checkout", 60 * 60);
   
   if (isOnlinePayment) {
     redirect(`/frames/checkout/pay/${publicId}`);

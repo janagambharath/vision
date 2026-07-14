@@ -5,7 +5,7 @@ import { getCustomerUser } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
-import { User, Package, FileText, LogOut, ArrowRight, ClipboardList } from "lucide-react";
+import { Package, FileText, LogOut, ArrowRight, ClipboardList } from "lucide-react";
 
 export const metadata = { title: "My Account | Vision Vistara" };
 

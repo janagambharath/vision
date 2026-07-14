@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { CART_COOKIE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 

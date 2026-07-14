@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { MessageCircle, Phone, Calendar, Clock, MapPin, RefreshCw } from "lucide-react";
 import { requireAdmin, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import { formatMoney } from "@/lib/money";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
 import type { OrderStatus } from "@prisma/client";
 

@@ -1,10 +1,23 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { rateLimit } from "@/lib/rate-limit";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
+import { rateLimit } from "@/lib/rate-limit";
+import { assertSameOrigin } from "@/lib/request-security";
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+
+function otpDigest(phone: string, code: string) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error("Missing AUTH_SECRET in environment variables");
+  return crypto.createHmac("sha256", secret).update(`${phone}:${code}`).digest("hex");
+}
 
 export async function POST(request: NextRequest) {
   try {
+    const originError = assertSameOrigin(request);
+    if (originError) return originError;
+
     const { phone } = await request.json();
     if (!phone || typeof phone !== "string") {
       return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
@@ -15,33 +28,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid phone number length" }, { status: 400 });
     }
 
-    // Rate Limit Check
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-    const rl = await rateLimit(`otp_send:${ip}_${cleanPhone}`, 3, 3600); // 3 requests per phone/IP per hour
-    if (!rl.allowed) {
+    const allowed = await rateLimit(`otp_send:${ip}_${cleanPhone}`, 3, 60 * 60);
+    if (!allowed.allowed) {
       return NextResponse.json({ error: "Too many requests. Please try again in an hour." }, { status: 429 });
     }
 
-    // Generate random 6-digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiration
+    const code = crypto.randomInt(100000, 1_000_000).toString();
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-    // Save in DB
-    await prisma.otpCode.create({
-      data: {
-        phone: cleanPhone,
-        code,
-        expiresAt
-      }
-    });
+    await prisma.$transaction([
+      prisma.otpCode.updateMany({
+        where: { phone: cleanPhone, used: false },
+        data: { used: true }
+      }),
+      prisma.otpCode.create({
+        data: { phone: cleanPhone, code: otpDigest(cleanPhone, code), expiresAt }
+      })
+    ]);
 
-    console.log(`🔑 [OTP Code Generated] Phone: ${cleanPhone} Code: ${code}`);
-
-    // Send WhatsApp Alert
     try {
       await sendWhatsAppTemplate(cleanPhone, "otp_verification", [code]);
-    } catch (waErr) {
-      console.warn("⚠️ Failed to send WhatsApp OTP code. Code printed in console.");
+    } catch (deliveryError) {
+      await prisma.otpCode.updateMany({
+        where: { phone: cleanPhone, used: false, expiresAt: { gt: new Date() } },
+        data: { used: true }
+      });
+      console.error("OTP delivery failed", deliveryError);
+      return NextResponse.json({ error: "Unable to send a verification code. Please try again shortly." }, { status: 503 });
     }
 
     return NextResponse.json({ status: "ok" });

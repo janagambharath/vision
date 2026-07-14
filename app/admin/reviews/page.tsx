@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { Star, CheckCircle, Trash2, ShieldAlert, MessageSquare } from "lucide-react";
+import { Star, CheckCircle, Trash2, ShieldAlert } from "lucide-react";
 import { requireAdmin, requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import RazorpayPayClient from "@/components/razorpay-pay-client";
 import { prisma } from "@/lib/db";
+import { hasOrderAccess } from "@/lib/order-access";
 
 const ONLINE_PAYMENT_METHODS = new Set(["RAZORPAY", "UPI", "CARD", "NETBANKING"]);
 
@@ -14,7 +15,6 @@ export default async function RazorpayPayPage({
   const order = await prisma.order.findUnique({
     where: { publicId: publicOrderId },
     select: {
-      id: true,
       publicId: true,
       customerName: true,
       phone: true,
@@ -26,6 +26,10 @@ export default async function RazorpayPayPage({
   });
 
   if (!order) notFound();
+
+  if (!(await hasOrderAccess(order.publicId, "checkout"))) {
+    redirect("/frames/checkout?error=checkout-session-expired");
+  }
 
   if (!ONLINE_PAYMENT_METHODS.has(order.paymentMethod)) {
     redirect(`/frames/orders/${order.publicId}`);

@@ -1,24 +1,16 @@
 export async function getShiprocketToken() {
   const email = process.env.SHIPROCKET_EMAIL;
   const password = process.env.SHIPROCKET_PASSWORD;
+  if (!email || !password) throw new Error("Shiprocket credentials are not configured.");
 
-  if (!email || !password) {
-    console.warn("⚠️ Shiprocket credentials not configured.");
-    return null;
-  }
-
-  try {
-    const res = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-    return data.token ?? null;
-  } catch (err) {
-    console.error("Failed to authenticate with Shiprocket:", err);
-    return null;
-  }
+  const response = await fetch("https://apiv2.shiprocket.in/v1/external/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await response.json();
+  if (!response.ok || !data.token) throw new Error(data.message ?? "Shiprocket authentication failed.");
+  return data.token as string;
 }
 
 export interface ShiprocketAddress {
@@ -48,64 +40,43 @@ export interface ShiprocketOrder {
 }
 
 export async function createShiprocketShipment(order: ShiprocketOrder) {
+  if (!order.shippingAddress) throw new Error("A shipping address is required before creating a Shiprocket shipment.");
   const token = await getShiprocketToken();
-  if (!token) {
-    console.log("Simulating Shiprocket order shipment placement for:", order.publicId);
-    return { success: true, simulated: true, shipmentId: `sim-ship-${order.publicId}` };
-  }
-
-  const shippingAddress = order.shippingAddress;
-  const addr1 = shippingAddress?.line1 ?? "Clinic Address";
-  const addr2 = shippingAddress?.line2 ? ` ${shippingAddress.line2}` : "";
-
-  const orderItems = order.items.map((item) => {
-    const snap = (item.productSnapshot as Record<string, unknown>) || {};
+  const address = order.shippingAddress;
+  const items = order.items.map((item) => {
+    const snapshot = (item.productSnapshot as Record<string, unknown>) || {};
     return {
-      name: String(snap.name ?? "Optical Frame"),
-      sku: String(snap.sku ?? "VV-FRAME"),
+      name: String(snapshot.name ?? "Optical Frame"),
+      sku: String(snapshot.sku ?? "VV-FRAME"),
       units: item.quantity,
       selling_price: item.unitPricePaise / 100
     };
   });
 
-  try {
-    const res = await fetch("https://apiv2.shiprocket.in/v1/external/shipments/create/adhoc", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        order_id: order.publicId,
-        pickup_location: "Vision Vistara Clinic",
-        shipping_customer_name: shippingAddress?.name ?? order.customerName,
-        shipping_last_name: "",
-        shipping_address: `${addr1}${addr2}`,
-        shipping_city: shippingAddress?.city ?? "Hyderabad",
-        shipping_pincode: shippingAddress?.pincode ?? "500001",
-        shipping_state: shippingAddress?.state ?? "Telangana",
-        shipping_country: "India",
-        shipping_phone: shippingAddress?.phone ?? order.phone,
-        order_items: orderItems,
-        payment_method: order.paymentMethod === "COD" ? "COD" : "Prepaid",
-        sub_total: order.grandTotalPaise / 100,
-        length: 15,
-        width: 10,
-        height: 5,
-        weight: 0.3
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      console.error("Shiprocket shipment failure response:", data);
-      throw new Error(data.message ?? "Shiprocket placement failed");
-    }
-
-    console.log(`✅ Shiprocket order created successfully:`, data);
-    return { success: true, shipmentId: data.shipment_id };
-  } catch (err) {
-    console.error("Failed to create Shiprocket shipment:", err);
-    return { success: false, error: String(err) };
-  }
+  const response = await fetch("https://apiv2.shiprocket.in/v1/external/shipments/create/adhoc", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      order_id: order.publicId,
+      pickup_location: "Vision Vistara Clinic",
+      shipping_customer_name: address.name || order.customerName,
+      shipping_last_name: "",
+      shipping_address: `${address.line1}${address.line2 ? ` ${address.line2}` : ""}`,
+      shipping_city: address.city,
+      shipping_pincode: address.pincode,
+      shipping_state: address.state || "Telangana",
+      shipping_country: "India",
+      shipping_phone: address.phone || order.phone,
+      order_items: items,
+      payment_method: order.paymentMethod === "COD" ? "COD" : "Prepaid",
+      sub_total: order.grandTotalPaise / 100,
+      length: 15,
+      width: 10,
+      height: 5,
+      weight: 0.3
+    })
+  });
+  const data = await response.json();
+  if (!response.ok || !data.shipment_id) throw new Error(data.message ?? "Shiprocket shipment creation failed.");
+  return { success: true as const, shipmentId: String(data.shipment_id), rawPayload: data };
 }

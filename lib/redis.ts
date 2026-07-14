@@ -84,3 +84,21 @@ export async function deleteCache(key: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function deleteCacheByPrefix(prefix: string): Promise<number> {
+  const client = await getRedisClient();
+  if (!client) return 0;
+
+  try {
+    let cursor = "0";
+    let deleted = 0;
+    do {
+      const [nextCursor, keys] = await client.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 100);
+      cursor = nextCursor;
+      if (keys.length) deleted += await client.del(...keys);
+    } while (cursor !== "0");
+    return deleted;
+  } catch {
+    return 0;
+  }
+}

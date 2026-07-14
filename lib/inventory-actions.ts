@@ -3,16 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
-import { deleteCache } from "@/lib/redis";
+import { deleteCacheByPrefix } from "@/lib/redis";
 import type { InventoryStatus } from "@prisma/client";
 
 export async function invalidateProductCache() {
-  await Promise.all([
-    deleteCache("store:products:all:y:y"),
-    deleteCache("store:products:all:y:n"),
-    deleteCache("store:products:all:n:y"),
-    deleteCache("store:products:all:n:n")
-  ]);
+  await deleteCacheByPrefix("store:products:");
+  revalidatePath("/frames", "layout");
 }
 
 export async function updateInventoryAction(formData: FormData) {

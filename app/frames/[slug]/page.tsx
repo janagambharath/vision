@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, Camera, CheckCircle2, Home, MessageCircle, Ruler, ShieldCheck, ShoppingBag, Sparkles, Truck, Star, Heart, Clock } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, Ruler, ShieldCheck, Sparkles, Truck, Star, Clock } from "lucide-react";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import ProductCheckoutPanel from "@/components/product-checkout-panel";
-import { CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
+import { SITE_URL } from "@/lib/constants";
 import { productIsSellable } from "@/lib/inventory";
 import { formatMoney } from "@/lib/money";
 import { getRelatedProducts, getStoreProduct, getStoreProducts, getLensOptions } from "@/lib/store-data";
 import { prisma } from "@/lib/db";
-import { addRecentlyViewed, getRecentlyViewed } from "@/lib/recently-viewed";
+import { getRecentlyViewed } from "@/lib/recently-viewed";
 
 export const dynamic = "force-dynamic";
 

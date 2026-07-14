@@ -1,32 +1,29 @@
+import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createRazorpayOrder } from "@/lib/integrations/razorpay";
+import { hasOrderAccess } from "@/lib/order-access";
 import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 
-// POST /api/razorpay — Create a Razorpay order for checkout
+// Checkout setup is restricted to the short-lived signed checkout session set
+// after the order is created. Internal database IDs are never accepted here.
 export async function POST(request: NextRequest) {
   try {
     const originError = assertSameOrigin(request);
     if (originError) return originError;
-
     if (await isRateLimited(request, { keyPrefix: "razorpay-create", limit: 10, windowSeconds: 60 })) {
       return NextResponse.json({ error: "Too many payment initialization attempts" }, { status: 429 });
     }
 
-    const body = await request.json();
-    const { orderId } = body;
-
-    if (!orderId) {
-      return NextResponse.json({ error: "orderId required" }, { status: 400 });
+    const { publicOrderId } = await request.json();
+    if (typeof publicOrderId !== "string" || !(await hasOrderAccess(publicOrderId, "checkout"))) {
+      return NextResponse.json({ error: "Checkout session expired. Return to checkout and try again." }, { status: 403 });
     }
 
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    if (!["PENDING", "AWAITING_PRESCRIPTION"].includes(order.status)) {
+    const order = await prisma.order.findUnique({ where: { publicId: publicOrderId } });
+    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (!['PENDING', 'AWAITING_PRESCRIPTION'].includes(order.status)) {
       return NextResponse.json({ error: "Payment cannot be initialized for this order status" }, { status: 409 });
     }
 
@@ -46,21 +43,17 @@ export async function POST(request: NextRequest) {
       receipt: order.publicId,
       notes: { orderId: order.id, publicId: order.publicId }
     });
-
+    const rawPayload = JSON.parse(JSON.stringify(razorpayOrder)) as Prisma.InputJsonValue;
     await prisma.payment.upsert({
       where: { id: paymentId },
-      update: {
-        providerOrderId: razorpayOrder.id,
-        amountPaise: order.grandTotalPaise,
-        rawPayload: JSON.parse(JSON.stringify(razorpayOrder))
-      },
+      update: { providerOrderId: razorpayOrder.id, amountPaise: order.grandTotalPaise, rawPayload, status: "PENDING" },
       create: {
         id: paymentId,
         orderId: order.id,
         providerOrderId: razorpayOrder.id,
         amountPaise: order.grandTotalPaise,
         status: "PENDING",
-        rawPayload: JSON.parse(JSON.stringify(razorpayOrder))
+        rawPayload
       }
     });
 
@@ -72,9 +65,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Razorpay order creation failed:", error);
-    return NextResponse.json(
-      { error: "Payment initialization failed. You can complete via WhatsApp-assisted checkout." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Payment initialization failed. Contact support to complete payment." }, { status: 503 });
   }
 }

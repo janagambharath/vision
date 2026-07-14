@@ -11,6 +11,20 @@ const ALLOWED_UPLOAD_TYPES = new Set([
 
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
+function bytesStartWith(bytes: Buffer, expected: number[]) {
+  return expected.every((value, index) => bytes[index] === value);
+}
+
+export function uploadedFileMatchesType(type: string, bytes: Buffer) {
+  if (type === "image/jpeg") return bytesStartWith(bytes, [0xff, 0xd8, 0xff]);
+  if (type === "image/png") return bytesStartWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  if (type === "image/webp") {
+    return bytes.subarray(0, 4).toString("ascii") === "RIFF" && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+  }
+  if (type === "application/pdf") return bytes.subarray(0, 5).toString("ascii") === "%PDF-";
+  return false;
+}
+
 export type UploadedAsset = {
   secureUrl: string;
   publicId: string;
@@ -49,6 +63,9 @@ export async function uploadFormFile(
 
   const cloudinary = configureCloudinary();
   const buffer = Buffer.from(await value.arrayBuffer());
+  if (!uploadedFileMatchesType(value.type, buffer)) {
+    throw new Error("Upload content does not match the declared file type.");
+  }
   const maxRetries = options.maxRetries ?? 3;
 
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
@@ -57,7 +74,7 @@ export async function uploadFormFile(
         const stream = cloudinary.uploader.upload_stream(
           {
             folder,
-            resource_type: "auto",
+            resource_type: value.type === "application/pdf" ? "raw" : "image",
             use_filename: true,
             unique_filename: true
           },
