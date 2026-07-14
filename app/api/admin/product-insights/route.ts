@@ -98,40 +98,54 @@ export async function POST(request: NextRequest) {
   ].join(" ");
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": requestedSiteUrl(),
-        "X-Title": "Vision Vistara Product Enrichment"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: instructions },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
-              { type: "image_url", image_url: { url: parsedRequest.data.imageUrl } }
-            ]
-          }
-        ],
-        max_tokens: 1_600,
-        temperature: 0.2,
-        provider: { require_parameters: true },
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "eyewear_product_draft",
-            strict: true,
-            schema: productDraftJsonSchema
-          }
+    const makeRequestBody = (targetModel: string) => JSON.stringify({
+      model: targetModel,
+      messages: [
+        { role: "system", content: instructions },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
+            { type: "image_url", image_url: { url: parsedRequest.data.imageUrl } }
+          ]
         }
-      }),
+      ],
+      max_tokens: 1_600,
+      temperature: 0.2,
+      provider: { require_parameters: true },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "eyewear_product_draft",
+          strict: true,
+          schema: productDraftJsonSchema
+        }
+      }
+    });
+
+    const headers = {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": requestedSiteUrl(),
+      "X-Title": "Vision Vistara Product Enrichment"
+    };
+
+    let response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers,
+      body: makeRequestBody(model),
       signal: AbortSignal.timeout(45_000)
     });
+
+    if (response.status === 404 && model !== "openrouter/free") {
+      console.warn(`Model ${model} returned 404, falling back to openrouter/free`);
+      response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers,
+        body: makeRequestBody("openrouter/free"),
+        signal: AbortSignal.timeout(45_000)
+      });
+    }
 
     if (!response.ok) {
       console.error("Product AI request failed", { status: response.status, requestId: response.headers.get("x-request-id") });
