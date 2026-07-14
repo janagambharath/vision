@@ -129,7 +129,7 @@ export async function generateGeminiTryOn(input: {
   const outputBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
   let outputText = "";
   try {
-    outputText = response.text() || "";
+    outputText = response.text || "";
   } catch (e) {
     // text() might throw if there is no text
   }
