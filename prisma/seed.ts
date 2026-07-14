@@ -29,7 +29,6 @@ type SeedProduct = {
   returnPolicy: string;
   deliveryEstimate: string;
   tryAtHomeEligible: boolean;
-  arImageUrl?: string | null;
   inventoryQuantity: number;
   inventoryStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "PRICE_REQUIRED";
   categories: string[];
@@ -164,7 +163,6 @@ async function main() {
         returnPolicy: product.returnPolicy,
         deliveryEstimate: product.deliveryEstimate,
         tryAtHomeEligible: product.tryAtHomeEligible,
-        arImageUrl: product.arImageUrl ?? null,
         searchText: buildSearchText(product)
       },
       create: {
@@ -193,7 +191,6 @@ async function main() {
         returnPolicy: product.returnPolicy,
         deliveryEstimate: product.deliveryEstimate,
         tryAtHomeEligible: product.tryAtHomeEligible,
-        arImageUrl: product.arImageUrl ?? null,
         seoTitle: `${product.brand} ${product.name} | Vision Vistara Frames`,
         seoDescription: product.description.slice(0, 155),
         searchText: buildSearchText(product)
