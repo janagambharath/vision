@@ -1,11 +1,19 @@
 import { v2 as cloudinary } from "cloudinary";
 
+export function cloudinaryConfigured() {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  );
+}
+
 export function configureCloudinary(): typeof cloudinary {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
-  if (!cloudName || !apiKey || !apiSecret) {
+  if (!cloudinaryConfigured() || !cloudName || !apiKey || !apiSecret) {
     // Return a mock object if not configured to prevent crashes during local development/builds
     return {
       config: () => ({}),

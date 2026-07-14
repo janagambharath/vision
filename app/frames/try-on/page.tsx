@@ -5,7 +5,7 @@ import { getTryOnFrames } from "@/lib/store-data";
 
 export const metadata = {
   title: "Virtual Try-On Camera | Vision Vistara",
-  description: "Live camera-based frame fitting try-on overlay on Vision Vistara."
+  description: "Generate an AI eyewear preview using a selfie and the selected product's catalog image."
 };
 
 export default async function VirtualTryOnPage({ searchParams }: { searchParams: Promise<{ slug?: string }> }) {
@@ -28,7 +28,7 @@ export default async function VirtualTryOnPage({ searchParams }: { searchParams:
               <Sparkles className="h-8 w-8 text-retail fill-teal-100" />
               Virtual Try-On
             </h1>
-            <p className="mt-2 text-slate-600">Simulate frame fitting live via secure HTML5 camera overlays.</p>
+            <p className="mt-2 text-slate-600">Take one selfie and generate an AI preview using the selected frame&apos;s product image automatically.</p>
           </div>
         </div>
 

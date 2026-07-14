@@ -39,5 +39,15 @@ A product can be active only when:
 
 - Price and inventory are set.
 - At least one real product image is present.
-- `tryOnEligible` is enabled only if `arImageUrl` points to a transparent PNG/WebP overlay.
+- `tryOnEligible` has a catalog image. A transparent PNG/WebP is preferred; otherwise the try-on service automatically uses the front image, then the highest-priority gallery image.
 - The product dashboard has no duplicate-image or try-on readiness warnings.
+
+## AI Try-On Retention
+
+- Set `BFL_API_KEY` and the Cloudinary credentials before enabling customer AI try-on.
+- Run `npm run worker:purge-previews` daily. It removes temporary customer selfie assets after their 30-day retention window while retaining generated preview records for cache and audit purposes.
+
+## AI Product Detail Prefill
+
+- Set `OPENROUTER_API_KEY`. The default `OPENROUTER_PRODUCT_ENRICHMENT_MODEL=openrouter/free` selects a currently available free model that supports both product-image understanding and strict JSON output.
+- Free-model availability and latency vary. Staff must review every draft before publishing; the workflow intentionally fills blank fields only and never infers price, SKU, stock, measurements, or warranty terms.

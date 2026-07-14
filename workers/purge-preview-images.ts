@@ -1,0 +1,30 @@
+import { prisma } from "@/lib/db";
+import { deleteTryOnAsset } from "@/lib/integrations/flux-try-on";
+
+async function main() {
+  const expired = await prisma.framePreviewRequest.findMany({
+    where: {
+      expiresAt: { lte: new Date() },
+      customerImagePublicId: { not: null }
+    },
+    select: { id: true, customerImagePublicId: true },
+    take: 100
+  });
+
+  for (const request of expired) {
+    if (request.customerImagePublicId) await deleteTryOnAsset(request.customerImagePublicId);
+    await prisma.framePreviewRequest.update({
+      where: { id: request.id },
+      data: { customerImageUrl: null, customerImagePublicId: null }
+    });
+  }
+
+  console.log(`Purged ${expired.length} expired customer preview image${expired.length === 1 ? "" : "s"}.`);
+}
+
+main()
+  .catch((error) => {
+    console.error("Preview image retention worker failed", error);
+    process.exitCode = 1;
+  })
+  .finally(async () => prisma.$disconnect());

@@ -50,3 +50,30 @@ export function isTrustedProductImageUrl(value: string) {
     return false;
   }
 }
+
+/** Extracts OpenRouter's OpenAI-compatible non-streaming chat content. */
+export function openRouterChatText(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+  const choices = (payload as { choices?: unknown }).choices;
+  if (!Array.isArray(choices)) return null;
+
+  const content = (choices[0] as { message?: { content?: unknown } } | undefined)?.message?.content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return null;
+
+  const text = content
+    .map((part) => (
+      part && typeof part === "object" && typeof (part as { text?: unknown }).text === "string"
+        ? (part as { text: string }).text
+        : ""
+    ))
+    .join("")
+    .trim();
+  return text || null;
+}
+
+export function openRouterResponseModel(payload: unknown, requestedModel: string) {
+  if (!payload || typeof payload !== "object") return requestedModel;
+  const model = (payload as { model?: unknown }).model;
+  return typeof model === "string" && model ? model : requestedModel;
+}

@@ -4,6 +4,8 @@ import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 import {
   isTrustedProductImageUrl,
+  openRouterChatText,
+  openRouterResponseModel,
   productAiDraftSchema,
   productAiRequestSchema
 } from "@/lib/product-ai";
@@ -42,23 +44,16 @@ const productDraftJsonSchema = {
   }
 } as const;
 
-function outputText(payload: unknown) {
-  if (!payload || typeof payload !== "object") return null;
-  const output = (payload as { output?: unknown }).output;
-  if (!Array.isArray(output)) return null;
+function requestedSiteUrl() {
+  return process.env.OPENROUTER_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.AUTH_URL || "http://localhost:3000";
+}
 
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-    for (const part of content) {
-      if (!part || typeof part !== "object") continue;
-      const typedPart = part as { type?: unknown; text?: unknown };
-      if (typedPart.type === "output_text" && typeof typedPart.text === "string") return typedPart.text;
-    }
+function parseDraft(text: string) {
+  try {
+    return productAiDraftSchema.safeParse(JSON.parse(text));
+  } catch {
+    return null;
   }
-
-  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -74,9 +69,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "AI product drafts are limited to 12 per hour." }, { status: 429 });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: "AI product enrichment is not configured. Add OPENAI_API_KEY to enable it." },
+      { error: "AI product enrichment is not configured. Add OPENROUTER_API_KEY to enable it." },
       { status: 503 }
     );
   }
@@ -93,7 +88,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const model = process.env.OPENAI_PRODUCT_ENRICHMENT_MODEL || "gpt-5-mini";
+  const model = process.env.OPENROUTER_PRODUCT_ENRICHMENT_MODEL || "openrouter/free";
   const instructions = [
     "You prepare a first draft of an optical ecommerce product listing from one frame photograph.",
     "Return only the JSON schema requested. Never invent a price, SKU, barcode, stock quantity, measurements, brand, warranty, return policy, or technical certification.",
@@ -103,26 +98,32 @@ export async function POST(request: NextRequest) {
   ].join(" ");
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": requestedSiteUrl(),
+        "X-Title": "Vision Vistara Product Enrichment"
       },
       body: JSON.stringify({
         model,
-        store: false,
-        instructions,
-        input: [{
-          role: "user",
-          content: [
-            { type: "input_text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
-            { type: "input_image", image_url: parsedRequest.data.imageUrl, detail: "high" }
-          ]
-        }],
-        text: {
-          format: {
-            type: "json_schema",
+        messages: [
+          { role: "system", content: instructions },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
+              { type: "image_url", image_url: { url: parsedRequest.data.imageUrl } }
+            ]
+          }
+        ],
+        max_tokens: 1_600,
+        temperature: 0.2,
+        provider: { require_parameters: true },
+        response_format: {
+          type: "json_schema",
+          json_schema: {
             name: "eyewear_product_draft",
             strict: true,
             schema: productDraftJsonSchema
@@ -137,18 +138,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "AI product enrichment could not complete. Try again shortly." }, { status: 502 });
     }
 
-    const text = outputText(await response.json());
+    const payload = await response.json();
+    const text = openRouterChatText(payload);
     if (!text) {
       return NextResponse.json({ error: "AI product enrichment returned no draft." }, { status: 502 });
     }
 
-    const draft = productAiDraftSchema.safeParse(JSON.parse(text));
-    if (!draft.success) {
-      console.error("Product AI returned an invalid product draft", draft.error.flatten());
+    const draft = parseDraft(text);
+    if (!draft || !draft.success) {
+      if (draft && !draft.success) console.error("Product AI returned an invalid product draft", draft.error.flatten());
       return NextResponse.json({ error: "AI product enrichment returned an invalid draft. Please try again." }, { status: 502 });
     }
 
-    return NextResponse.json({ draft: draft.data, model }, {
+    return NextResponse.json({ draft: draft.data, model: openRouterResponseModel(payload, model) }, {
       headers: { "Cache-Control": "no-store" }
     });
   } catch (error) {

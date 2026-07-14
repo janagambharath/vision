@@ -280,6 +280,7 @@ export type TryOnFrame = {
   name: string;
   brand: string;
   img: string;
+  imageRole: "transparent" | "front" | "fallback";
   pricePaise: number | null;
 };
 
@@ -287,14 +288,25 @@ export async function getTryOnFrames(): Promise<TryOnFrame[]> {
   const products = await getStoreProducts();
 
   return products
-    .filter((product) => product.status === "ACTIVE" && product.tryOnEligible && Boolean(product.arImageUrl))
-    .map((product) => ({
-      slug: product.slug,
-      name: product.name,
-      brand: product.brand,
-      img: product.arImageUrl!,
-      pricePaise: product.pricePaise
-    }));
+    .filter((product) => product.status === "ACTIVE" && product.tryOnEligible)
+    .flatMap((product) => {
+      const selectedImage =
+        product.images.find((image) => image.role === "transparent" || image.role === "ar") ??
+        (product.arImageUrl ? { url: product.arImageUrl, role: "ar" } : null) ??
+        product.images.find((image) => image.role === "front") ??
+        product.images.find((image) => image.role !== "ar");
+      if (!selectedImage) return [];
+      return [{
+        slug: product.slug,
+        name: product.name,
+        brand: product.brand,
+        img: selectedImage.url,
+        imageRole: selectedImage.role === "transparent" || selectedImage.role === "ar"
+          ? "transparent" as const
+          : selectedImage.role === "front" ? "front" as const : "fallback" as const,
+        pricePaise: product.pricePaise
+      }];
+    });
 }
 
 export async function getRelatedProducts(product: StoreProduct, limit = 4) {

@@ -34,7 +34,6 @@ test("product publish guard rejects missing commercial and catalog essentials", 
     "a selling price is required",
     "stock quantity must be greater than zero",
     "at least one product image is required",
-    "at least one category is required",
-    "virtual try-on needs a transparent AR overlay"
+    "at least one category is required"
   ]);
 });

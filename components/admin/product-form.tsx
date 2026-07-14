@@ -523,7 +523,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
               placeholder="Transparent front-facing PNG/WebP overlay for virtual try-on"
             />
             <span className="text-xs font-semibold text-slate-400">
-              Required when virtual try-on is enabled. Keep this as a transparent front-view frame overlay.
+              Recommended for the most faithful AI try-on. If omitted, AI try-on automatically uses the product's front image, then the highest-priority gallery image.
             </span>
           </label>
         </section>

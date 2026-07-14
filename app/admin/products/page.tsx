@@ -86,8 +86,9 @@ export default async function AdminProductsPage({
   const activeProductsWithDuplicateImages = activeProducts.filter(p =>
     p.images.some(img => img.role !== "ar" && duplicateUrls.includes(img.url))
   );
-  const tryOnReadyCount = activeProducts.filter((p) => p.tryOnEligible && p.arImageUrl).length;
-  const tryOnMissingArProducts = activeProducts.filter((p) => p.tryOnEligible && !p.arImageUrl);
+  const tryOnReadyCount = activeProducts.filter((p) => p.tryOnEligible && p.images.some((image) => image.role !== "ar")).length;
+  const tryOnMissingImageProducts = activeProducts.filter((p) => p.tryOnEligible && !p.images.some((image) => image.role !== "ar"));
+  const tryOnUsingFallbackCount = activeProducts.filter((p) => p.tryOnEligible && !p.arImageUrl && p.images.some((image) => image.role !== "ar")).length;
 
   return (
     <main className="vv-section">
@@ -107,15 +108,15 @@ export default async function AdminProductsPage({
           </div>
         ) : null}
 
-        {tryOnMissingArProducts.length > 0 ? (
+        {tryOnMissingImageProducts.length > 0 ? (
           <div className="mb-6 rounded-vv border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 flex flex-col gap-2">
             <h3 className="font-extrabold text-base flex items-center gap-1.5">
               <Camera className="h-5 w-5 text-amber-600 shrink-0" />
-              Try-on readiness warning
+              Try-on image warning
             </h3>
-            <p>These active products are marked for virtual try-on but do not have an AR overlay URL:</p>
+            <p>These active products are marked for virtual try-on but do not have any product image for AI reference:</p>
             <ul className="list-disc list-inside mt-1 font-semibold">
-              {tryOnMissingArProducts.map(p => (
+              {tryOnMissingImageProducts.map(p => (
                 <li key={p.slug}>{p.brand} {p.name} ({p.sku})</li>
               ))}
             </ul>
@@ -177,9 +178,9 @@ export default async function AdminProductsPage({
             <strong className="mt-1 block text-2xl text-teal-700">{tryOnReadyCount}</strong>
           </div>
           <div className="rounded-vv border border-slate-200 bg-white p-4">
-            <span className="text-xs font-extrabold uppercase text-slate-500">Missing AR overlay</span>
-            <strong className={`mt-1 block text-2xl ${tryOnMissingArProducts.length ? "text-amber-700" : "text-slate-900"}`}>
-              {tryOnMissingArProducts.length}
+            <span className="text-xs font-extrabold uppercase text-slate-500">Using front-image fallback</span>
+            <strong className={`mt-1 block text-2xl ${tryOnUsingFallbackCount ? "text-amber-700" : "text-slate-900"}`}>
+              {tryOnUsingFallbackCount}
             </strong>
           </div>
         </div>
@@ -201,13 +202,13 @@ export default async function AdminProductsPage({
                       product.status === "DRAFT" ? "bg-amber-50 text-amber-700 border border-amber-200" :
                       "bg-slate-100 text-slate-500 border border-slate-200"
                     }`}>{product.status}</span>
-                    {product.tryOnEligible && product.arImageUrl ? (
+                    {product.tryOnEligible && product.images.some((image) => image.role !== "ar") ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-700 border border-teal-200">
                         <Camera className="h-3 w-3" /> Try-on ready
                       </span>
                     ) : product.tryOnEligible ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 border border-amber-200">
-                        <Camera className="h-3 w-3" /> Needs AR
+                        <Camera className="h-3 w-3" /> Needs image
                       </span>
                     ) : null}
                   </div>

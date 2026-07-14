@@ -1,30 +1,30 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- camera data URLs and signed generation results cannot use next/image. */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
+  AlertCircle,
+  ArrowLeftRight,
   Camera,
   Check,
-  ZoomIn,
-  ZoomOut,
-  ArrowLeftRight,
-  AlertCircle,
-  ShoppingBag,
-  Sparkles,
   Download,
-  X,
   Loader2,
   MessageCircle,
+  RotateCcw,
+  Share2,
+  ShoppingBag,
+  Sparkles,
+  X
 } from "lucide-react";
-
-/* ─────────────────────── types ─────────────────────── */
 
 interface TryOnFrame {
   slug: string;
   name: string;
   brand: string;
-  img: string; // transparent PNG front-face overlay
+  img: string;
+  imageRole: "transparent" | "front" | "fallback";
   pricePaise: number | null;
 }
 
@@ -33,709 +33,336 @@ interface VirtualTryOnProps {
   frames?: TryOnFrame[];
 }
 
-export default function VirtualTryOn({
-  productSlug = "",
-  frames,
-}: VirtualTryOnProps) {
-  const tryOnFrames = useMemo(() => frames ?? [], [frames]);
+type TryOnStep = "idle" | "camera" | "review" | "generating" | "result";
 
-  const [selectedIndex, setSelectedIndex] = useState(() => {
-    if (productSlug) {
-      const idx = tryOnFrames.findIndex((f) => f.slug === productSlug);
-      return idx >= 0 ? idx : 0;
-    }
-    return 0;
+const CAMERA_GUIDANCE = "Centre your face in the guide, keep your glasses off, and use even light.";
+const MAX_CAPTURE_DIMENSION = 1440;
+
+function fittedDimensions(width: number, height: number) {
+  const longestSide = Math.max(width, height);
+  if (!longestSide || longestSide <= MAX_CAPTURE_DIMENSION) return { width, height };
+  const scale = MAX_CAPTURE_DIMENSION / longestSide;
+  return { width: Math.round(width * scale), height: Math.round(height * scale) };
+}
+
+function loadImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("The selected frame image could not be prepared."));
+    image.src = source;
   });
+}
 
+/**
+ * FLUX.1 Kontext accepts one image. This invisible, automatic conditioning image
+ * combines the captured selfie with the server-selected product asset. It is never
+ * shown as a local try-on result and customers never position the frame themselves.
+ */
+async function createAutomaticConditioningImage(customerPhoto: string, frameImageUrl: string) {
+  const [customerImage, frameImage] = await Promise.all([loadImage(customerPhoto), loadImage(frameImageUrl)]);
+  const canvas = document.createElement("canvas");
+  const dimensions = fittedDimensions(customerImage.naturalWidth, customerImage.naturalHeight);
+  canvas.width = dimensions.width;
+  canvas.height = dimensions.height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Your browser could not prepare the AI preview.");
+
+  context.drawImage(customerImage, 0, 0, canvas.width, canvas.height);
+  const frameWidth = canvas.width * 0.5;
+  const frameHeight = frameWidth * (frameImage.naturalHeight / frameImage.naturalWidth);
+  const frameX = (canvas.width - frameWidth) / 2;
+  const frameY = canvas.height * 0.29;
+  context.drawImage(frameImage, frameX, frameY, frameWidth, frameHeight);
+
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
+export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnProps) {
+  const tryOnFrames = useMemo(() => frames ?? [], [frames]);
+  const [selectedIndex, setSelectedIndex] = useState(() => Math.max(0, tryOnFrames.findIndex((frame) => frame.slug === productSlug)));
+  const [step, setStep] = useState<TryOnStep>("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [resultPhoto, setResultPhoto] = useState<string | null>(null);
+  const [generationMessage, setGenerationMessage] = useState("Preparing your secure preview…");
+  const [sliderPosition, setSliderPosition] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const selectedFrame = tryOnFrames[selectedIndex];
 
   useEffect(() => {
-    if (!tryOnFrames.length) return;
-    const idx = productSlug ? tryOnFrames.findIndex((f) => f.slug === productSlug) : -1;
-    setSelectedIndex(idx >= 0 ? idx : 0);
+    const nextIndex = tryOnFrames.findIndex((frame) => frame.slug === productSlug);
+    setSelectedIndex(nextIndex >= 0 ? nextIndex : 0);
   }, [productSlug, tryOnFrames]);
 
-  // Try-On Flow Steps: 'idle' -> 'camera' -> 'adjust' -> 'generating' -> 'result'
-  const [step, setStep] = useState<"idle" | "camera" | "adjust" | "generating" | "result">("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  // Stream & Capture State
-  const [, setStreamActive] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null); // Raw user photo
-  const [compositePhoto, setCompositePhoto] = useState<string | null>(null); // User photo + overlaid glasses
-  const [aiPhoto, setAiPhoto] = useState<string | null>(null); // AI-enhanced image
-
-  // Manual overlay fitting adjustments
-  const [scale, setScale] = useState(1.0);
-  const [offsetX, setOffsetX] = useState(0);
-  const [offsetY, setOffsetY] = useState(0);
-
-  // Before/After comparison slider position (0 to 100)
-  const [sliderPosition, setSliderPosition] = useState(50);
-  const [isDragging, setIsDragging] = useState(false);
-  const sliderRef = useRef<HTMLDivElement>(null);
-
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const videoRef = useCallback((el: HTMLVideoElement | null) => {
-    videoElementRef.current = el;
-    if (el && streamRef.current) {
-      el.srcObject = streamRef.current;
-      el.play().catch((e) => {
-        console.error("Video play failed:", e);
-      });
-    }
+  useEffect(() => () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    abortRef.current?.abort();
   }, []);
 
-  const streamRef = useRef<MediaStream | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  /* ─────── cleanup on unmount ─────── */
   useEffect(() => {
-    return () => {
-      stopCamera();
-    };
+    if (step !== "generating") return;
+    const messages = [
+      "Preparing your secure preview…",
+      "Using the selected product frame…",
+      "Generating natural optical alignment…",
+      "Finishing your photorealistic preview…"
+    ];
+    let index = 0;
+    setGenerationMessage(messages[index]);
+    const timer = window.setInterval(() => {
+      index = Math.min(index + 1, messages.length - 1);
+      setGenerationMessage(messages[index]);
+    }, 3_500);
+    return () => window.clearInterval(timer);
+  }, [step]);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
   }, []);
 
-  /* ─────── start camera ─────── */
   const startCamera = async () => {
     setError(null);
     setCapturedPhoto(null);
-    setCompositePhoto(null);
-    setAiPhoto(null);
-    setStreamActive(false);
-
+    setResultPhoto(null);
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
-
-      // Asking for standard 640x480 for maximum compatibility across devices
+      stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
+        video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1080 } },
+        audio: false
       });
-
       streamRef.current = stream;
-
-      // Update state and step to mount the video element in DOM
-      setStreamActive(true);
       setStep("camera");
-
-      // The callback ref will handle setting srcObject and calling play() once mounted
-    } catch (err: any) {
-      console.error("Camera access failed:", err);
-      setError(
-        "Unable to access camera. Please check browser permissions and try again."
-      );
+      window.setTimeout(() => {
+        if (videoElementRef.current && streamRef.current) {
+          videoElementRef.current.srcObject = streamRef.current;
+          videoElementRef.current.play().catch(() => undefined);
+        }
+      }, 0);
+    } catch {
+      setError("Unable to access your camera. Check browser permissions and try again.");
       setStep("idle");
     }
   };
 
-  /* ─────── stop camera ─────── */
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    setStreamActive(false);
-  };
-
-  /* ─────── capture photo ─────── */
   const capturePhoto = () => {
-    if (!videoElementRef.current || !canvasRef.current) return;
     const video = videoElementRef.current;
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    // Use actual video width & height
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-
-    // Draw video frame mirrored (standard selfie perspective)
-    ctx.save();
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
-    setCapturedPhoto(dataUrl);
-    
-    // Stop camera feed immediately to preserve battery
+    if (!video || !canvas) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    const dimensions = fittedDimensions(video.videoWidth || 720, video.videoHeight || 720);
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
+    context.save();
+    context.translate(canvas.width, 0);
+    context.scale(-1, 1);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.restore();
+    setCapturedPhoto(canvas.toDataURL("image/jpeg", 0.88));
     stopCamera();
-    
-    // Reset adjustments
-    setScale(1.0);
-    setOffsetX(0);
-    setOffsetY(0);
-    
-    setStep("adjust");
+    setStep("review");
   };
 
-  /* ─────── generate composite image ─────── */
-  const createComposite = (): Promise<string> => {
-    return new Promise((resolve) => {
-      if (!canvasRef.current || !capturedPhoto) return resolve("");
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return resolve("");
-
-      const baseImg = new window.Image();
-      baseImg.onload = () => {
-        canvas.width = baseImg.width;
-        canvas.height = baseImg.height;
-        ctx.drawImage(baseImg, 0, 0);
-
-        // Overlay glasses
-        const glassesImg = new window.Image();
-        glassesImg.onload = () => {
-          const glassesW = canvas.width * 0.48 * scale;
-          const glassesH = glassesW * (glassesImg.naturalHeight / glassesImg.naturalWidth);
-          
-          const x = (canvas.width - glassesW) / 2 + offsetX;
-          const y = canvas.height * 0.32 + offsetY;
-
-          ctx.save();
-          // Draw subtle drop shadow for realistic look
-          ctx.shadowColor = "rgba(0, 0, 0, 0.25)";
-          ctx.shadowBlur = 10;
-          ctx.shadowOffsetY = 4;
-          
-          ctx.drawImage(glassesImg, x, y, glassesW, glassesH);
-          ctx.restore();
-
-          resolve(canvas.toDataURL("image/jpeg", 0.95));
-        };
-        glassesImg.src = selectedFrame.img;
-      };
-      baseImg.src = capturedPhoto;
-    });
-  };
-
-  /* ─────── proceed to AI Try-On generation ─────── */
   const generateAiTryOn = async () => {
+    if (!capturedPhoto || !selectedFrame) return;
     setError(null);
     setStep("generating");
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      // Create the final composite photo to send to AI
-      const finalComposite = await createComposite();
-      setCompositePhoto(finalComposite);
-
-      const res = await fetch("/api/ai/try-on", {
+      const conditioningImage = await createAutomaticConditioningImage(capturedPhoto, selectedFrame.img);
+      const response = await fetch("/api/ai/try-on", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          image: finalComposite,
           frameSlug: selectedFrame.slug,
+          customerImage: capturedPhoto,
+          conditioningImage
         }),
+        signal: controller.signal
       });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Enhancement failed");
-
-      if (data.source === "ai_enhanced" && data.image) {
-        setAiPhoto(data.image);
-        setStep("result");
-      } else {
-        // Fallback: Use composite photo directly
-        setAiPhoto(null);
-        setStep("result");
-        if (data.message) {
-          setError(data.message);
-        }
-      }
-    } catch (err: any) {
-      console.error("AI Try-On failed:", err);
-      setError(
-        "AI enhancement is currently unavailable. Displaying local fit composite."
-      );
+      const body = await response.json().catch(() => null) as { image?: string; error?: string } | null;
+      if (!response.ok || !body?.image) throw new Error(body?.error || "We couldn't generate your preview right now. Please try again.");
+      setResultPhoto(body.image);
+      setSliderPosition(50);
       setStep("result");
+    } catch (generationError) {
+      if (generationError instanceof DOMException && generationError.name === "AbortError") {
+        setError("Generation cancelled. Your selfie was not shown as a fallback.");
+      } else {
+        setError(generationError instanceof Error ? generationError.message : "We couldn't generate your preview right now. Please try again.");
+      }
+      setStep("review");
+    } finally {
+      abortRef.current = null;
     }
   };
 
-  /* ─────── retake photo ─────── */
+  const cancelGeneration = () => {
+    abortRef.current?.abort();
+  };
+
   const retake = () => {
-    stopCamera();
+    setResultPhoto(null);
     startCamera();
   };
 
-  /* ─────── download ─────── */
-  const handleDownload = () => {
-    const photo = aiPhoto || compositePhoto || capturedPhoto;
-    if (!photo) return;
-
-    const link = document.createElement("a");
-    link.href = photo;
-    link.download = `vision-vistara-tryon-${selectedFrame.slug}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  /* ─────── WhatsApp share ─────── */
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Hi Vision Vistara! I tried on the ${selectedFrame.brand} ${selectedFrame.name} using your virtual fitting room. I'd like to check its availability.`
-    );
-    window.open(`https://wa.me/917842938316?text=${text}`, "_blank");
-  };
-
-  /* ─────── slider comparison handlers ─────── */
   const handleSliderMove = (clientX: number) => {
     if (!sliderRef.current) return;
     const rect = sliderRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    setSliderPosition(Math.max(0, Math.min(100, (x / rect.width) * 100)));
+    setSliderPosition(Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100)));
   };
 
-  useEffect(() => {
-    const onUp = () => setIsDragging(false);
-    window.addEventListener("mouseup", onUp);
-    window.addEventListener("touchend", onUp);
-    return () => {
-      window.removeEventListener("mouseup", onUp);
-      window.removeEventListener("touchend", onUp);
+  const downloadResult = async () => {
+    if (!resultPhoto || !selectedFrame) return;
+    try {
+      const response = await fetch(resultPhoto);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `vision-vistara-ai-try-on-${selectedFrame.slug}.jpg`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(resultPhoto, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const shareResult = async () => {
+    if (!selectedFrame) return;
+    const url = resultPhoto ?? `${window.location.origin}/frames/${selectedFrame.slug}`;
+    const shareData = {
+      title: `${selectedFrame.brand} ${selectedFrame.name} AI Try-On`,
+      text: `My AI try-on preview for ${selectedFrame.brand} ${selectedFrame.name}`,
+      url
     };
-  }, []);
-
-  const formatPrice = (paise: number | null) => {
-    if (paise === null) return "Price on request";
-    return `₹${(paise / 100).toLocaleString("en-IN")}`;
+    if (navigator.share) {
+      await navigator.share(shareData).catch(() => undefined);
+    } else {
+      await navigator.clipboard?.writeText(url).catch(() => undefined);
+      setError("Preview link copied to your clipboard.");
+    }
   };
+
+  const shareWhatsApp = () => {
+    if (!selectedFrame) return;
+    const resultUrl = resultPhoto ? ` Preview: ${resultPhoto}` : "";
+    const message = encodeURIComponent(`I tried ${selectedFrame.brand} ${selectedFrame.name} with Vision Vistara's AI try-on.${resultUrl}`);
+    window.open(`https://wa.me/917842938316?text=${message}`, "_blank", "noopener,noreferrer");
+  };
+
+  const formatPrice = (pricePaise: number | null) => pricePaise === null ? "Price on request" : `₹${(pricePaise / 100).toLocaleString("en-IN")}`;
 
   if (!selectedFrame) {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center">
         <AlertCircle className="mx-auto h-10 w-10 text-amber-600" />
-        <h2 className="mt-4 text-xl font-extrabold text-amber-950">
-          No frames are ready for virtual try-on
-        </h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm font-semibold text-amber-800">
-          Add a transparent AR overlay image in the product dashboard and enable virtual try-on for at least one active frame.
-        </p>
-        <Link href="/frames" className="vv-button-retail mt-5 inline-flex">
-          Back to frames
-        </Link>
+        <h2 className="mt-4 text-xl font-extrabold text-amber-950">No frames are ready for AI try-on</h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm font-semibold text-amber-800">Enable AI try-on and add a product image. A transparent image is preferred, but a front product image works automatically.</p>
+        <Link href="/frames" className="vv-button-retail mt-5 inline-flex">Back to frames</Link>
       </div>
     );
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      {/* ─── Sidebar ─── */}
-      <aside className="rounded-2xl border border-slate-200 bg-white p-6 flex flex-col gap-5 shadow-soft self-start lg:sticky lg:top-28">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-800">
-            Select Frame
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Choose a frame to try on.
-          </p>
-        </div>
-
-        <div className="grid gap-2">
-          {tryOnFrames.map((frame, idx) => (
+      <aside className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft self-start lg:sticky lg:top-28">
+        <h2 className="text-lg font-extrabold text-slate-800">Select Frame</h2>
+        <p className="mt-1 text-xs text-slate-500">The selected product image is used automatically. No frame upload or positioning is needed.</p>
+        <div className="mt-4 grid gap-2">
+          {tryOnFrames.map((frame, index) => (
             <button
               key={frame.slug}
               type="button"
-              onClick={() => setSelectedIndex(idx)}
-              className={`group p-3 text-left rounded-xl border transition-all duration-200 flex items-center gap-3 ${
-                selectedIndex === idx
-                  ? "border-teal-500 bg-teal-50/60 ring-2 ring-teal-200"
-                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-              }`}
+              onClick={() => { setSelectedIndex(index); setStep("idle"); setCapturedPhoto(null); setResultPhoto(null); setError(null); }}
+              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${selectedIndex === index ? "border-teal-500 bg-teal-50 ring-2 ring-teal-200" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
             >
-              <div className="relative w-14 h-10 shrink-0 rounded-lg bg-slate-100 overflow-hidden">
-                <Image
-                  src={frame.img}
-                  alt={frame.name}
-                  fill
-                  className="object-contain p-1"
-                  sizes="56px"
-                />
+              <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                <Image src={frame.img} alt={frame.name} fill className="object-contain p-1" sizes="56px" />
               </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">
-                  {frame.brand}
-                </span>
-                <p
-                  className={`text-sm font-extrabold truncate ${
-                    selectedIndex === idx ? "text-teal-700" : "text-slate-800"
-                  }`}
-                >
-                  {frame.name}
-                </p>
-                <span className="text-xs font-bold text-slate-500">
-                  {formatPrice(frame.pricePaise)}
-                </span>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] font-bold uppercase text-slate-400">{frame.brand}</span>
+                <p className="truncate text-sm font-extrabold text-slate-800">{frame.name}</p>
+                <span className="text-xs font-bold text-slate-500">{formatPrice(frame.pricePaise)}</span>
               </div>
-              {selectedIndex === idx && (
-                <Check className="h-4 w-4 text-teal-600 shrink-0" />
-              )}
+              {selectedIndex === index ? <Check className="h-4 w-4 shrink-0 text-teal-600" /> : null}
             </button>
           ))}
         </div>
-
-        {/* Dynamic fitting adjustments during overlay stage */}
-        {step === "adjust" && (
-          <div className="border-t border-slate-100 pt-4 grid gap-3">
-            <h3 className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-              Adjust Fit Position
-            </h3>
-            
-            <div className="grid gap-1.5">
-              <div className="flex justify-between text-xs font-bold text-slate-600">
-                <span>Scale Frame</span>
-                <span>{Math.round(scale * 100)}%</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setScale((s) => Math.max(0.6, s - 0.05))}
-                  className="flex-1 py-1 px-2 border border-slate-200 rounded hover:bg-slate-50 flex justify-center"
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setScale((s) => Math.min(1.5, s + 0.05))}
-                  className="flex-1 py-1 px-2 border border-slate-200 rounded hover:bg-slate-50 flex justify-center"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid gap-1.5">
-              <span className="text-xs font-bold text-slate-600">Vertical Alignment</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setOffsetY((y) => y - 5)}
-                  className="flex-1 py-1 px-2 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
-                >
-                  Move Up
-                </button>
-                <button
-                  onClick={() => setOffsetY((y) => y + 5)}
-                  className="flex-1 py-1 px-2 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
-                >
-                  Move Down
-                </button>
-              </div>
-            </div>
-
-            <div className="grid gap-1.5">
-              <span className="text-xs font-bold text-slate-600">Horizontal Alignment</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setOffsetX((x) => x - 5)}
-                  className="flex-1 py-1 px-2 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
-                >
-                  Move Left
-                </button>
-                <button
-                  onClick={() => setOffsetX((x) => x + 5)}
-                  className="flex-1 py-1 px-2 border border-slate-200 rounded hover:bg-slate-50 text-xs font-bold"
-                >
-                  Move Right
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Transparency/Fitting Notice */}
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 text-xs text-slate-500 leading-normal mt-2">
-          <div className="flex items-center gap-1.5 font-bold text-slate-700 mb-1">
-            <Sparkles className="h-3.5 w-3.5 text-teal-600" />
-            <span>Fitting System Notice</span>
-          </div>
-          <p className="text-[11px]">
-            <strong>Local Overlay Fit:</strong> Precise geometric mapping that preserves exact frame sizes, colors, and rim shapes. Best for validating sizing.
-          </p>
-          <p className="mt-1.5 text-[11px]">
-            <strong>Generative AI Try-On:</strong> Blends lighting, shadows, and textures for a realistic look. This is a simulation; frame details may vary slightly from real products.
-          </p>
+        <div className="mt-5 rounded-xl border border-teal-100 bg-teal-50 p-3 text-xs leading-relaxed text-teal-900">
+          <strong className="block">AI preview, not a fit guarantee</strong>
+          The frame is selected from the product catalog ({selectedFrame.imageRole === "transparent" ? "transparent reference" : "product-image fallback"}). Confirm fit and prescription with the clinic.
         </div>
-
-        <Link
-          href={`/frames/${selectedFrame.slug}`}
-          className="vv-button-retail py-2.5 px-4 text-xs font-bold justify-center mt-auto flex items-center gap-1.5"
-        >
-          <ShoppingBag className="h-4 w-4" />
-          View Frame Details
+        <Link href={`/frames/${selectedFrame.slug}`} className="vv-button-retail mt-5 flex justify-center gap-2 py-2.5 text-xs">
+          <ShoppingBag className="h-4 w-4" /> View frame details
         </Link>
       </aside>
 
-      {/* ─── Main Viewport ─── */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col items-center justify-center min-h-[520px] relative overflow-hidden">
-        {/* Error / Alert notice */}
-        {error && (
-          <div className="absolute top-4 left-4 right-4 z-30 rounded-xl border border-amber-800/40 bg-amber-950/90 text-amber-300 p-4 flex items-start gap-3 backdrop-blur-sm">
-            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-xs font-bold">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-amber-400 hover:text-white"
-            >
-              <X className="h-4 w-4" />
-            </button>
+      <section className="relative flex min-h-[540px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6">
+        {error ? (
+          <div className="absolute left-4 right-4 top-4 z-30 flex items-start gap-3 rounded-xl border border-amber-800/40 bg-amber-950/90 p-4 text-amber-200 backdrop-blur-sm">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <p className="flex-1 text-xs font-bold">{error}</p>
+            <button type="button" onClick={() => setError(null)} aria-label="Dismiss message"><X className="h-4 w-4" /></button>
           </div>
-        )}
+        ) : null}
 
-        {/* ──── IDLE STATE ──── */}
-        {step === "idle" && (
-          <div className="grid justify-items-center gap-5 text-center py-8">
-            <div className="w-20 h-20 rounded-full bg-teal-500/10 flex items-center justify-center">
-              <Camera className="h-10 w-10 text-teal-400" />
-            </div>
-            <div>
-              <h3 className="text-xl font-extrabold text-white">
-                AI Virtual Try-On
-              </h3>
-              <p className="text-sm text-slate-400 mt-2 max-w-sm">
-                Take a selfie to overlay your selected frame and trigger photorealistic AI generation.
-              </p>
-            </div>
-            <button
-              onClick={startCamera}
-              className="vv-button-retail py-3 font-bold flex items-center justify-center gap-2 w-full max-w-xs"
-            >
-              <Camera className="h-5 w-5" />
-              Start Try-On
-            </button>
+        {step === "idle" ? (
+          <div className="grid justify-items-center gap-5 py-8 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-500/10"><Camera className="h-10 w-10 text-teal-400" /></div>
+            <div><h3 className="text-xl font-extrabold text-white">Try {selectedFrame.name} with AI</h3><p className="mt-2 max-w-sm text-sm text-slate-400">Take one selfie. We use this product&apos;s catalog image automatically to generate your preview.</p></div>
+            <button type="button" onClick={startCamera} className="vv-button-retail flex w-full max-w-xs justify-center gap-2 py-3"><Camera className="h-5 w-5" /> Open camera</button>
           </div>
-        )}
+        ) : null}
 
-        {/* ──── CAMERA SCREEN ──── */}
-        {step === "camera" && (
+        {step === "camera" ? (
           <>
-            <div className="relative w-full max-w-lg aspect-[4/3] rounded-xl overflow-hidden bg-slate-900 border border-slate-800 shadow-2xl">
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="w-full h-full object-cover scale-x-[-1]"
-              />
-              <div className="absolute top-3 left-3 bg-teal-500/20 text-teal-300 border border-teal-500/30 px-3 py-1.5 rounded-full text-[10px] font-bold">
-                Camera Live
-              </div>
+            <div className="relative aspect-square w-full max-w-lg overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl">
+              <video ref={videoElementRef} playsInline muted className="h-full w-full scale-x-[-1] object-cover" />
+              <div className="pointer-events-none absolute inset-[13%_22%] rounded-[45%] border-2 border-dashed border-teal-300/70" />
+              <p className="absolute bottom-3 left-3 right-3 rounded-lg bg-black/60 px-3 py-2 text-center text-xs font-bold text-white backdrop-blur-sm">{CAMERA_GUIDANCE}</p>
             </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={capturePhoto}
-                className="vv-button bg-white text-slate-900 border-white font-bold flex items-center gap-2 shadow-lg"
-              >
-                <Camera className="h-4 w-4" />
-                Capture Selfie
-              </button>
-              <button
-                onClick={() => {
-                  stopCamera();
-                  setStep("idle");
-                }}
-                className="vv-button border-slate-700 text-slate-300 font-bold"
-              >
-                Cancel
-              </button>
-            </div>
+            <div className="mt-6 flex gap-3"><button type="button" onClick={capturePhoto} className="vv-button bg-white text-slate-900 border-white"><Camera className="h-4 w-4" /> Capture selfie</button><button type="button" onClick={() => { stopCamera(); setStep("idle"); }} className="vv-button border-slate-700 text-slate-300">Cancel</button></div>
           </>
-        )}
+        ) : null}
 
-        {/* ──── ADJUST/FIT SCREEN ──── */}
-        {step === "adjust" && capturedPhoto && (
-          <div className="w-full max-w-lg flex flex-col gap-5">
-            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shadow-2xl">
-              {/* Selfie Background */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={capturedPhoto}
-                alt="Selfie"
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Glasses Overlay */}
-              <div className="absolute inset-0 pointer-events-none grid place-items-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selectedFrame.img}
-                  alt="Overlaid frame"
-                  style={{
-                    width: `${48 * scale}%`,
-                    transform: `translateX(${offsetX}px) translateY(${offsetY}px)`,
-                    filter: "drop-shadow(0px 8px 12px rgba(0,0,0,0.3))",
-                  }}
-                  className="object-contain"
-                />
-              </div>
-
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/60 rounded-lg px-3 py-2 backdrop-blur-sm">
-                <span className="text-xs font-bold text-white">
-                  Fit glasses to your eyes using side sliders
-                </span>
-                <button
-                  onClick={retake}
-                  className="text-xs text-teal-300 hover:text-white font-bold"
-                >
-                  Retake
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={generateAiTryOn}
-                className="col-span-2 vv-button font-bold bg-gradient-to-r from-teal-500 to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 py-3"
-              >
-                <Sparkles className="h-5 w-5" />
-                Generate AI Try-On
-              </button>
-              <button
-                onClick={() => setStep("camera")}
-                className="vv-button border-slate-700 text-slate-300 font-bold justify-center"
-              >
-                Retake Photo
-              </button>
-              <button
-                onClick={handleWhatsApp}
-                className="vv-button border-emerald-700 text-emerald-300 font-bold justify-center"
-              >
-                WhatsApp Fit Enquiry
-              </button>
-            </div>
+        {step === "review" && capturedPhoto ? (
+          <div className="flex w-full max-w-lg flex-col gap-5">
+            <div className="relative aspect-square overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">{/* The source is a camera data URL, which is incompatible with next/image optimization. */}<img src={capturedPhoto} alt="Captured selfie ready for AI try-on" className="h-full w-full object-cover" /><div className="absolute bottom-3 left-3 right-3 rounded-lg bg-black/65 px-3 py-2 text-center text-xs font-bold text-white backdrop-blur-sm">{selectedFrame.brand} {selectedFrame.name} will be added automatically by AI.</div></div>
+            <button type="button" onClick={generateAiTryOn} className="vv-button flex justify-center gap-2 border-0 bg-gradient-to-r from-teal-500 to-emerald-600 py-3 font-bold text-white"><Sparkles className="h-5 w-5" /> Generate AI preview</button>
+            <button type="button" onClick={retake} className="vv-button justify-center border-slate-700 text-slate-300"><RotateCcw className="h-4 w-4" /> Retake selfie</button>
           </div>
-        )}
+        ) : null}
 
-        {/* ──── GENERATING STATE ──── */}
-        {step === "generating" && (
-          <div className="grid justify-items-center gap-5 text-center py-12">
-            <Loader2 className="h-12 w-12 text-teal-400 animate-spin" />
-            <div>
-              <h3 className="text-lg font-extrabold text-white">
-                Generating AI Try-on...
-              </h3>
-              <p className="text-sm text-slate-400 mt-2">
-                Blending lighting and skin tones with frame textures.
-              </p>
+        {step === "generating" ? (
+          <div className="grid justify-items-center gap-5 py-12 text-center"><Loader2 className="h-12 w-12 animate-spin text-teal-400" /><div><h3 className="text-lg font-extrabold text-white">Generating AI preview…</h3><p className="mt-2 text-sm text-slate-400">{generationMessage}</p></div><button type="button" onClick={cancelGeneration} className="vv-button border-slate-700 text-slate-300">Cancel generation</button></div>
+        ) : null}
+
+        {step === "result" && capturedPhoto && resultPhoto ? (
+          <div className="flex w-full max-w-lg flex-col gap-5">
+            <div ref={sliderRef} onMouseDown={() => setIsDragging(true)} onMouseMove={(event) => isDragging && handleSliderMove(event.clientX)} onMouseUp={() => setIsDragging(false)} onMouseLeave={() => setIsDragging(false)} onTouchStart={() => setIsDragging(true)} onTouchMove={(event) => event.touches[0] && handleSliderMove(event.touches[0].clientX)} onTouchEnd={() => setIsDragging(false)} className="relative aspect-square cursor-ew-resize select-none overflow-hidden rounded-xl border-2 border-teal-500 bg-slate-900 shadow-2xl">
+              {/* Generated and camera images use transient dynamic URLs, so they bypass next/image optimization. */}
+              <img src={resultPhoto} alt="AI generated try-on preview" className="h-full w-full pointer-events-none object-cover" />
+              <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)` }}><img src={capturedPhoto} alt="Original selfie" className="h-full w-full pointer-events-none object-cover" /></div>
+              <div className="absolute bottom-0 top-0 z-20 w-0.5 bg-white" style={{ left: `${sliderPosition}%` }}><div className="absolute left-1/2 top-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800"><ArrowLeftRight className="h-3.5 w-3.5" /></div></div>
+              <span className="absolute left-3 top-3 z-20 rounded bg-slate-800/80 px-2 py-1 text-[10px] font-bold text-white">Before</span><span className="absolute right-3 top-3 z-20 rounded bg-teal-600/80 px-2 py-1 text-[10px] font-bold text-white">AI preview</span>
             </div>
+            <p className="rounded-lg border border-amber-800/40 bg-amber-950/70 px-3 py-2 text-center text-[11px] font-semibold text-amber-200">AI appearance preview only. Frame fit, prescription suitability, and final product details must be confirmed by the clinic.</p>
+            <div className="grid grid-cols-2 gap-3"><button type="button" onClick={downloadResult} className="vv-button-retail justify-center"><Download className="h-4 w-4" /> Save</button><button type="button" onClick={shareResult} className="vv-button border-slate-700 text-white justify-center"><Share2 className="h-4 w-4" /> Share</button><button type="button" onClick={shareWhatsApp} className="vv-button border-emerald-700 text-emerald-300 justify-center"><MessageCircle className="h-4 w-4" /> WhatsApp</button><Link href={`/frames/${selectedFrame.slug}`} className="vv-button border-teal-600 text-teal-200 justify-center"><ShoppingBag className="h-4 w-4" /> Buy this frame</Link><Link href={`/frames/try-at-home?slug=${selectedFrame.slug}`} className="col-span-2 vv-button border-dashed border-slate-600 text-slate-300 justify-center">Try at home</Link></div>
+            <button type="button" onClick={retake} className="text-center text-sm font-bold text-slate-400 underline hover:text-white">Try another selfie</button>
           </div>
-        )}
-
-        {/* ──── RESULT SCREEN ──── */}
-        {step === "result" && capturedPhoto && (
-          <div className="w-full max-w-lg flex flex-col gap-5">
-            {aiPhoto ? (
-              /* Before/After comparison slider */
-              <div
-                ref={sliderRef}
-                onMouseMove={(e) => isDragging && handleSliderMove(e.clientX)}
-                onTouchMove={(e) =>
-                  e.touches[0] && handleSliderMove(e.touches[0].clientX)
-                }
-                onMouseDown={() => setIsDragging(true)}
-                className="w-full aspect-[4/3] rounded-xl overflow-hidden border-2 border-teal-500 bg-slate-900 relative shadow-2xl select-none cursor-ew-resize"
-              >
-                {/* After: AI Enhanced */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={aiPhoto}
-                  alt="AI Try-On"
-                  className="w-full h-full object-cover pointer-events-none"
-                />
-                
-                {/* Before: Fitted composite */}
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{
-                    clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`,
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={compositePhoto || capturedPhoto}
-                    alt="Original photo"
-                    className="w-full h-full object-cover pointer-events-none"
-                  />
-                </div>
-
-                {/* Slider handle */}
-                <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-white z-20 pointer-events-none"
-                  style={{ left: `${sliderPosition}%` }}
-                >
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white text-slate-800 rounded-full border border-teal-500 flex items-center justify-center shadow-lg pointer-events-none">
-                    <ArrowLeftRight className="h-3.5 w-3.5" />
-                  </div>
-                </div>
-
-                <div className="absolute top-3 left-3 bg-slate-800/80 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-sm z-20">
-                  Before
-                </div>
-                <div className="absolute top-3 right-3 bg-teal-600/80 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-sm z-20">
-                  AI Enhanced
-                </div>
-                
-                <div className="absolute bottom-3 left-3 right-3 bg-amber-950/90 border border-amber-800/40 text-amber-300 text-[10px] font-semibold px-2 py-1 rounded backdrop-blur-sm z-20 text-center leading-normal">
-                  ⚠️ AI simulation preview: Frame details/dimensions may vary slightly from real product.
-                </div>
-              </div>
-            ) : (
-              /* Composite fallback preview */
-              <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shadow-2xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={compositePhoto || capturedPhoto}
-                  alt="Fit composite"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-3 left-3 bg-teal-600 text-white text-[10px] font-bold px-2 py-1 rounded">
-                  Fitted Composite Preview
-                </div>
-                
-                <div className="absolute bottom-3 left-3 right-3 bg-teal-950/90 border border-teal-800/40 text-teal-300 text-[10px] font-semibold px-2.5 py-1.5 rounded backdrop-blur-sm text-center leading-normal">
-                  💡 High-fidelity overlay fits exact frame geometry & details onto your photo.
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={handleDownload}
-                className="vv-button-retail justify-center font-bold flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Download Image
-              </button>
-              <button
-                onClick={handleWhatsApp}
-                className="vv-button border-slate-700 text-white justify-center font-bold flex items-center gap-2"
-              >
-                <MessageCircle className="h-4 w-4" />
-                WhatsApp Share
-              </button>
-              <button
-                onClick={() => setStep("adjust")}
-                className="col-span-2 vv-button border-dashed border-slate-700 text-slate-400 justify-center hover:text-white"
-              >
-                Adjust Fit Positioning
-              </button>
-            </div>
-            
-            <button
-              onClick={retake}
-              className="text-sm font-bold text-slate-400 hover:text-white underline text-center"
-            >
-              Try Another Frame
-            </button>
-          </div>
-        )}
-
+        ) : null}
         <canvas ref={canvasRef} className="hidden" />
       </section>
     </div>

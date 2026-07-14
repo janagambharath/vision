@@ -16,7 +16,6 @@ const errorMessages: Record<string, string> = {
   "invalid-values": "Check prices, inventory, and measurements. Values must be valid non-negative numbers.",
   "duplicate-slug": "Another product already uses that slug.",
   "duplicate-sku": "Another product already uses that SKU.",
-  "try-on-ar-required": "Virtual try-on requires a transparent AR overlay URL.",
   "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
 
@@ -129,7 +128,6 @@ export default async function NewProductPage({
 
     if (!name || !brand || !sku) redirect("/admin/products/new?error=missing-fields");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect("/admin/products/new?error=invalid-slug");
-    if (tryOnEligible && !arImageUrl) redirect("/admin/products/new?error=try-on-ar-required");
     if (
       [pricePaise, compareAtPaise, costPricePaise, taxPct, weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||

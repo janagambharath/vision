@@ -84,19 +84,19 @@ enum PreviewStatus {
 }
 
 model User {
-  id             String            @id @default(cuid())
-  name           String?
-  email          String?           @unique
-  phone          String?           @unique
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  deletedAt      DateTime?
-  carts          Cart[]
-  orders         Order[]
-  wishlistItems  WishlistItem[]
-  reviews        Review[]
-  prescriptions  Prescription[]
-  shipping       ShippingAddress[]
+  id            String            @id @default(cuid())
+  name          String?
+  email         String?           @unique
+  phone         String?           @unique
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+  carts         Cart[]
+  orders        Order[]
+  wishlistItems WishlistItem[]
+  reviews       Review[]
+  prescriptions Prescription[]
+  shipping      ShippingAddress[]
 
   @@index([phone])
   @@index([createdAt])
@@ -185,98 +185,98 @@ model Tag {
 
 // ─── PRODUCT ───
 model Product {
-  id                    String              @id @default(cuid())
-  slug                  String              @unique
-  sku                   String              @unique
-  barcode               String?
-  name                  String
+  id       String        @id @default(cuid())
+  slug     String        @unique
+  sku      String        @unique
+  barcode  String?
+  name     String
   // Legacy string brand field kept for backward compat; new products should use brandId
-  brand                 String
-  brandId               String?
-  brandRef              Brand?              @relation(fields: [brandId], references: [id])
-  status                ProductStatus       @default(DRAFT)
-  featured              Boolean             @default(false)
+  brand    String
+  brandId  String?
+  brandRef Brand?        @relation(fields: [brandId], references: [id])
+  status   ProductStatus @default(DRAFT)
+  featured Boolean       @default(false)
 
   // Pricing
-  pricePaise            Int?
-  compareAtPaise        Int?
-  costPricePaise        Int?
-  taxPct                Int?                @default(18)
-  currency              String              @default("INR")
-  codAvailable          Boolean             @default(true)
+  pricePaise     Int?
+  compareAtPaise Int?
+  costPricePaise Int?
+  taxPct         Int?    @default(18)
+  currency       String  @default("INR")
+  codAvailable   Boolean @default(true)
 
   // Descriptions
-  shortDescription      String?
-  description           String
-  highlights            String[]
-  careInstructions      String?
-  warranty              String?
-  returnPolicy          String?
-  deliveryEstimate      String?
+  shortDescription String?
+  description      String
+  highlights       String[]
+  careInstructions String?
+  warranty         String?
+  returnPolicy     String?
+  deliveryEstimate String?
 
   // Classification
-  gender                String?             // "Men", "Women", "Unisex", "Kids"
-  ageGroup              String?             // "Adult", "Kids", "Teen"
+  gender   String? // "Men", "Women", "Unisex", "Kids"
+  ageGroup String? // "Adult", "Kids", "Teen"
 
   // Frame details
-  material              String?
-  colour                String?
-  finish                String?
-  shape                 String?
-  rimType               String?
-  size                  String?
-  measurements          String?
-  weightGrams           Int?
+  material     String?
+  colour       String?
+  finish       String?
+  shape        String?
+  rimType      String?
+  size         String?
+  measurements String?
+  weightGrams  Int?
 
   // Frame specifications
-  frameWidth            Int?
-  lensWidth             Int?
-  bridgeWidth           Int?
-  templeLength          Int?
-  frameHeight           Int?
-  pdRange               String?
-  springHinges          Boolean             @default(false)
-  blueLightCompatible   Boolean             @default(false)
-  prescriptionCompatible Boolean            @default(true)
-  lensCompatibility     String[]
-  faceShapes            String[]
+  frameWidth             Int?
+  lensWidth              Int?
+  bridgeWidth            Int?
+  templeLength           Int?
+  frameHeight            Int?
+  pdRange                String?
+  springHinges           Boolean  @default(false)
+  blueLightCompatible    Boolean  @default(false)
+  prescriptionCompatible Boolean  @default(true)
+  lensCompatibility      String[]
+  faceShapes             String[]
 
   // Flags
-  tryAtHomeEligible     Boolean             @default(false)
-  tryOnEligible         Boolean             @default(false)
-  arImageUrl            String?
-  whatsappEnabled       Boolean             @default(true)
+  tryAtHomeEligible Boolean @default(false)
+  tryOnEligible     Boolean @default(false)
+  arImageUrl        String?
+  whatsappEnabled   Boolean @default(true)
 
   // SEO
-  seoTitle              String?
-  seoDescription        String?
-  seoKeywords           String[]
+  seoTitle       String?
+  seoDescription String?
+  seoKeywords    String[]
 
   // Publishing
-  publishedAt           DateTime?
-  scheduledPublishAt    DateTime?
+  publishedAt        DateTime?
+  scheduledPublishAt DateTime?
 
   // Search
-  searchText            String              @default("")
-  supplierSku           String?
+  searchText  String  @default("")
+  supplierSku String?
 
   // Timestamps
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  deletedAt             DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   // Relations
-  images                ProductImage[]
-  categories            ProductCategory[]
-  collections           ProductCollection[]
-  tags                  ProductTag[]
-  inventory             Inventory?
-  cartItems             CartItem[]
-  orderItems            OrderItem[]
-  reviews               Review[]
-  wishlistItems         WishlistItem[]
-  previewRequests       FramePreviewRequest[]
-  imageUploads       ProductImageUpload[]
+  images          ProductImage[]
+  categories      ProductCategory[]
+  collections     ProductCollection[]
+  tags            ProductTag[]
+  inventory       Inventory?
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  wishlistItems   WishlistItem[]
+  previewRequests FramePreviewRequest[]
+  imageUploads    ProductImageUpload[]
 
   @@index([status])
   @@index([brand])
@@ -364,17 +364,17 @@ model Inventory {
 }
 
 model LensOption {
-  id          String     @id @default(cuid())
-  code        String     @unique
+  id          String      @id @default(cuid())
+  code        String      @unique
   name        String
   description String
   pricePaise  Int?
-  active      Boolean    @default(false)
-  sortOrder   Int        @default(0)
+  active      Boolean     @default(false)
+  sortOrder   Int         @default(0)
   cartItems   CartItem[]
   orderItems  OrderItem[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 model Cart {
@@ -410,34 +410,34 @@ model CartItem {
 }
 
 model Order {
-  id                String            @id @default(cuid())
-  publicId          String            @unique
-  userId            String?
-  user              User?             @relation(fields: [userId], references: [id])
-  customerName      String
-  phone             String
-  email             String?
-  status            OrderStatus       @default(PENDING)
-  deliveryMethod    DeliveryMethod    @default(DELIVERY)
-  paymentMethod     PaymentMethod     @default(RAZORPAY)
-  subtotalPaise     Int
-  lensTotalPaise    Int               @default(0)
-  shippingPaise     Int               @default(0)
-  taxPaise          Int               @default(0)
-  discountPaise     Int               @default(0)
-  grandTotalPaise   Int
-  notes             String?
-  prescriptionNote  String?
-  couponCode        String?
-  items             OrderItem[]
-  payments          Payment[]
-  shippingAddress   ShippingAddress?
-  tryAtHomeRequest  TryAtHomeRequest?
-  prescriptions     Prescription[]
-  notifications     Notification[]
-  refunds           Refund[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id               String            @id @default(cuid())
+  publicId         String            @unique
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id])
+  customerName     String
+  phone            String
+  email            String?
+  status           OrderStatus       @default(PENDING)
+  deliveryMethod   DeliveryMethod    @default(DELIVERY)
+  paymentMethod    PaymentMethod     @default(RAZORPAY)
+  subtotalPaise    Int
+  lensTotalPaise   Int               @default(0)
+  shippingPaise    Int               @default(0)
+  taxPaise         Int               @default(0)
+  discountPaise    Int               @default(0)
+  grandTotalPaise  Int
+  notes            String?
+  prescriptionNote String?
+  couponCode       String?
+  items            OrderItem[]
+  payments         Payment[]
+  shippingAddress  ShippingAddress?
+  tryAtHomeRequest TryAtHomeRequest?
+  prescriptions    Prescription[]
+  notifications    Notification[]
+  refunds          Refund[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   @@index([status])
   @@index([phone])
@@ -537,32 +537,32 @@ model TryAtHomeRequest {
 }
 
 model Prescription {
-  id          String   @id @default(cuid())
-  userId      String?
-  orderId     String?
-  fileUrl     String
-  fileName    String?
-  notes       String?
-  verified    Boolean  @default(false)
-  user        User?    @relation(fields: [userId], references: [id])
-  order       Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String?
+  orderId   String?
+  fileUrl   String
+  fileName  String?
+  notes     String?
+  verified  Boolean  @default(false)
+  user      User?    @relation(fields: [userId], references: [id])
+  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }
 
 model Coupon {
-  id             String   @id @default(cuid())
-  code           String   @unique
-  description    String?
-  active         Boolean  @default(false)
-  discountPaise  Int?
-  discountPct    Int?
-  minOrderPaise  Int?
-  maxUses        Int?
-  usedCount      Int      @default(0)
-  expiresAt      DateTime?
-  carts          Cart[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id            String    @id @default(cuid())
+  code          String    @unique
+  description   String?
+  active        Boolean   @default(false)
+  discountPaise Int?
+  discountPct   Int?
+  minOrderPaise Int?
+  maxUses       Int?
+  usedCount     Int       @default(0)
+  expiresAt     DateTime?
+  carts         Cart[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Review {
@@ -598,23 +598,36 @@ model WishlistItem {
 }
 
 model FramePreviewRequest {
-  id               String        @id @default(cuid())
-  productId        String
-  productSlug      String
-  customerImageUrl String
-  frameImageUrl    String?
-  resultImageUrl   String?
-  status           PreviewStatus @default(RECEIVED)
-  disclaimer       String
-  promptVersion    String
-  prompt           String
-  failureReason    String?
-  product          Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                    String        @id @default(cuid())
+  productId             String
+  productSlug           String
+  customerId            String?
+  customerImageUrl      String?
+  customerImagePublicId String?
+  customerImageHash     String?
+  frameImageUrl         String?
+  resultImageUrl        String?
+  resultImagePublicId   String?
+  resultBytes           Int?
+  providerRequestId     String?
+  providerCost          Float?
+  model                 String?
+  generationMs          Int?
+  expiresAt             DateTime?
+  status                PreviewStatus @default(RECEIVED)
+  disclaimer            String
+  promptVersion         String
+  prompt                String
+  failureReason         String?
+  product               Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   @@index([productSlug])
   @@index([status])
+  @@index([productId, customerImageHash, status])
+  @@index([customerId, createdAt])
+  @@index([expiresAt])
   @@index([createdAt])
   @@map("frame_preview_requests")
 }
@@ -679,21 +692,21 @@ model ActivityLog {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  orderId   String?
-  channel   String
-  recipient String
-  subject   String?
-  body      String?
-  status    String   @default("pending")
+  id         String    @id @default(cuid())
+  orderId    String?
+  channel    String
+  recipient  String
+  subject    String?
+  body       String?
+  status     String    @default("pending")
   entityType String?
   entityId   String?
   metadata   Json?
-  sentAt    DateTime?
-  error     String?
-  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sentAt     DateTime?
+  error      String?
+  order      Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([orderId])
   @@index([channel, status])
@@ -702,16 +715,16 @@ model Notification {
 }
 
 model AnalyticsEvent {
-  id         String   @id @default(cuid())
-  event      String
-  sessionId  String?
-  userId     String?
-  productId  String?
-  orderId    String?
-  source     String?
-  path       String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  event     String
+  sessionId String?
+  userId    String?
+  productId String?
+  orderId   String?
+  source    String?
+  path      String?
+  metadata  Json?
+  createdAt DateTime @default(now())
 
   @@index([event])
   @@index([sessionId])
@@ -742,17 +755,17 @@ model GuestWishlist {
 
 // Refund records
 model Refund {
-  id                  String   @id @default(cuid())
-  orderId             String
-  paymentId           String
-  providerRefundId    String?
-  amountPaise         Int
-  reason              String
-  initiatedByAdminId  String?
-  status              String   @default("pending")
-  order               Order    @relation(fields: [orderId], references: [id])
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  orderId            String
+  paymentId          String
+  providerRefundId   String?
+  amountPaise        Int
+  reason             String
+  initiatedByAdminId String?
+  status             String   @default("pending")
+  order              Order    @relation(fields: [orderId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([orderId])
 }
@@ -778,5 +791,3 @@ model SearchLog {
   @@index([query])
   @@index([createdAt])
 }
-
-

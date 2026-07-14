@@ -262,7 +262,7 @@ export default async function ProductPage({
             </div>
 
             {/* Virtual Try-On CTA */}
-            {product.tryOnEligible && product.arImageUrl ? (
+            {product.tryOnEligible && product.images.length > 0 ? (
               <Link
                 href={`/frames/try-on?slug=${product.slug}`}
                 className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
@@ -270,7 +270,7 @@ export default async function ProductPage({
                 <Camera className="h-8 w-8 text-teal-600 shrink-0 group-hover:scale-110 transition-transform" />
                 <div>
                   <strong className="text-sm font-extrabold text-teal-800">Try this frame on your face</strong>
-                  <p className="text-xs text-teal-600 mt-0.5">Use your camera to see how this frame looks on you.</p>
+                  <p className="text-xs text-teal-600 mt-0.5">Take a selfie and generate a realistic AI preview using this product's own frame image.</p>
                 </div>
               </Link>
             ) : (
@@ -278,7 +278,7 @@ export default async function ProductPage({
                 <Camera className="h-8 w-8 text-slate-400 shrink-0" />
                 <div>
                   <strong className="text-sm font-extrabold text-slate-700">Virtual try-on not available</strong>
-                  <p className="text-xs text-slate-500 mt-0.5">This frame needs a verified AR overlay before online fitting.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">This frame needs a verified product image before AI try-on can be enabled.</p>
                 </div>
               </div>
             )}

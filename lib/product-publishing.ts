@@ -25,9 +25,6 @@ export function getPublishBlockersForDraft(candidate: PublishCandidate) {
   if (!Number.isInteger(candidate.quantity) || candidate.quantity <= 0) blockers.push("stock quantity must be greater than zero");
   if (!candidate.imageRoles.some((role) => role !== "ar")) blockers.push("at least one product image is required");
   if (!candidate.categoryCount) blockers.push("at least one category is required");
-  if (candidate.tryOnEligible && !candidate.arImageUrl && !candidate.imageRoles.includes("ar")) {
-    blockers.push("virtual try-on needs a transparent AR overlay");
-  }
   return blockers;
 }
 
