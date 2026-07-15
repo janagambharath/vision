@@ -78,7 +78,12 @@ export function geminiTryOnConfigured() {
 }
 
 export function geminiTryOnModel() {
-  return process.env.GEMINI_TRY_ON_MODEL?.trim() || "gemini-3.1-flash-image";
+  const configured = process.env.GEMINI_TRY_ON_MODEL?.trim();
+  // Migrate existing Railway variables from the former default without making
+  // a redeploy continue to use the more expensive Flash Image model.
+  return !configured || configured === "gemini-3.1-flash-image"
+    ? "gemini-3.1-flash-lite-image"
+    : configured;
 }
 
 /** Selects the best available catalog image; transparent assets are preferred. */

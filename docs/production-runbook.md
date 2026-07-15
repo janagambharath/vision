@@ -103,7 +103,7 @@ A product can be active only when:
 
 ## AI Try-On Retention
 
-- Set `GEMINI_API_KEY`, `GEMINI_TRY_ON_MODEL`, and the Cloudinary credentials before enabling customer AI try-on. The chosen Gemini image model needs available paid-tier quota; a key with free-tier quota of zero will return `429 RESOURCE_EXHAUSTED` and cannot generate previews. Never use a `NEXT_PUBLIC_` key.
+- Set `GEMINI_API_KEY`, `GEMINI_TRY_ON_MODEL=gemini-3.1-flash-lite-image`, and the Cloudinary credentials before enabling customer AI try-on. Flash Lite Image is the default cost-saving customer-preview model. The chosen Gemini image model needs available paid-tier quota; a key with free-tier quota of zero will return `429 RESOURCE_EXHAUSTED` and cannot generate previews. Never use a `NEXT_PUBLIC_` key.
 - Run `npm run worker:purge-previews` daily. It removes temporary customer selfie assets after their 30-day retention window while retaining generated preview records for cache and audit purposes.
 
 ## AI Product Detail Prefill

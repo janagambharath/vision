@@ -24,11 +24,15 @@ test("try-on can use a regular front catalog image when no transparent asset exi
   assert.deepEqual(selected, { url: "https://res.cloudinary.com/store/image/upload/front.jpg", role: "front" });
 });
 
-test("try-on uses the current image model unless an environment override is set", () => {
+test("try-on defaults and migrates the former image model to Flash Lite Image", () => {
   const previous = process.env.GEMINI_TRY_ON_MODEL;
   delete process.env.GEMINI_TRY_ON_MODEL;
   try {
-    assert.equal(geminiTryOnModel(), "gemini-3.1-flash-image");
+    assert.equal(geminiTryOnModel(), "gemini-3.1-flash-lite-image");
+    process.env.GEMINI_TRY_ON_MODEL = "gemini-3.1-flash-image";
+    assert.equal(geminiTryOnModel(), "gemini-3.1-flash-lite-image");
+    process.env.GEMINI_TRY_ON_MODEL = "custom-image-model";
+    assert.equal(geminiTryOnModel(), "custom-image-model");
   } finally {
     if (previous === undefined) delete process.env.GEMINI_TRY_ON_MODEL;
     else process.env.GEMINI_TRY_ON_MODEL = previous;
