@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildGeminiTryOnPrompt,
+  classifyGeminiGenerationError,
   geminiTryOnModel,
   parseDataImage,
   selectTryOnProductImage
@@ -32,6 +33,22 @@ test("try-on uses the current image model unless an environment override is set"
     if (previous === undefined) delete process.env.GEMINI_TRY_ON_MODEL;
     else process.env.GEMINI_TRY_ON_MODEL = previous;
   }
+});
+
+test("try-on does not retry a Gemini project with zero image-generation quota", () => {
+  const error = classifyGeminiGenerationError(new Error('{"error":{"code":429,"message":"Quota exceeded. limit: 0, model: gemini-3.1-flash-image","status":"RESOURCE_EXHAUSTED"}}'));
+  assert.equal(error.retryable, false);
+  assert.equal(error.status, 429);
+  assert.equal(error.retryAfterSeconds, undefined);
+  assert.match(error.message, /temporarily unavailable/i);
+});
+
+test("try-on gives a retry window for a temporary Gemini capacity limit", () => {
+  const error = classifyGeminiGenerationError(new Error("RESOURCE_EXHAUSTED. Please retry in 40.1s."));
+  assert.equal(error.retryable, false);
+  assert.equal(error.status, 429);
+  assert.equal(error.retryAfterSeconds, 41);
+  assert.match(error.message, /41 seconds/i);
 });
 
 test("try-on validates compact customer image data and produces an exact-frame prompt", () => {

@@ -38,10 +38,39 @@ export type GeminiTryOnResult = {
 };
 
 export class TryOnError extends Error {
-  constructor(message: string, readonly retryable = true) {
+  constructor(
+    message: string,
+    readonly retryable = true,
+    readonly status = retryable ? 502 : 422,
+    readonly retryAfterSeconds?: number
+  ) {
     super(message);
     this.name = "TryOnError";
   }
+}
+
+/**
+ * Keeps Google provider detail in server logs while giving customers a useful,
+ * safe response. A quota with a zero limit cannot be fixed by an immediate
+ * retry, so it must not spend a second generation attempt.
+ */
+export function classifyGeminiGenerationError(error: unknown) {
+  const providerMessage = error instanceof Error ? error.message : String(error ?? "unknown Gemini error");
+  const quotaExceeded = /RESOURCE_EXHAUSTED|quota exceeded|"code"\s*:\s*429/i.test(providerMessage);
+  if (quotaExceeded) {
+    const zeroQuota = /limit:\s*0\b/i.test(providerMessage);
+    const retryMatch = /retry\s+in\s+(\d+(?:\.\d+)?)s/i.exec(providerMessage);
+    const retryAfterSeconds = !zeroQuota && retryMatch ? Math.max(1, Math.ceil(Number(retryMatch[1]))) : undefined;
+    return new TryOnError(
+      zeroQuota
+        ? "AI preview service is temporarily unavailable. Please try again later."
+        : `AI preview service is busy. Please try again${retryAfterSeconds ? ` in about ${retryAfterSeconds} seconds` : " shortly"}.`,
+      false,
+      429,
+      retryAfterSeconds
+    );
+  }
+  return new TryOnError(`Gemini image generation failed: ${providerMessage}`);
 }
 
 export function geminiTryOnConfigured() {
@@ -180,8 +209,7 @@ export async function generateGeminiTryOn(input: {
       }
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "unknown Gemini error";
-    throw new TryOnError(`Gemini image generation failed: ${message}`);
+    throw classifyGeminiGenerationError(error);
   }
 
   const part = response.candidates

@@ -180,6 +180,10 @@ export async function POST(request: NextRequest) {
         data: { status: "FAILED", failureReason: error instanceof Error ? error.message.slice(0, 1000) : "Unknown Gemini generation failure." }
       }).catch(() => undefined);
     }
-    return NextResponse.json({ error: publicPreviewError(error) }, { status: error instanceof TryOnError && !error.retryable ? 422 : 502 });
+    const status = error instanceof TryOnError ? error.status : 502;
+    const headers = error instanceof TryOnError && error.retryAfterSeconds
+      ? { "Retry-After": String(error.retryAfterSeconds) }
+      : undefined;
+    return NextResponse.json({ error: publicPreviewError(error) }, { status, headers });
   }
 }
