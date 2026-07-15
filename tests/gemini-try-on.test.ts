@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildGeminiTryOnPrompt,
+  geminiTryOnModel,
   parseDataImage,
   selectTryOnProductImage
 } from "../lib/integrations/gemini-try-on";
@@ -20,6 +21,17 @@ test("try-on can use a regular front catalog image when no transparent asset exi
     { url: "https://res.cloudinary.com/store/image/upload/angle.jpg", role: "angle", sortOrder: 1 }
   ]);
   assert.deepEqual(selected, { url: "https://res.cloudinary.com/store/image/upload/front.jpg", role: "front" });
+});
+
+test("try-on uses the current image model unless an environment override is set", () => {
+  const previous = process.env.GEMINI_TRY_ON_MODEL;
+  delete process.env.GEMINI_TRY_ON_MODEL;
+  try {
+    assert.equal(geminiTryOnModel(), "gemini-3.1-flash-image");
+  } finally {
+    if (previous === undefined) delete process.env.GEMINI_TRY_ON_MODEL;
+    else process.env.GEMINI_TRY_ON_MODEL = previous;
+  }
 });
 
 test("try-on validates compact customer image data and produces an exact-frame prompt", () => {

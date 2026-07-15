@@ -43,7 +43,7 @@ export function AppointmentForm({ action }: AppointmentFormProps) {
         } else {
           setSubmitted(true);
         }
-      } catch (err) {
+      } catch {
         setErrorMsg("An unexpected error occurred. Please try again.");
       }
     });

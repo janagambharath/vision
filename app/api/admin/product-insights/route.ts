@@ -9,6 +9,7 @@ import {
   productAiRequestSchema,
   type ProductAiDraft
 } from "@/lib/product-ai";
+import { createProductAnalysisToken } from "@/lib/product-ai-analysis";
 
 export const runtime = "nodejs";
 
@@ -152,7 +153,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await generateWithOpenRouter(parsedRequest.data.imageUrl);
-    return NextResponse.json({ ...result, provider: "openrouter" }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({
+      ...result,
+      provider: "openrouter",
+      analysisToken: createProductAnalysisToken({ imageUrl: parsedRequest.data.imageUrl, draft: result.draft })
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("OpenRouter product enrichment failed", error instanceof Error ? error.message : error);
   }

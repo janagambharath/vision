@@ -45,6 +45,35 @@ npx prisma migrate deploy
 
 Never run the initial baseline SQL directly against a populated database.
 
+### Recovery: failed `20260715120000_gemini_tryon_prescriptions`
+
+The `P3009` deployment loop means Prisma recorded this migration as failed, so
+it will refuse every later deployment until the failed record is resolved. The
+checked-in migration now includes the required PostgreSQL enum casts. Do not
+delete migration files or bypass migrations with `db push`.
+
+For the recorded failure (`column "status" is of type "PrescriptionStatus" but
+expression is of type text`), PostgreSQL rolled back the migration transaction.
+Open a Railway service shell on the latest release and run exactly once:
+
+```sh
+CONFIRM_FAILED_PRESCRIPTION_MIGRATION_ROLLBACK=yes npm run db:recover-prescription-migration
+```
+
+The command marks only that known failed migration as rolled back, then applies
+the corrected migration. Confirm `npx prisma migrate status` reports the
+database is up to date before restarting the service.
+
+The release start command includes the same narrow recovery for this exact
+`P3009` record. It does not resolve any other failed migration automatically;
+those remain blocked for review rather than risking schema history.
+
+If this is truly an empty disposable database and the recovery command cannot
+run because the schema has been changed manually, take a snapshot, reset the
+database from the Railway PostgreSQL service, redeploy `main`, then run
+`npm run db:seed` once in a Railway shell. Never use an empty-database reset on
+a database containing customer, order, prescription, or payment data.
+
 ## Payment Recovery
 
 - Check `PaymentWebhookEvent` for unprocessed or unmatched webhook events.
@@ -73,4 +102,25 @@ A product can be active only when:
 ## AI Product Detail Prefill
 
 - Product-image enrichment uses OpenRouter only: set `OPENROUTER_API_KEY`, keep `OPENROUTER_PRODUCT_ENRICHMENT_MODEL=nvidia/nemotron-nano-12b-v2-vl:free`, and set `OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL=openrouter/free`. OpenRouter will try Nemotron first and only use the free fallback when the primary model cannot complete the request. `GEMINI_API_KEY` is reserved for customer AI try-on.
-- Free-model availability and latency vary. Staff must review every draft before publishing; the workflow intentionally fills blank fields only and never infers price, SKU, stock, measurements, or warranty terms.
+- Free-model availability and latency vary. Staff must review every draft before publishing; the workflow intentionally fills blank fields only and never infers price, SKU, stock, or warranty terms. Measurements are accepted only from a signed 15-minute result tied to the uploaded Cloudinary image; they remain blank when no readable marking is present.
+
+## Railway Scheduled Workers
+
+Railway cron jobs must be deployed as separate scheduled services; a web
+service start command does not make a worker run on its own. Create one service
+per command from this repository, give each the same database and provider
+environment variables as the web service, and configure these schedules in the
+Railway service settings:
+
+| Schedule (UTC) | Command |
+| --- | --- |
+| `0 */6 * * *` | `npm run worker:abandoned-carts` |
+| `0 9 * * *` | `npm run worker:order-followup` |
+| `0 8 * * *` | `npm run worker:low-stock-alert` |
+| `0 3 * * *` | `npm run worker:purge-previews` |
+| `*/15 * * * *` | `npm run worker:retry-shipments` |
+| `*/10 * * * *` | `npm run worker:reconcile-payments` |
+
+Each worker command exits after one pass. Verify the first run in Railway logs;
+the order follow-up worker writes an `ORDER_FOLLOWUP` notification for phone-
+only deliveries too, preventing repeat WhatsApp sends on later schedules.

@@ -43,26 +43,6 @@ export async function getCustomerUser() {
   });
 }
 
-export async function setCustomerSession(userId: string, phone: string) {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) throw new Error("Missing AUTH_SECRET in environment variables");
-
-  const expiresAt = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
-  const session: CustomerSession = { userId, phone, expiresAt };
-  const payload = Buffer.from(JSON.stringify(session)).toString("base64");
-  const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
-  const token = `${payload}.${signature}`;
-
-  const cookieStore = await cookies();
-  cookieStore.set("vv_customer_session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: new Date(expiresAt)
-  });
-}
-
 export async function clearCustomerSession() {
   const cookieStore = await cookies();
   cookieStore.set("vv_customer_session", "", {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { ArrowRight, Filter, SlidersHorizontal, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getFeaturedProducts, getCategories, getFilterOptions } from "@/lib/store-data";
+import { getStoreProducts, getFeaturedProducts, getFilterOptions } from "@/lib/store-data";
 import { productIsSellable } from "@/lib/inventory";
 import { SITE_URL } from "@/lib/constants";
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cloudinaryConfigured, configureCloudinary } from "@/lib/integrations/cloudinary";
-import { auth } from "@/auth";
+import { getAdminAccess, isManagerOrOwner } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
@@ -85,13 +85,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Too many upload attempts" }, { status: 429 });
     }
 
-    // Require admin authentication for uploads
-    const session = await auth();
-    if (!session?.user?.email) {
+    // Check the active database role, not only a stale JWT claim.
+    const admin = await getAdminAccess();
+    if (!admin) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    const role = (session.user as { role?: string }).role;
-    if (!role || !["OWNER", "MANAGER"].includes(role)) {
+    if (!isManagerOrOwner(admin.role)) {
       return NextResponse.json({ error: "Manager access is required for uploads" }, { status: 403 });
     }
     if (!cloudinaryConfigured()) {

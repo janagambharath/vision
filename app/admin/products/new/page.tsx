@@ -8,6 +8,7 @@ import { invalidateProductCache } from "@/lib/inventory-actions";
 import { ProductForm } from "@/components/admin/product-form";
 import { getCreateBlockersForDraft, getPublishBlockersForDraft } from "@/lib/product-publishing";
 import { isTrustedProductImageUrl } from "@/lib/product-ai";
+import { readVerifiedProductAnalysis } from "@/lib/product-ai-analysis";
 import { createProductSku } from "@/lib/product-sku";
 
 export const metadata = { title: "New Product | Admin" };
@@ -101,15 +102,6 @@ export default async function NewProductPage({
     const finish = String(formData.get("finish") ?? "").trim() || null;
     const shape = String(formData.get("shape") ?? "").trim() || null;
     const rimType = String(formData.get("rimType") ?? "").trim() || null;
-    const size = String(formData.get("size") ?? "").trim() || null;
-    const measurements = String(formData.get("measurements") ?? "").trim() || null;
-    const weightGrams = formData.get("weightGrams") ? Number(formData.get("weightGrams")) : null;
-    const frameWidth = formData.get("frameWidth") ? Number(formData.get("frameWidth")) : null;
-    const lensWidth = formData.get("lensWidth") ? Number(formData.get("lensWidth")) : null;
-    const bridgeWidth = formData.get("bridgeWidth") ? Number(formData.get("bridgeWidth")) : null;
-    const templeLength = formData.get("templeLength") ? Number(formData.get("templeLength")) : null;
-    const frameHeight = formData.get("frameHeight") ? Number(formData.get("frameHeight")) : null;
-    const pdRange = String(formData.get("pdRange") ?? "").trim() || null;
     const springHinges = formData.get("springHinges") === "on";
     const blueLightCompatible = formData.get("blueLightCompatible") === "on";
     const prescriptionCompatible = formData.get("prescriptionCompatible") === "on";
@@ -131,7 +123,7 @@ export default async function NewProductPage({
     if (!name || !brand || !description || !pricePaise || pricePaise <= 0 || !quantityValue) redirect("/admin/products/new?error=missing-fields");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect("/admin/products/new?error=invalid-slug");
     if (
-      [pricePaise, compareAtPaise, costPricePaise, taxPct, weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight]
+      [pricePaise, compareAtPaise, costPricePaise, taxPct]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
       !Number.isInteger(quantity) || quantity < 0
     ) redirect("/admin/products/new?error=invalid-values");
@@ -139,13 +131,21 @@ export default async function NewProductPage({
     const duplicate = await prisma.product.findUnique({ where: { slug }, select: { slug: true } });
     if (duplicate) redirect("/admin/products/new?error=duplicate-slug");
 
-    const requestedImageCount = Number(formData.get("image_count") ?? 0);
-    const imageCount = Number.isInteger(requestedImageCount) && requestedImageCount >= 0 ? Math.min(requestedImageCount, 24) : 0;
-    const imageRoles = Array.from({ length: imageCount }, (_, index) => {
-      const imageUrl = String(formData.get(`image_url_${index}`) ?? "").trim();
-      return isTrustedProductImageUrl(imageUrl) ? String(formData.get(`image_role_${index}`) ?? "gallery") : "ar";
-    });
-    if (arImageUrl) imageRoles.push("ar");
+    const candidateImages = readImages(formData, "", brand, name, arImageUrl);
+    const imageRoles = candidateImages.map((image) => image.role);
+    const analysis = readVerifiedProductAnalysis(
+      String(formData.get("aiAnalysisToken") ?? ""),
+      candidateImages.map((image) => image.url)
+    );
+    const size = analysis?.size || null;
+    const measurements = analysis?.measurements || null;
+    const weightGrams = analysis?.weightGrams ?? null;
+    const frameWidth = analysis?.frameWidth ?? null;
+    const lensWidth = analysis?.lensWidth ?? null;
+    const bridgeWidth = analysis?.bridgeWidth ?? null;
+    const templeLength = analysis?.templeLength ?? null;
+    const frameHeight = analysis?.frameHeight ?? null;
+    const pdRange = analysis?.pdRange || null;
     const categoryCount = selectedCategories.length
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;
@@ -186,7 +186,7 @@ export default async function NewProductPage({
         }
       });
 
-      const images = readImages(formData, product.id, brand, name, arImageUrl);
+      const images = candidateImages.map((image) => ({ ...image, productId: product.id }));
       if (images.length) await tx.productImage.createMany({ data: images });
 
       if (selectedCategories.length) {

@@ -49,7 +49,7 @@ export function geminiTryOnConfigured() {
 }
 
 export function geminiTryOnModel() {
-  return process.env.GEMINI_TRY_ON_MODEL?.trim() || "gemini-2.0-flash-preview-image-generation";
+  return process.env.GEMINI_TRY_ON_MODEL?.trim() || "gemini-3.1-flash-image";
 }
 
 /** Selects the best available catalog image; transparent assets are preferred. */

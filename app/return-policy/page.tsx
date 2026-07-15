@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-import { CLINIC_NAME, CLINIC_PHONE, SITE_URL } from "@/lib/constants";
+import { CLINIC_PHONE, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Return & Refund Policy",

@@ -84,8 +84,6 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
 
   const paymentOptions = [
     { id: "RAZORPAY", label: "Razorpay (All-in-one)", desc: "Cards, Netbanking, UPI" },
-    { id: "UPI", label: "UPI", desc: "Google Pay, PhonePe, Paytm" },
-    { id: "CARD", label: "Credit/Debit Card", desc: "Visa, Mastercard, RuPay" },
     { id: "COD", label: "Cash On Delivery", desc: "Pay cash at your doorstep" },
     { id: "WHATSAPP_ASSISTED", label: "WhatsApp Assisted", desc: "Complete order with support" }
   ];

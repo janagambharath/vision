@@ -7,6 +7,8 @@ import { getCategories, getBrands } from "@/lib/store-data";
 import { invalidateProductCache } from "@/lib/inventory-actions";
 import { ProductForm } from "@/components/admin/product-form";
 import { getPublishBlockersForDraft } from "@/lib/product-publishing";
+import { isTrustedProductImageUrl } from "@/lib/product-ai";
+import { readVerifiedProductAnalysis } from "@/lib/product-ai-analysis";
 
 export const metadata = { title: "Edit Product | Admin" };
 
@@ -36,10 +38,10 @@ function readImages(formData: FormData, productId: string, brand: string, name: 
     const alt = String(formData.get(`image_alt_${i}`) ?? "").trim();
     const role = String(formData.get(`image_role_${i}`) ?? "gallery");
     const sortOrder = Number(formData.get(`image_sort_${i}`) ?? i);
-    if (url) images.push({ productId, url, alt, role, sortOrder });
+    if (url && isTrustedProductImageUrl(url)) images.push({ productId, url, alt, role, sortOrder });
   }
 
-  if (arImageUrl && !images.some((image) => image.role === "ar" && image.url === arImageUrl)) {
+  if (arImageUrl && isTrustedProductImageUrl(arImageUrl) && !images.some((image) => image.role === "ar" && image.url === arImageUrl)) {
     images.push({
       productId,
       url: arImageUrl,
@@ -99,7 +101,8 @@ export default async function EditProductPage({
     const tryOnEligible = formData.get("tryOnEligible") === "on";
     const codAvailable = formData.get("codAvailable") === "on";
     const brandId = String(formData.get("brandId") ?? "").trim() || null;
-    const arImageUrl = String(formData.get("arImageUrl") ?? "").trim();
+    const requestedArImageUrl = String(formData.get("arImageUrl") ?? "").trim();
+    const arImageUrl = isTrustedProductImageUrl(requestedArImageUrl) ? requestedArImageUrl : "";
 
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
@@ -116,15 +119,6 @@ export default async function EditProductPage({
     const finish = String(formData.get("finish") ?? "").trim() || null;
     const shape = String(formData.get("shape") ?? "").trim() || null;
     const rimType = String(formData.get("rimType") ?? "").trim() || null;
-    const size = String(formData.get("size") ?? "").trim() || null;
-    const measurements = String(formData.get("measurements") ?? "").trim() || null;
-    const weightGrams = formData.get("weightGrams") ? Number(formData.get("weightGrams")) : null;
-    const frameWidth = formData.get("frameWidth") ? Number(formData.get("frameWidth")) : null;
-    const lensWidth = formData.get("lensWidth") ? Number(formData.get("lensWidth")) : null;
-    const bridgeWidth = formData.get("bridgeWidth") ? Number(formData.get("bridgeWidth")) : null;
-    const templeLength = formData.get("templeLength") ? Number(formData.get("templeLength")) : null;
-    const frameHeight = formData.get("frameHeight") ? Number(formData.get("frameHeight")) : null;
-    const pdRange = String(formData.get("pdRange") ?? "").trim() || null;
     const springHinges = formData.get("springHinges") === "on";
     const blueLightCompatible = formData.get("blueLightCompatible") === "on";
     const prescriptionCompatible = formData.get("prescriptionCompatible") === "on";
@@ -146,7 +140,7 @@ export default async function EditProductPage({
     if (!name || !brand || !sku) redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect(`/admin/products/${currentSlug}/edit?error=invalid-slug`);
     if (
-      [pricePaise, compareAtPaise, costPricePaise, taxPct, weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight]
+      [pricePaise, compareAtPaise, costPricePaise, taxPct]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
       !Number.isInteger(quantity) || quantity < 0
     ) redirect(`/admin/products/${currentSlug}/edit?error=invalid-values`);
@@ -157,10 +151,21 @@ export default async function EditProductPage({
     });
     if (duplicate) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-slug`);
 
-    const requestedImageCount = Number(formData.get("image_count") ?? 0);
-    const imageCount = Number.isInteger(requestedImageCount) && requestedImageCount >= 0 ? Math.min(requestedImageCount, 24) : 0;
-    const imageRoles = Array.from({ length: imageCount }, (_, index) => String(formData.get(`image_role_${index}`) ?? "gallery"));
-    if (arImageUrl) imageRoles.push("ar");
+    const candidateImages = readImages(formData, product!.id, brand, name, arImageUrl);
+    const imageRoles = candidateImages.map((image) => image.role);
+    const analysis = readVerifiedProductAnalysis(
+      String(formData.get("aiAnalysisToken") ?? ""),
+      candidateImages.map((image) => image.url)
+    );
+    const size = analysis?.size || product!.size;
+    const measurements = analysis?.measurements || product!.measurements;
+    const weightGrams = analysis?.weightGrams ?? product!.weightGrams;
+    const frameWidth = analysis?.frameWidth ?? product!.frameWidth;
+    const lensWidth = analysis?.lensWidth ?? product!.lensWidth;
+    const bridgeWidth = analysis?.bridgeWidth ?? product!.bridgeWidth;
+    const templeLength = analysis?.templeLength ?? product!.templeLength;
+    const frameHeight = analysis?.frameHeight ?? product!.frameHeight;
+    const pdRange = analysis?.pdRange || product!.pdRange;
     const categoryCount = selectedCategories.length
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;
@@ -212,7 +217,7 @@ export default async function EditProductPage({
       });
 
       await tx.productImage.deleteMany({ where: { productId: product!.id } });
-      const images = readImages(formData, product!.id, brand, name, arImageUrl);
+      const images = candidateImages;
       if (images.length) await tx.productImage.createMany({ data: images });
 
       await tx.productCategory.deleteMany({ where: { productId: product!.id } });

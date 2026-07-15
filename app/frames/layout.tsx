@@ -46,7 +46,7 @@ export default function FramesLayout({ children }: { children: React.ReactNode }
               <Truck className="h-4 w-4" />
               Track Order
             </Link>
-            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/frames/account">
+            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/account">
               <User className="h-4 w-4" />
               My Account
             </Link>

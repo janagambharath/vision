@@ -118,36 +118,8 @@ export async function POST(request: Request) {
   if (method !== "POST") {
     return NextResponse.json({ error: "Unsupported product operation" }, { status: 405 });
   }
-
-  const slug = `draft-frame-${Date.now()}`;
-  const product = await prisma.$transaction(async (tx) => {
-    const draft = await tx.product.create({
-      data: {
-        slug,
-        sku: slug.toUpperCase(),
-        name: "New Draft Frame",
-        brand: "Vision Vistara",
-        status: "DRAFT",
-        description: "Draft product. Add verified supplier information before publishing.",
-        lensCompatibility: [],
-        faceShapes: [],
-        highlights: [],
-        seoKeywords: [],
-        searchText: slug
-      }
-    });
-    await tx.activityLog.create({
-      data: {
-        adminUserId: authorization.access.session.user?.id,
-        action: "PRODUCT_DRAFT_CREATED",
-        entityType: "product",
-        entityId: draft.id,
-        metadata: { slug: draft.slug }
-      }
-    });
-    return draft;
-  });
-
-  await invalidateProductCache();
-  return NextResponse.json({ product: { id: product.id, slug: product.slug } }, { status: 201 });
+  return NextResponse.json(
+    { error: "Incomplete product creation is disabled. Use /admin/products/new and complete the required catalog fields." },
+    { status: 405 }
+  );
 }

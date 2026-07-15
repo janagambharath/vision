@@ -15,8 +15,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const storeRoutes = [
     "/frames",
-    "/frames/cart",
-    "/frames/checkout",
     "/frames/try-at-home",
     "/frames/search",
     ...categories.map((category) => `/frames/category/${category.slug}`),

@@ -14,8 +14,7 @@ async function main() {
       // Check if we haven't logged feedback collection yet
       notifications: {
         none: {
-          channel: "email",
-          subject: { contains: "How is your new vision" }
+          entityType: "ORDER_FOLLOWUP"
         }
       }
     },
@@ -28,6 +27,24 @@ async function main() {
   console.log(`  → Found ${deliveredOrders.length} orders requiring review follow-up`);
 
   for (const order of deliveredOrders) {
+    let followUpLogged = false;
+    const logFollowUp = async (channel: "email" | "whatsapp", recipient: string) => {
+      if (followUpLogged) return;
+      await prisma.notification.create({
+        data: {
+          orderId: order.id,
+          channel,
+          recipient,
+          subject: "Delivery feedback follow-up",
+          status: "sent",
+          sentAt: new Date(),
+          entityType: "ORDER_FOLLOWUP",
+          entityId: order.id
+        }
+      });
+      followUpLogged = true;
+    };
+
     if (order.email) {
       const emailHtml = `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
@@ -48,18 +65,7 @@ async function main() {
       `;
 
       await sendEmail(order.email, "How is your new vision? | Vision Vistara", emailHtml);
-      
-      // Save notification log
-      await prisma.notification.create({
-        data: {
-          orderId: order.id,
-          channel: "email",
-          recipient: order.email,
-          subject: "How is your new vision? | Vision Vistara",
-          status: "sent",
-          sentAt: new Date()
-        }
-      });
+      await logFollowUp("email", order.email);
     }
 
     if (order.phone) {
@@ -67,6 +73,7 @@ async function main() {
         order.customerName,
         order.publicId
       ]);
+      await logFollowUp("whatsapp", order.phone);
     }
   }
 

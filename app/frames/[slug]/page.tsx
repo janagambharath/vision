@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { permanentRedirect, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { AlertTriangle, Camera, CheckCircle2, Ruler, ShieldCheck, Sparkles, Truck, Star, Clock } from "lucide-react";
 import { rateLimit } from "@/lib/rate-limit";
@@ -56,7 +56,7 @@ export default async function ProductPage({
   // Handle slug redirects (301)
   if (product && '__redirect' in (product as Record<string, unknown>)) {
     const newSlug = (product as unknown as { __redirect: string }).__redirect;
-    redirect(`/frames/${newSlug}`);
+    permanentRedirect(`/frames/${newSlug}`);
   }
 
   if (!product) {

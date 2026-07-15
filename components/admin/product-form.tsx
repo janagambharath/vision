@@ -85,6 +85,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
   const [brand, setBrand] = useState(product?.brand ?? "");
   const [aiState, setAiState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [aiMessage, setAiMessage] = useState("");
+  const [aiAnalysisToken, setAiAnalysisToken] = useState("");
   const [submitError, setSubmitError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -162,8 +163,8 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
     setAiMessage(`${fallbackUsed ? "Nemotron was unavailable, so OpenRouter's free fallback completed this draft. " : `${provider === "openrouter" ? "Nemotron" : "AI"} completed this draft. `}${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
   };
 
-  const generateAiDraft = async () => {
-    if (!firstProductImage) {
+  const generateAiDraft = async (image = firstProductImage) => {
+    if (!image) {
       setAiState("error");
       setAiMessage("Upload a clear front or gallery image first.");
       return;
@@ -175,14 +176,28 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       const response = await fetch("/api/admin/product-insights", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: firstProductImage.url })
+        body: JSON.stringify({ imageUrl: image.url })
       });
       const result = await response.json();
-      if (!response.ok || !result.draft) throw new Error(result.error || "AI product enrichment failed.");
+      if (!response.ok || !result.draft || !result.analysisToken) throw new Error(result.error || "AI product enrichment failed.");
+      setAiAnalysisToken(String(result.analysisToken));
       applyAiDraft(result.draft as ProductAiDraft, String(result.provider ?? "AI"), Boolean(result.fallbackUsed));
     } catch (error) {
       setAiState("error");
       setAiMessage(error instanceof Error ? error.message : "AI product enrichment failed.");
+    }
+  };
+
+  const handleImagesChange = (nextImages: UploadedImage[]) => {
+    const nextPrimary = nextImages.find((image) => image.role === "front") ?? nextImages.find((image) => image.role !== "ar");
+    const previousUrl = firstProductImage?.url;
+    setImages(nextImages);
+
+    // New frame photography gets analyzed automatically. Reordering an
+    // already-analyzed image does not spend another free-model request.
+    if (nextPrimary?.url !== previousUrl) {
+      setAiAnalysisToken("");
+      if (nextPrimary) void generateAiDraft(nextPrimary);
     }
   };
 
@@ -210,6 +225,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
   return (
     <form ref={formRef} action={action} onSubmit={validateCreate} noValidate className="grid gap-6">
+      <input type="hidden" name="aiAnalysisToken" value={aiAnalysisToken} />
       <section className="rounded-vv border border-teal-200 bg-teal-50/60 p-4 text-sm text-teal-950">
         <strong className="block font-extrabold">Fast catalog workflow</strong>
         <p className="mt-1">Upload a clear front image, let AI draft visual details, then confirm the essentials: name, brand, description, price, stock, category, and image. The product is not created until these are complete; its SKU is issued automatically.</p>
@@ -259,12 +275,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
                 </select>
               </div>
             </label>
-            <div className="grid gap-1 text-sm font-extrabold text-slate-600">
-              SKU
-              <div className="store-input flex items-center bg-slate-50 text-slate-500">
-                {product?.sku ?? "Generated automatically when the product is created"}
-              </div>
-            </div>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Barcode
               <input className="store-input" type="text" name="barcode"
@@ -437,7 +447,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
           </div>
 
           <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm font-medium text-violet-950">
-            Measurements are AI-analyzed from readable frame markings only. These values cannot be entered manually; if the marking is not visible, they remain blank.
+            Measurements are analyzed automatically after the first product image is uploaded. The server accepts them only from the matching AI analysis; if a marking is not visible, they remain blank.
           </div>
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2 mt-2">AI-analyzed frame measurements</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -530,18 +540,18 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
           <p className="text-sm text-slate-500">Upload images via Cloudinary. Assign roles (Front, Angle, Side, etc.) and drag to reorder. The front image is used for the first AI catalog draft and the first image is the primary display image.</p>
           <ImageUploader
             images={images}
-            onChange={setImages}
+            onChange={handleImagesChange}
             productName={`${brand} ${name}`.trim() || "Product"}
           />
           <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-violet-950">AI product draft</h3>
-                <p className="mt-1 text-xs font-medium text-violet-800">Nemotron analyzes the uploaded product image, with OpenRouter&apos;s free router as backup. It can transcribe only clearly visible frame markings; it never invents price, SKU, stock, measurements, or policies.</p>
+                <p className="mt-1 text-xs font-medium text-violet-800">Nemotron analyzes the uploaded product image, with OpenRouter&apos;s free router as backup. It transcribes measurements only from clearly visible markings; it never invents price, SKU, stock, or policies.</p>
               </div>
               <button
                 type="button"
-                onClick={generateAiDraft}
+                onClick={() => void generateAiDraft()}
                 disabled={!firstProductImage || aiState === "loading"}
                 className="rounded-lg bg-violet-700 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
