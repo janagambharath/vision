@@ -37,7 +37,8 @@ ALTER TABLE "Prescription"
   ADD COLUMN "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 UPDATE "Prescription"
-SET "type" = 'UPLOAD', "status" = CASE WHEN "verified" THEN 'VERIFIED' ELSE 'WAITING' END
+SET "type" = 'UPLOAD'::"PrescriptionType",
+    "status" = (CASE WHEN "verified" THEN 'VERIFIED' ELSE 'WAITING' END)::"PrescriptionStatus"
 WHERE "fileUrl" IS NOT NULL;
 
 CREATE INDEX "Prescription_orderId_status_idx" ON "Prescription"("orderId", "status");
