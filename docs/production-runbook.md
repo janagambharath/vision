@@ -1,5 +1,12 @@
 # Vision Vistara Production Runbook
 
+## Runtime Version
+
+This application requires Node.js 20. The checked-in `engines.node` and
+`.nvmrc` pin Nixpacks to that major version because `@google/genai` requires
+Node 20 or later. If a Railway build still reports Node 18, remove any
+conflicting `NIXPACKS_NODE_VERSION=18` service variable or set it to `20`.
+
 ## Database Backups
 
 Run a verified local dump before every production release and schedule the same command hourly on the host:

@@ -18,9 +18,9 @@ function Row({ label, value, strong = false }: { label: string; value: string; s
   return <div className="flex items-start justify-between gap-4"><dt className="text-slate-500">{label}</dt><dd className={strong ? "font-extrabold text-slate-950 text-right" : "font-bold text-slate-800 text-right"}>{value}</dd></div>;
 }
 
-export default async function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const publicId = id.trim().toUpperCase();
+export default async function OrderTrackingPage({ params }: { params: Promise<{ publicId: string }> }) {
+  const { publicId: rawPublicId } = await params;
+  const publicId = rawPublicId.trim().toUpperCase();
 
   if (["DEMO", "LOOKUP", "START"].includes(publicId)) {
     return (
