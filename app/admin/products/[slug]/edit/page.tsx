@@ -98,11 +98,9 @@ export default async function EditProductPage({
     const status = statusValue as "ACTIVE" | "DRAFT" | "ARCHIVED";
     const featured = formData.get("featured") === "on";
     const tryAtHomeEligible = formData.get("tryAtHomeEligible") === "on";
-    const tryOnEligible = formData.get("tryOnEligible") === "on";
     const codAvailable = formData.get("codAvailable") === "on";
     const brandId = String(formData.get("brandId") ?? "").trim() || null;
-    const requestedArImageUrl = String(formData.get("arImageUrl") ?? "").trim();
-    const arImageUrl = isTrustedProductImageUrl(requestedArImageUrl) ? requestedArImageUrl : "";
+    const arImageUrl = product!.arImageUrl ?? "";
 
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
@@ -153,6 +151,7 @@ export default async function EditProductPage({
 
     const candidateImages = readImages(formData, product!.id, brand, name, arImageUrl);
     const imageRoles = candidateImages.map((image) => image.role);
+    const tryOnEligible = candidateImages.some((image) => image.role !== "ar");
     const analysis = readVerifiedProductAnalysis(
       String(formData.get("aiAnalysisToken") ?? ""),
       candidateImages.map((image) => image.url)

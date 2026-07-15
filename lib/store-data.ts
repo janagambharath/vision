@@ -288,7 +288,7 @@ export async function getTryOnFrames(): Promise<TryOnFrame[]> {
   const products = await getStoreProducts();
 
   return products
-      .filter((product) => product.status === "ACTIVE" && product.tryOnEligible)
+      .filter((product) => product.status === "ACTIVE")
       .flatMap((product) => {
         const selectedImage =
           product.images.find((image) => image.role === "transparent" || image.role === "ar") ??

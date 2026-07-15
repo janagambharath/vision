@@ -71,8 +71,10 @@ export default async function ProductPage({
   }
 
   const sellable = productIsSellable(product);
-  const hasVerifiedTryOnAsset = product.tryOnEligible && (
-    product.images.some((image) => (image.role === "transparent" || image.role === "ar") && image.url.startsWith("https://res.cloudinary.com/")) ||
+  // AI uses the uploaded catalog photo automatically. Transparent assets are
+  // preferred by the renderer, but are never required for a customer to try on a frame.
+  const hasTryOnReference = (
+    product.images.some((image) => image.role !== "ar" && image.url.startsWith("https://res.cloudinary.com/")) ||
     Boolean(product.arImageUrl?.startsWith("https://res.cloudinary.com/"))
   );
   const related = await getRelatedProducts(product);
@@ -283,7 +285,7 @@ export default async function ProductPage({
             </div>
 
             {/* Virtual Try-On CTA */}
-            {hasVerifiedTryOnAsset ? (
+            {hasTryOnReference ? (
               <Link
                 href={`/frames/try-on?slug=${product.slug}`}
                 className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
@@ -298,8 +300,8 @@ export default async function ProductPage({
               <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <Camera className="h-8 w-8 text-slate-400 shrink-0" />
                 <div>
-                  <strong className="text-sm font-extrabold text-slate-700">Virtual try-on not available</strong>
-                  <p className="text-xs text-slate-500 mt-0.5">This frame needs a verified transparent Cloudinary product asset before AI try-on can be enabled.</p>
+                  <strong className="text-sm font-extrabold text-slate-700">Add a product photo to enable try-on</strong>
+                  <p className="text-xs text-slate-500 mt-0.5">AI uses the uploaded catalog image automatically. A transparent asset is optional.</p>
                 </div>
               </div>
             )}

@@ -345,11 +345,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
               Try-at-Home Eligible
             </label>
             <label className="flex items-center gap-2 text-sm font-extrabold text-slate-700 cursor-pointer">
-              <input type="checkbox" name="tryOnEligible" defaultChecked={product?.tryOnEligible ?? false}
-                className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4" />
-              Virtual Try-On Eligible
-            </label>
-            <label className="flex items-center gap-2 text-sm font-extrabold text-slate-700 cursor-pointer">
               <input type="checkbox" name="codAvailable" defaultChecked={product?.codAvailable ?? true}
                 className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4" />
               COD Available
@@ -564,19 +559,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
               </p>
             ) : null}
           </div>
-          <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-            AR Overlay Image URL
-            <input
-              className="store-input"
-              type="text"
-              name="arImageUrl"
-              defaultValue={product?.arImageUrl ?? images.find((image) => image.role === "ar")?.url ?? ""}
-              placeholder="Transparent front-facing PNG/WebP overlay for virtual try-on"
-            />
-            <span className="text-xs font-semibold text-slate-400">
-              Recommended for the most faithful AI try-on. If omitted, AI try-on automatically uses the product's front image, then the highest-priority gallery image.
-            </span>
-          </label>
         </section>
       </div>
 

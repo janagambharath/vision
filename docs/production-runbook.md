@@ -108,7 +108,7 @@ A product can be active only when:
 
 ## AI Product Detail Prefill
 
-- Product-image enrichment uses OpenRouter only: set `OPENROUTER_API_KEY`, keep `OPENROUTER_PRODUCT_ENRICHMENT_MODEL=nvidia/nemotron-nano-12b-v2-vl:free`, and set `OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL=openrouter/free`. OpenRouter will try Nemotron first and only use the free fallback when the primary model cannot complete the request. `GEMINI_API_KEY` is reserved for customer AI try-on.
+- Product-image enrichment uses OpenRouter only: set `OPENROUTER_API_KEY`, keep `OPENROUTER_PRODUCT_ENRICHMENT_MODEL=nvidia/nemotron-nano-12b-v2-vl:free`, and set `OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL=google/gemma-4-31b-it:free`. OpenRouter tries Nemotron first and only uses the explicit free vision fallback when the primary model cannot complete the request. `GEMINI_API_KEY` is reserved for customer AI try-on.
 - Free-model availability and latency vary. Staff must review every draft before publishing; the workflow intentionally fills blank fields only and never infers price, SKU, stock, or warranty terms. Measurements are accepted only from a signed 15-minute result tied to the uploaded Cloudinary image; they remain blank when no readable marking is present.
 
 ## Railway Scheduled Workers

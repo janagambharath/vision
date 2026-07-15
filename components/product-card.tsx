@@ -18,10 +18,11 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   const whatsappText = encodeURIComponent(`Hello Vision Vistara, I want details for ${product.brand} ${product.name} SKU ${product.sku}.`);
   const hasDiscount = product.compareAtPaise && product.pricePaise && product.compareAtPaise > product.pricePaise;
   const discountPct = hasDiscount ? Math.round(((product.compareAtPaise! - product.pricePaise!) / product.compareAtPaise!) * 100) : 0;
-  const hasVerifiedTryOnAsset = product.tryOnEligible && (
-    product.images.some((image) => (image.role === "transparent" || image.role === "ar") && image.url.startsWith("https://res.cloudinary.com/")) ||
-    Boolean(product.arImageUrl?.startsWith("https://res.cloudinary.com/"))
-  );
+  // AI can use any uploaded catalog image. A transparent asset is helpful,
+  // but it must never be a requirement for customers to start a try-on.
+  const hasTryOnReference = product.images.some(
+    (image) => image.role !== "ar" && image.url.startsWith("https://res.cloudinary.com/")
+  ) || Boolean(product.arImageUrl?.startsWith("https://res.cloudinary.com/"));
 
   const { compareSlugs, addToCompare, removeFromCompare } = useCompare();
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -55,7 +56,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   };
 
   return (
-    <article className="vv-card group overflow-hidden transition hover:shadow-strong relative">
+    <article className="vv-card group relative min-w-0 overflow-hidden transition hover:shadow-strong">
       <Link href={`/frames/${product.slug}`} className="relative block bg-slate-50">
         <div className="relative aspect-[16/9] overflow-hidden">
           {frontImage ? (
@@ -103,7 +104,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
               🏠 Home trial
             </span>
           ) : null}
-          {hasVerifiedTryOnAsset ? (
+          {hasTryOnReference ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
               <Camera className="h-2.5 w-2.5" />
               Try-on
@@ -121,11 +122,11 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         <Heart className={`h-4 w-4 transition-all ${isWishlisted ? "fill-red-500 text-red-500 scale-110" : "text-slate-400 hover:text-red-500"}`} />
       </button>
 
-      <div className="grid gap-3 p-5">
+      <div className="grid min-w-0 gap-3 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 [&>p:last-child]:hidden">
             <p className="text-xs font-extrabold uppercase text-slate-500">{product.brand}</p>
-            <h3 className="mt-1 truncate text-lg font-extrabold leading-tight text-slate-950">
+            <h3 className="mt-1 line-clamp-2 min-h-[2.5rem] text-lg font-extrabold leading-tight text-slate-950">
               <Link href={`/frames/${product.slug}`}>{product.name}</Link>
             </h3>
             <p className="mt-1 text-xs text-slate-400">SKU {product.sku} · {product.material}</p>
@@ -144,8 +145,8 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-1 items-center justify-between">
-          <div className="flex flex-wrap gap-1">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap gap-1">
             {product.categories.slice(0, 3).map((category) => (
               <Link key={category} href={`/frames/category/${category}`} className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-500 hover:border-retail hover:text-retail">
                 {category.replace(/-/g, " ")}
@@ -154,7 +155,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
           </div>
 
           {/* Compare Checkbox */}
-          <label className="flex items-center gap-1 text-[11px] font-bold text-slate-500 cursor-pointer select-none">
+          <label className="flex shrink-0 items-center gap-1 text-[11px] font-bold text-slate-500 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={compareSlugs.includes(product.slug)}
@@ -173,7 +174,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
 
         <p className="line-clamp-2 text-sm text-slate-600">{product.description}</p>
 
-        <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-slate-100 pt-3">
           <div className="flex gap-1">
             <Link href={`/frames/${product.slug}`} className="rounded-vv border border-slate-200 p-2 text-slate-500 transition hover:border-retail hover:text-retail" title="Quick view">
               <Eye className="h-4 w-4" />
@@ -186,10 +187,10 @@ export function ProductCard({ product }: { product: StoreProduct }) {
             </a>
           </div>
 
-          <form action={addToCart}>
+          <form action={addToCart} className="min-w-0">
             <input type="hidden" name="slug" value={product.slug} />
             <input type="hidden" name="quantity" value="1" />
-            <button className="vv-button-retail text-sm" type="submit" disabled={!sellable}>
+            <button className="vv-button-retail w-full justify-center whitespace-nowrap text-sm" type="submit" disabled={!sellable}>
               <ShoppingBag className="h-4 w-4" />
               Add to cart
             </button>

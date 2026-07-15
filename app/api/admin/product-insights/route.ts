@@ -83,7 +83,9 @@ async function generateWithOpenRouter(imageUrl: string) {
   if (!apiKey) throw new Error("OpenRouter fallback is not configured.");
 
   const primaryModel = process.env.OPENROUTER_PRODUCT_ENRICHMENT_MODEL || "nvidia/nemotron-nano-12b-v2-vl:free";
-  const fallbackModel = process.env.OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL || "openrouter/free";
+  // Keep this explicit and vision-capable. The generic free router can choose
+  // a changing model family, including ones unsuitable for catalog OCR.
+  const fallbackModel = process.env.OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL || "google/gemma-4-31b-it:free";
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -93,7 +95,7 @@ async function generateWithOpenRouter(imageUrl: string) {
       "X-Title": "Vision Vistara Product Enrichment"
     },
     body: JSON.stringify({
-      // OpenRouter tries these in order. The second free router is used only
+      // OpenRouter tries these in order. The second free vision model is used only
       // when Nemotron is unavailable, rate-limited, or refuses the request.
       models: [primaryModel, fallbackModel],
       messages: [

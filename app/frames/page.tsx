@@ -38,6 +38,24 @@ export default async function FramesPage({
     return Number(b.featured) - Number(a.featured) || Number(productIsSellable(b)) - Number(productIsSellable(a));
   });
 
+  const shopByGender = [
+    { label: "All frames", value: "" },
+    { label: "Men", value: "Men" },
+    { label: "Women", value: "Women" },
+    { label: "Kids", value: "Kids" }
+  ];
+  const genderFilterHref = (gender: string) => {
+    const query = new URLSearchParams();
+    if (params.q) query.set("q", params.q);
+    if (params.category) query.set("category", params.category);
+    if (gender) query.set("gender", gender);
+    if (params.material) query.set("material", params.material);
+    if (params.shape) query.set("shape", params.shape);
+    if (params.color) query.set("color", params.color);
+    if (params.sort && params.sort !== "featured") query.set("sort", params.sort);
+    const search = query.toString();
+    return search ? `/frames?${search}` : "/frames";
+  };
 
   return (
     <main>
@@ -46,6 +64,27 @@ export default async function FramesPage({
       {/* Search & Filter Bar */}
       <section className="store-band">
         <div className="vv-container py-4">
+          <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-4">
+            <div>
+              <p className="text-sm font-extrabold text-ink">Shop frames for everyone</p>
+              <p className="text-xs font-medium text-slate-500">Start with a collection, then refine the details.</p>
+            </div>
+            <nav className="flex flex-wrap gap-2" aria-label="Shop frames by collection">
+              {shopByGender.map((filter) => {
+                const active = (params.gender ?? "") === filter.value;
+                return (
+                  <Link
+                    key={filter.label}
+                    href={genderFilterHref(filter.value)}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-full px-4 py-2 text-sm font-extrabold transition ${active ? "bg-teal-700 text-white shadow-sm" : "border border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800"}`}
+                  >
+                    {filter.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
           <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7" action="/frames">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Search frames

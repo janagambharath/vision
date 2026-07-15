@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
   }
 
   const product = await prisma.product.findFirst({
-    where: { slug: parsedSlug.data, status: "ACTIVE", deletedAt: null, tryOnEligible: true },
+    // Eligibility is derived from its uploaded catalog image, not an admin toggle.
+    where: { slug: parsedSlug.data, status: "ACTIVE", deletedAt: null },
     include: { images: { orderBy: { sortOrder: "asc" } } }
   });
   if (!product) {
