@@ -7,7 +7,7 @@ export const metadata = {
   description: "Checkout eyewear orders safely online with Razorpay or WhatsApp integration."
 };
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
   const cart = await getCartOrNull();
   const items = cart?.items ?? [];
   const totals = calculateCartTotals(cart);
@@ -62,7 +62,7 @@ export default async function CheckoutPage() {
       }
     }))
   };
-
+  const error = (await searchParams)?.error;
   return (
     <main className="vv-section bg-paper">
       <div className="vv-container">
@@ -72,7 +72,7 @@ export default async function CheckoutPage() {
           <p className="mt-2 text-slate-600">Provide shipping details, prescription attachments, and payment preferences.</p>
         </div>
 
-        <CheckoutForm cart={mappedCart} totals={totals} />
+        <CheckoutForm cart={mappedCart} totals={totals} error={error} />
       </div>
     </main>
   );

@@ -238,10 +238,11 @@ async function main() {
   // ─── Lens Options ───
   console.log("  → Lens options");
   for (const lens of seedLensPackages) {
+    const requiresPrescription = !["FRAME_ONLY", "ZERO_POWER_BC"].includes(lens.code);
     await prisma.lensOption.upsert({
       where: { code: lens.code },
-      update: { name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, sortOrder: lens.sortOrder },
-      create: { code: lens.code, name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, sortOrder: lens.sortOrder }
+      update: { name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, requiresPrescription, sortOrder: lens.sortOrder },
+      create: { code: lens.code, name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, requiresPrescription, sortOrder: lens.sortOrder }
     });
   }
 

@@ -155,6 +155,7 @@ export async function POST(request: NextRequest) {
       {
         folder: `vision-vistara/${folder}`,
         resource_type: file.type === "application/pdf" ? "raw" : "image",
+        type: folder === "prescriptions" ? "authenticated" : "upload",
         transformation: folder === "products" ? [{ width: 1200, height: 1200, crop: "limit", quality: "auto" }] : undefined
       },
       uploadLog?.id ?? null

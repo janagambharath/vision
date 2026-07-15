@@ -14,6 +14,24 @@ type PublishCandidate = {
   arImageUrl: string | null;
 };
 
+/**
+ * A new product is never persisted as an incomplete shell. SKU is omitted here
+ * because it is issued by the server only after the other essentials pass.
+ */
+export function getCreateBlockersForDraft(candidate: Omit<PublishCandidate, "sku">) {
+  const blockers: string[] = [];
+  if (!candidate.name.trim() || !candidate.brand.trim()) blockers.push("name and brand are required");
+  if (!candidate.description.trim()) blockers.push("a product description is required");
+  if (!candidate.pricePaise || candidate.pricePaise <= 0) blockers.push("a selling price is required");
+  if (candidate.compareAtPaise && candidate.pricePaise && candidate.compareAtPaise < candidate.pricePaise) {
+    blockers.push("compare-at price cannot be lower than selling price");
+  }
+  if (!Number.isInteger(candidate.quantity) || candidate.quantity < 0) blockers.push("a valid stock quantity is required");
+  if (!candidate.imageRoles.some((role) => role !== "ar")) blockers.push("at least one product image is required");
+  if (!candidate.categoryCount) blockers.push("at least one category is required");
+  return blockers;
+}
+
 export function getPublishBlockersForDraft(candidate: PublishCandidate) {
   const blockers: string[] = [];
   if (!candidate.name.trim() || !candidate.brand.trim() || !candidate.sku.trim()) blockers.push("name, brand, and SKU are required");

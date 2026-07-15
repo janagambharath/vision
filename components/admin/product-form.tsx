@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { ImageUploader, type UploadedImage } from "@/components/admin/image-uploader";
 import type { ProductAiDraft } from "@/lib/product-ai";
 
@@ -85,6 +85,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
   const [brand, setBrand] = useState(product?.brand ?? "");
   const [aiState, setAiState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [aiMessage, setAiMessage] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
   const autoSlug = () => {
@@ -112,7 +113,12 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
     }
   };
 
-  const applyAiDraft = (draft: ProductAiDraft) => {
+  const fillNumberField = (fieldName: string, value: number | null) => {
+    if (value === null || !fieldIsBlank(fieldName)) return;
+    fillTextField(fieldName, String(value));
+  };
+
+  const applyAiDraft = (draft: ProductAiDraft, provider: string, fallbackUsed: boolean) => {
     if (!name.trim() && draft.name) setName(draft.name);
     if (!brand.trim() && draft.brand) setBrand(draft.brand);
 
@@ -131,6 +137,15 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
     fillTextField("rimType", draft.rimType);
     fillTextField("gender", draft.gender);
     fillTextField("ageGroup", draft.ageGroup);
+    fillTextField("size", draft.size);
+    fillTextField("measurements", draft.measurements);
+    fillNumberField("weightGrams", draft.weightGrams);
+    fillNumberField("frameWidth", draft.frameWidth);
+    fillNumberField("lensWidth", draft.lensWidth);
+    fillNumberField("bridgeWidth", draft.bridgeWidth);
+    fillNumberField("templeLength", draft.templeLength);
+    fillNumberField("frameHeight", draft.frameHeight);
+    fillTextField("pdRange", draft.pdRange);
     fillTextField("highlights", draft.highlights.join("\n"));
     fillTextField("faceShapes", draft.faceShapes.join(", "));
     fillTextField("lensCompatibility", draft.lensCompatibility.join("\n"));
@@ -144,7 +159,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       ...draft.needsReview
     ].filter(Boolean).join(" ");
     setAiState("ready");
-    setAiMessage(`${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
+    setAiMessage(`${fallbackUsed ? "Nemotron was unavailable, so OpenRouter's free fallback completed this draft. " : `${provider === "openrouter" ? "Nemotron" : "AI"} completed this draft. `}${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
   };
 
   const generateAiDraft = async () => {
@@ -164,27 +179,49 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       });
       const result = await response.json();
       if (!response.ok || !result.draft) throw new Error(result.error || "AI product enrichment failed.");
-      applyAiDraft(result.draft as ProductAiDraft);
+      applyAiDraft(result.draft as ProductAiDraft, String(result.provider ?? "AI"), Boolean(result.fallbackUsed));
     } catch (error) {
       setAiState("error");
       setAiMessage(error instanceof Error ? error.message : "AI product enrichment failed.");
     }
   };
 
+  const validateCreate = (event: FormEvent<HTMLFormElement>) => {
+    if (product) return;
+
+    const formData = new FormData(event.currentTarget);
+    const missing: string[] = [];
+    if (!String(formData.get("name") ?? "").trim()) missing.push("product name");
+    if (!String(formData.get("brand") ?? "").trim()) missing.push("brand");
+    if (!String(formData.get("description") ?? "").trim()) missing.push("full description");
+    if (!Number.isFinite(Number(formData.get("pricePaise"))) || Number(formData.get("pricePaise")) <= 0) missing.push("selling price");
+    if (!String(formData.get("quantity") ?? "").trim() || !Number.isInteger(Number(formData.get("quantity"))) || Number(formData.get("quantity")) < 0) missing.push("stock quantity");
+    if (!formData.getAll("categories").length) missing.push("category");
+    if (!images.some((image) => image.role !== "ar" && image.url)) missing.push("product image");
+
+    if (missing.length) {
+      event.preventDefault();
+      setSubmitError(`Complete ${missing.join(", ")} before creating this product.`);
+      setActiveTab(missing.some((item) => item === "selling price" || item === "stock quantity") ? "pricing" : "general");
+      return;
+    }
+    setSubmitError("");
+  };
+
   return (
-    <form ref={formRef} action={action} className="grid gap-6">
+    <form ref={formRef} action={action} onSubmit={validateCreate} noValidate className="grid gap-6">
       <section className="rounded-vv border border-teal-200 bg-teal-50/60 p-4 text-sm text-teal-950">
         <strong className="block font-extrabold">Fast catalog workflow</strong>
-        <p className="mt-1">Upload a clear front image, let AI draft visual details, then confirm the essentials: name, brand, SKU, price, stock, and category. The remaining fields are optional refinements.</p>
+        <p className="mt-1">Upload a clear front image, let AI draft visual details, then confirm the essentials: name, brand, description, price, stock, category, and image. The product is not created until these are complete; its SKU is issued automatically.</p>
       </section>
       {/* Tab navigation */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-0">
+      <div className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-0 [scrollbar-width:thin]">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-sm font-bold rounded-t-lg transition-all ${
+            className={`shrink-0 rounded-t-lg px-4 py-2.5 text-sm font-bold transition-all ${
               activeTab === tab.key
                 ? "bg-white text-teal-700 border border-slate-200 border-b-white -mb-px"
                 : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
@@ -197,7 +234,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
       {/* GENERAL TAB */}
       <div className={activeTab === "general" ? "" : "hidden"}>
-        <section className="vv-card p-6 grid gap-5">
+        <section className="vv-card grid gap-5 p-4 sm:p-6">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">General Information</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
@@ -222,11 +259,12 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
                 </select>
               </div>
             </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              SKU *
-              <input className="store-input" type="text" name="sku" required
-                defaultValue={product?.sku ?? ""} placeholder="e.g. VV-3001" />
-            </label>
+            <div className="grid gap-1 text-sm font-extrabold text-slate-600">
+              SKU
+              <div className="store-input flex items-center bg-slate-50 text-slate-500">
+                {product?.sku ?? "Generated automatically when the product is created"}
+              </div>
+            </div>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Barcode
               <input className="store-input" type="text" name="barcode"
@@ -271,7 +309,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
           {/* Categories */}
           <div>
-            <span className="block text-sm font-extrabold text-slate-600 mb-2">Categories</span>
+            <span className="block text-sm font-extrabold text-slate-600 mb-2">Categories *</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {categories.map((cat) => (
                 <label key={cat.slug} className="flex items-center gap-2 text-sm font-bold text-slate-700 cursor-pointer">
@@ -312,12 +350,12 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
       {/* PRICING TAB */}
       <div className={activeTab === "pricing" ? "" : "hidden"}>
-        <section className="vv-card p-6 grid gap-5">
+        <section className="vv-card grid gap-5 p-4 sm:p-6">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">Pricing</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               MRP / Selling Price (₹) *
-              <input className="store-input" type="number" step="0.01" name="pricePaise"
+              <input className="store-input" type="number" step="0.01" min="0.01" name="pricePaise" required
                 defaultValue={product?.pricePaise ? product.pricePaise / 100 : ""}
                 placeholder="e.g. 1899.00" />
             </label>
@@ -345,7 +383,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Stock Quantity *
               <input className="store-input" type="number" name="quantity" required
-                defaultValue={product?.quantity ?? 5} />
+                defaultValue={product?.quantity ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Supplier
@@ -363,7 +401,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
       {/* SPECIFICATIONS TAB */}
       <div className={activeTab === "specs" ? "" : "hidden"}>
-        <section className="vv-card p-6 grid gap-5">
+        <section className="vv-card grid gap-5 p-4 sm:p-6">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">Frame Details</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
@@ -392,53 +430,56 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
                 defaultValue={product?.rimType ?? ""} placeholder="e.g. Full Rim / Rimless" />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Weight (grams)
-              <input className="store-input" type="number" name="weightGrams"
-                defaultValue={product?.weightGrams ?? ""} placeholder="e.g. 12" />
+              AI-detected weight (grams)
+              <input className="store-input bg-slate-50 text-slate-500" type="number" name="weightGrams" readOnly tabIndex={-1}
+                defaultValue={product?.weightGrams ?? ""} placeholder="Visible marking required" />
             </label>
           </div>
 
-          <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2 mt-2">Frame Measurements</h2>
+          <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm font-medium text-violet-950">
+            Measurements are AI-analyzed from readable frame markings only. These values cannot be entered manually; if the marking is not visible, they remain blank.
+          </div>
+          <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2 mt-2">AI-analyzed frame measurements</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Size (e.g. 46-21-140)
-              <input className="store-input" type="text" name="size"
-                defaultValue={product?.size ?? ""} placeholder="46-21-140" />
+              Size marking
+              <input className="store-input bg-slate-50 text-slate-500" type="text" name="size" readOnly tabIndex={-1}
+                defaultValue={product?.size ?? ""} placeholder="AI reads visible marking" />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Measurements
-              <input className="store-input" type="text" name="measurements"
-                defaultValue={product?.measurements ?? ""} placeholder="Same as size or expanded" />
+              Measurement summary
+              <input className="store-input bg-slate-50 text-slate-500" type="text" name="measurements" readOnly tabIndex={-1}
+                defaultValue={product?.measurements ?? ""} placeholder="AI reads visible marking" />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Frame Width (mm)
-              <input className="store-input" type="number" name="frameWidth"
+              <input className="store-input bg-slate-50 text-slate-500" type="number" name="frameWidth" readOnly tabIndex={-1}
                 defaultValue={product?.frameWidth ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Lens Width (mm)
-              <input className="store-input" type="number" name="lensWidth"
+              <input className="store-input bg-slate-50 text-slate-500" type="number" name="lensWidth" readOnly tabIndex={-1}
                 defaultValue={product?.lensWidth ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Bridge Width (mm)
-              <input className="store-input" type="number" name="bridgeWidth"
+              <input className="store-input bg-slate-50 text-slate-500" type="number" name="bridgeWidth" readOnly tabIndex={-1}
                 defaultValue={product?.bridgeWidth ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Temple Length (mm)
-              <input className="store-input" type="number" name="templeLength"
+              <input className="store-input bg-slate-50 text-slate-500" type="number" name="templeLength" readOnly tabIndex={-1}
                 defaultValue={product?.templeLength ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Frame Height (mm)
-              <input className="store-input" type="number" name="frameHeight"
+              <input className="store-input bg-slate-50 text-slate-500" type="number" name="frameHeight" readOnly tabIndex={-1}
                 defaultValue={product?.frameHeight ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               PD Range
-              <input className="store-input" type="text" name="pdRange"
-                defaultValue={product?.pdRange ?? ""} placeholder="e.g. 58-68" />
+              <input className="store-input bg-slate-50 text-slate-500" type="text" name="pdRange" readOnly tabIndex={-1}
+                defaultValue={product?.pdRange ?? ""} placeholder="AI reads visible marking" />
             </label>
           </div>
 
@@ -484,7 +525,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
       {/* IMAGES TAB */}
       <div className={activeTab === "images" ? "" : "hidden"}>
-        <section className="vv-card p-6 grid gap-4">
+        <section className="vv-card grid gap-4 p-4 sm:p-6">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">Product Images</h2>
           <p className="text-sm text-slate-500">Upload images via Cloudinary. Assign roles (Front, Angle, Side, etc.) and drag to reorder. The front image is used for the first AI catalog draft and the first image is the primary display image.</p>
           <ImageUploader
@@ -496,7 +537,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-violet-950">AI product draft</h3>
-                <p className="mt-1 text-xs font-medium text-violet-800">Uses the uploaded front frame image to fill empty visual, description, fit-suggestion, and SEO fields. It never invents pricing, SKU, stock, measurements, or policies.</p>
+                <p className="mt-1 text-xs font-medium text-violet-800">Nemotron analyzes the uploaded product image, with OpenRouter&apos;s free router as backup. It can transcribe only clearly visible frame markings; it never invents price, SKU, stock, measurements, or policies.</p>
               </div>
               <button
                 type="button"
@@ -531,7 +572,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
       {/* SEO TAB */}
       <div className={activeTab === "seo" ? "" : "hidden"}>
-        <section className="vv-card p-6 grid gap-4">
+        <section className="vv-card grid gap-4 p-4 sm:p-6">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">Search Engine Optimization</h2>
           <label className="grid gap-1 text-sm font-extrabold text-slate-600">
             SEO Title
@@ -557,7 +598,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
       {/* POLICY TAB */}
       <div className={activeTab === "policy" ? "" : "hidden"}>
-        <section className="vv-card p-6 grid gap-4">
+        <section className="vv-card grid gap-4 p-4 sm:p-6">
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2">Care, Warranty & Policies</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
@@ -585,16 +626,17 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       </div>
 
       {/* STATUS & SUBMIT */}
-      <section className="vv-card p-6 flex flex-wrap items-center justify-between gap-4 bg-slate-50 sticky bottom-0 z-10 border-t-2 border-slate-200">
-        <label className="flex items-center gap-2 text-sm font-extrabold text-slate-600">
+      {submitError ? <p className="rounded-vv border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800" role="alert">{submitError}</p> : null}
+      <section className="vv-card sticky bottom-0 z-10 flex flex-col gap-3 border-t-2 border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-6">
+        <label className="flex w-full items-center gap-2 text-sm font-extrabold text-slate-600 sm:w-auto">
           Publish Status
-          <select className="store-input min-w-36" name="status" defaultValue={product?.status ?? "DRAFT"}>
+          <select className="store-input min-w-0 sm:min-w-36" name="status" defaultValue={product?.status ?? "DRAFT"}>
             <option value="DRAFT">Draft</option>
             <option value="ACTIVE">Active (Live in Store)</option>
             <option value="ARCHIVED">Archived</option>
           </select>
         </label>
-        <button className="vv-button-retail inline-flex items-center gap-2 text-base px-6 py-3" type="submit">
+        <button className="vv-button-retail inline-flex w-full items-center gap-2 px-6 py-3 text-base sm:w-auto" type="submit">
           {submitLabel}
         </button>
       </section>

@@ -94,8 +94,21 @@ enum PreviewStatus {
   RECEIVED
   PROCESSING
   READY
-  FALLBACK_READY
   FAILED
+}
+
+enum PrescriptionType {
+  MANUAL
+  UPLOAD
+  UPLOAD_LATER
+  EYE_TEST
+}
+
+enum PrescriptionStatus {
+  WAITING
+  NEEDS_REVIEW
+  VERIFIED
+  INVALID
 }
 
 model User {
@@ -405,6 +418,7 @@ model LensOption {
   description String
   pricePaise  Int?
   active      Boolean     @default(false)
+  requiresPrescription Boolean @default(true)
   sortOrder   Int         @default(0)
   cartItems   CartItem[]
   orderItems  OrderItem[]
@@ -611,16 +625,43 @@ model TryAtHomeRequest {
 }
 
 model Prescription {
-  id        String   @id @default(cuid())
-  userId    String?
-  orderId   String?
-  fileUrl   String
-  fileName  String?
-  notes     String?
-  verified  Boolean  @default(false)
-  user      User?    @relation(fields: [userId], references: [id])
-  order     Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id                String             @id @default(cuid())
+  userId            String?
+  orderId           String?
+  type              PrescriptionType   @default(UPLOAD_LATER)
+  status            PrescriptionStatus @default(WAITING)
+  rightSphere       Float?
+  rightCylinder     Float?
+  rightAxis         Int?
+  rightAdd          Float?
+  rightPd           Float?
+  rightPrism        Float?
+  rightBase         String?
+  leftSphere        Float?
+  leftCylinder      Float?
+  leftAxis          Int?
+  leftAdd           Float?
+  leftPd            Float?
+  leftPrism         Float?
+  leftBase          String?
+  prescriptionDate  DateTime?
+  doctorName        String?
+  clinicName        String?
+  fileUrl           String?
+  filePublicId      String?
+  fileResourceType  String?
+  fileFormat        String?
+  fileName          String?
+  notes             String?
+  verified          Boolean            @default(false)
+  user              User?              @relation(fields: [userId], references: [id])
+  order             Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([orderId, status])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 model Coupon {

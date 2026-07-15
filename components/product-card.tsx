@@ -18,6 +18,10 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   const whatsappText = encodeURIComponent(`Hello Vision Vistara, I want details for ${product.brand} ${product.name} SKU ${product.sku}.`);
   const hasDiscount = product.compareAtPaise && product.pricePaise && product.compareAtPaise > product.pricePaise;
   const discountPct = hasDiscount ? Math.round(((product.compareAtPaise! - product.pricePaise!) / product.compareAtPaise!) * 100) : 0;
+  const hasVerifiedTryOnAsset = product.tryOnEligible && (
+    product.images.some((image) => (image.role === "transparent" || image.role === "ar") && image.url.startsWith("https://res.cloudinary.com/")) ||
+    Boolean(product.arImageUrl?.startsWith("https://res.cloudinary.com/"))
+  );
 
   const { compareSlugs, addToCompare, removeFromCompare } = useCompare();
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -99,7 +103,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
               🏠 Home trial
             </span>
           ) : null}
-          {product.tryOnEligible && product.images.length > 0 ? (
+          {hasVerifiedTryOnAsset ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
               <Camera className="h-2.5 w-2.5" />
               Try-on

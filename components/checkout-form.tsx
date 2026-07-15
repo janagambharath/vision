@@ -8,13 +8,15 @@ import { formatMoney } from "@/lib/money";
 import { checkoutAction } from "@/lib/orders";
 import type { CheckoutCart, CheckoutTotals, CheckoutCartItem } from "@/types/checkout";
 import { checkoutSchema } from "@/lib/validations";
+import PrescriptionStep, { type PrescriptionChoice } from "@/components/prescription-step";
 
 interface CheckoutFormProps {
   cart: CheckoutCart;
   totals: CheckoutTotals;
+  error?: string;
 }
 
-export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
+export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps) {
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -22,6 +24,7 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
   const [paymentMethod, setPaymentMethod] = useState("RAZORPAY");
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [prescriptionChoice, setPrescriptionChoice] = useState<PrescriptionChoice>("");
 
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "");
@@ -88,6 +91,11 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
   ];
 
   const items = cart?.items ?? [];
+  const requiresPrescription = items.some((item: any) => item.lensOption?.requiresPrescription);
+  const prescriptionSummary = prescriptionChoice === "HAVE" ? "Provided for review"
+    : prescriptionChoice === "EYE_TEST" ? "Eye test requested"
+      : prescriptionChoice === "UPLOAD_LATER" ? "Upload later"
+        : prescriptionChoice === "NONE" ? "Not required" : requiresPrescription ? "Selection required" : "Not required";
 
   const inputClass = (name: string) => `store-input ${errors[name] ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}`;
 
@@ -101,6 +109,7 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
       <input type="hidden" name="paymentMethod" value={paymentMethod} />
 
       <section className="vv-card grid gap-5 p-6">
+        {error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">{error}</div> : null}
         <h2 className="text-2xl font-extrabold">Customer and delivery</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
@@ -214,6 +223,7 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
           {errors.paymentMethod && <span className="text-xs text-red-500 font-normal">{errors.paymentMethod}</span>}
         </div>
 
+{/*
         <label className="grid gap-2 text-sm font-extrabold text-slate-600 mt-2">
           Prescription upload (optional — required for prescription lenses)
           <input
@@ -227,6 +237,8 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
           </span>
           {errors.prescription && <span className="text-xs text-red-500 font-normal">{errors.prescription}</span>}
         </label>
+*/}
+        <PrescriptionStep requiresPrescription={requiresPrescription} choice={prescriptionChoice} onChoiceChange={setPrescriptionChoice} />
 
         <label className="grid gap-2 text-sm font-extrabold text-slate-600">
           Notes
@@ -276,7 +288,8 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
 
         <dl className="grid gap-3 text-sm">
           <SummaryRow label="Frame subtotal" value={formatMoney(totals.subtotalPaise)} />
-          <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
+           <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
+          <SummaryRow label="Prescription" value={prescriptionSummary} />
           <SummaryRow label="Delivery" value={formatMoney(totals.shippingPaise)} />
           <SummaryRow label={`Tax (${Math.round((totals.taxPaise / (totals.subtotalPaise + totals.lensTotalPaise - totals.discountPaise)) * 100 || 12)}% GST)`} value={formatMoney(totals.taxPaise)} />
           {totals.discountPaise > 0 ? (

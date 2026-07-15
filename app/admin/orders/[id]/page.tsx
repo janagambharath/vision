@@ -91,14 +91,14 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
 
     await prisma.prescription.update({
       where: { id: rxId },
-      data: { verified: true }
+      data: { verified: true, status: "VERIFIED" }
     });
 
     // Check if all prescriptions for this order are now verified
     const allRxs = await prisma.prescription.findMany({
       where: { orderId: order!.id }
     });
-    const allVerified = allRxs.every((r) => r.verified);
+    const allVerified = allRxs.length > 0 && allRxs.every((r) => r.status === "VERIFIED");
 
     if (allVerified) {
       try {
@@ -593,18 +593,16 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                   {order.prescriptions.map((presc) => (
                     <div key={presc.id} className="flex flex-wrap justify-between items-center border border-slate-100 p-4 rounded-vv gap-4">
                       <div>
-                        <p className="font-bold">{presc.fileName ?? "Prescription Upload"}</p>
+                        <p className="font-bold">{presc.type === "MANUAL" ? "Manual prescription" : presc.fileName ?? presc.type.replaceAll("_", " ")}</p>
                         <p className="text-xs text-slate-500">Uploaded: {new Date(presc.createdAt).toLocaleDateString()}</p>
                         <div className="mt-2 flex items-center gap-1.5">
-                          <span className={`inline-block h-2 w-2 rounded-full ${presc.verified ? "bg-emerald-500" : "bg-amber-500"}`} />
-                          <span className="text-xs font-bold text-slate-600">{presc.verified ? "Verified" : "Pending Verification"}</span>
+                          <span className={`inline-block h-2 w-2 rounded-full ${presc.status === "VERIFIED" ? "bg-emerald-500" : presc.status === "INVALID" ? "bg-red-500" : "bg-amber-500"}`} />
+                          <span className="text-xs font-bold text-slate-600">{presc.status.replaceAll("_", " ")}</span>
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <a href={presc.fileUrl} target="_blank" rel="noopener noreferrer" className="vv-button-light text-sm py-2">
-                          View prescription file
-                        </a>
-                        {!presc.verified && ["OWNER", "MANAGER"].includes(role) ? (
+                        {presc.filePublicId ? <a href={`/api/prescriptions/${presc.id}/download`} className="vv-button-light text-sm py-2">Download prescription file</a> : null}
+                        {presc.status !== "VERIFIED" && ["OWNER", "MANAGER"].includes(role) ? (
                           <form action={verifyPrescriptionAction}>
                             <input type="hidden" name="rxId" value={presc.id} />
                             <button className="vv-button-retail text-sm py-2" type="submit">

@@ -288,24 +288,24 @@ export async function getTryOnFrames(): Promise<TryOnFrame[]> {
   const products = await getStoreProducts();
 
   return products
-    .filter((product) => product.status === "ACTIVE" && product.tryOnEligible)
-    .flatMap((product) => {
-      const selectedImage =
-        product.images.find((image) => image.role === "transparent" || image.role === "ar") ??
-        (product.arImageUrl ? { url: product.arImageUrl, role: "ar" } : null) ??
-        product.images.find((image) => image.role === "front") ??
-        product.images.find((image) => image.role !== "ar");
-      if (!selectedImage) return [];
-      return [{
-        slug: product.slug,
-        name: product.name,
-        brand: product.brand,
-        img: selectedImage.url,
-        imageRole: selectedImage.role === "transparent" || selectedImage.role === "ar"
-          ? "transparent" as const
-          : selectedImage.role === "front" ? "front" as const : "fallback" as const,
-        pricePaise: product.pricePaise
-      }];
+      .filter((product) => product.status === "ACTIVE" && product.tryOnEligible)
+      .flatMap((product) => {
+        const selectedImage =
+          product.images.find((image) => image.role === "transparent" || image.role === "ar") ??
+          (product.arImageUrl ? { url: product.arImageUrl, role: "ar" } : null) ??
+          product.images.find((image) => image.role === "front") ??
+          product.images.find((image) => image.role !== "ar");
+        if (!selectedImage || !selectedImage.url.startsWith("https://res.cloudinary.com/")) return [];
+        return [{
+          slug: product.slug,
+          name: product.name,
+          brand: product.brand,
+          img: selectedImage.url,
+          imageRole: (selectedImage.role === "transparent" || selectedImage.role === "ar"
+            ? "transparent"
+            : selectedImage.role === "front" ? "front" : "fallback") as "transparent" | "front" | "fallback",
+          pricePaise: product.pricePaise
+        }];
     });
 }
 

@@ -3,7 +3,7 @@ import { ImageIcon, Sparkles } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import { deleteTryOnAsset } from "@/lib/ai/gemini";
+import { deleteTryOnAsset, getTryOnResultUrl } from "@/lib/integrations/gemini-try-on";
 
 async function deletePreviewImages(formData: FormData) {
   "use server";
@@ -64,14 +64,14 @@ export default async function AdminPreviewsPage() {
         <p className="vv-kicker text-retail">AI previews</p>
         <h1 className="text-4xl font-extrabold">Frame preview requests</h1>
         <p className="mt-2 max-w-2xl text-slate-600">
-          Review Gemini-generated previews, failure reasons, cache reuse, and temporary customer-photo retention.
+          Review Gemini-generated previews, failure reasons, cost estimates, cache reuse, and temporary customer-photo retention.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="vv-card p-4"><span className="text-xs font-extrabold uppercase text-slate-500">Success rate</span><strong className="mt-1 block text-2xl">{requests.length ? Math.round((completed.length / requests.length) * 100) : 0}%</strong><span className="text-xs text-slate-500">{completed.length} ready · {failed.length} failed</span></div>
+          <div className="vv-card p-4"><span className="text-xs font-extrabold uppercase text-slate-500">Success rate</span><strong className="mt-1 block text-2xl">{requests.length ? Math.round((completed.length / requests.length) * 100) : 0}%</strong><span className="text-xs text-slate-500">Last {requests.length} requests · {completed.length} ready · {failed.length} failed</span></div>
           <div className="vv-card p-4"><span className="text-xs font-extrabold uppercase text-slate-500">Average generation</span><strong className="mt-1 block text-2xl">{avgGenerationMs ? `${(avgGenerationMs / 1000).toFixed(1)}s` : "—"}</strong><span className="text-xs text-slate-500">completed previews</span></div>
           <div className="vv-card p-4"><span className="text-xs font-extrabold uppercase text-slate-500">Generated storage</span><strong className="mt-1 block text-2xl">{(storedResultBytes / (1024 * 1024)).toFixed(1)} MB</strong><span className="text-xs text-slate-500">result assets on this page</span></div>
-          <div className="vv-card p-4"><span className="text-xs font-extrabold uppercase text-slate-500">Most tried frame</span><strong className="mt-1 block truncate text-lg">{mostTriedSlug}</strong><span className="text-xs text-slate-500">{providerCredits.toFixed(2)} provider credits on this page</span></div>
+          <div className="vv-card p-4"><span className="text-xs font-extrabold uppercase text-slate-500">Most tried frame</span><strong className="mt-1 block truncate text-lg">{mostTriedSlug}</strong><span className="text-xs text-slate-500">{providerCredits ? `$${providerCredits.toFixed(2)} estimated cost` : "Cost estimate unavailable"}</span></div>
         </div>
 
         <p className="mt-4 text-xs font-semibold text-slate-500">{statusGroups.map((group) => `${group.status.replace(/_/g, " ")}: ${group._count._all}`).join(" · ") || "No generation activity yet."}</p>
@@ -98,14 +98,14 @@ export default async function AdminPreviewsPage() {
                   <Link className="vv-button-light" href={`/frames/${request.product.slug}?preview=admin`}>
                     View frame
                   </Link>
-                  {request.customerImageUrl ? (
-                    <a className="vv-button-light" href={request.customerImageUrl} target="_blank" rel="noopener">
+                  {getTryOnResultUrl(request.customerImagePublicId, request.customerImageUrl) ? (
+                    <a className="vv-button-light" href={getTryOnResultUrl(request.customerImagePublicId, request.customerImageUrl) ?? "#"} target="_blank" rel="noopener">
                       <ImageIcon className="h-4 w-4" />
                       Customer image
                     </a>
                   ) : null}
-                  {request.resultImageUrl ? (
-                    <a className="vv-button-retail" href={request.resultImageUrl} target="_blank" rel="noopener">
+                  {getTryOnResultUrl(request.resultImagePublicId, request.resultImageUrl) ? (
+                    <a className="vv-button-retail" href={getTryOnResultUrl(request.resultImagePublicId, request.resultImageUrl) ?? "#"} target="_blank" rel="noopener">
                       Result image
                     </a>
                   ) : null}

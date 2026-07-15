@@ -45,7 +45,6 @@ function fittedDimensions(width: number, height: number) {
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
-
 export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnProps) {
   const tryOnFrames = useMemo(() => frames ?? [], [frames]);
   const [selectedIndex, setSelectedIndex] = useState(() => Math.max(0, tryOnFrames.findIndex((frame) => frame.slug === productSlug)));
@@ -60,11 +59,18 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   const [cameraReady, setCameraReady] = useState(false);
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  const selfieFileInputRef = useRef<HTMLInputElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const selectedFrame = tryOnFrames[selectedIndex];
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraReady(false);
+  }, []);
 
   useEffect(() => {
     const nextIndex = tryOnFrames.findIndex((frame) => frame.slug === productSlug);
@@ -116,6 +122,13 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     return () => { cancelled = true; };
   }, [step]);
 
+  // The site-wide WhatsApp button otherwise sits on top of the primary
+  // generation action on small screens.
+  useEffect(() => {
+    document.body.classList.add("try-on-active");
+    return () => document.body.classList.remove("try-on-active");
+  }, []);
+
   useEffect(() => {
     if (step !== "generating") return;
     const messages = [
@@ -133,17 +146,16 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     return () => window.clearInterval(timer);
   }, [step]);
 
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setCameraReady(false);
-  }, []);
-
   const startCamera = async () => {
     setError(null);
     setCapturedPhoto(null);
     setResultPhoto(null);
     setCameraReady(false);
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      setError("Camera access needs HTTPS and browser permission. Use the phone-photo option instead.");
+      setStep("idle");
+      return;
+    }
     try {
       stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -154,8 +166,11 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
       // Transition to the camera step — the useEffect above will reliably
       // attach the stream once the <video> element is mounted by React.
       setStep("camera");
-    } catch {
-      setError("Unable to access your camera. Check browser permissions and try again.");
+    } catch (cameraError) {
+      const detail = cameraError instanceof DOMException && cameraError.name === "NotAllowedError"
+        ? "Camera permission was denied."
+        : "Unable to access your camera.";
+      setError(`${detail} Check browser permissions or use the phone-photo option instead.`);
       setStep("idle");
     }
   };
@@ -164,6 +179,10 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     const video = videoElementRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
+    if (!video.videoWidth || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      setError("Camera is still starting. Wait a moment until you can see yourself, then capture again.");
+      return;
+    }
     const context = canvas.getContext("2d");
     if (!context) return;
     const dimensions = fittedDimensions(video.videoWidth || 720, video.videoHeight || 720);
@@ -177,6 +196,52 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     setCapturedPhoto(canvas.toDataURL("image/jpeg", 0.88));
     stopCamera();
     setStep("review");
+  };
+
+  const prepareSelfieFile = async (file: File) => {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Choose a JPEG, PNG, or WebP selfie.");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setError("Choose a selfie smaller than 12 MB.");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const image = document.createElement("img");
+    try {
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        image.onload = () => {
+          const dimensions = fittedDimensions(image.naturalWidth, image.naturalHeight);
+          const canvas = document.createElement("canvas");
+          canvas.width = dimensions.width;
+          canvas.height = dimensions.height;
+          const context = canvas.getContext("2d");
+          if (!context) return reject(new Error("Canvas is unavailable."));
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.88));
+        };
+        image.onerror = () => reject(new Error("The selected photo could not be read."));
+        image.src = objectUrl;
+      });
+      setError(null);
+      setCapturedPhoto(dataUri);
+      setResultPhoto(null);
+      stopCamera();
+      setStep("review");
+    } catch (fileError) {
+      setError(fileError instanceof Error ? fileError.message : "The selected photo could not be prepared.");
+      setStep("idle");
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+
+  const handleSelfieFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) void prepareSelfieFile(file);
   };
 
   const generateAiTryOn = async () => {
@@ -286,17 +351,17 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-      <aside className="rounded-2xl border border-slate-200 bg-white p-6 shadow-soft self-start lg:sticky lg:top-28">
+    <div className="grid gap-4 lg:grid-cols-[320px_1fr] lg:gap-6">
+      <aside className="order-2 self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-soft lg:order-1 lg:sticky lg:top-28 lg:p-6">
         <h2 className="text-lg font-extrabold text-slate-800">Select Frame</h2>
         <p className="mt-1 text-xs text-slate-500">The selected product image is used automatically. No frame upload or positioning is needed.</p>
-        <div className="mt-4 grid gap-2">
+        <div className="mt-4 grid grid-flow-col auto-cols-[minmax(220px,82%)] gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] lg:grid-flow-row lg:auto-cols-auto lg:overflow-visible lg:pb-0">
           {tryOnFrames.map((frame, index) => (
             <button
               key={frame.slug}
               type="button"
               onClick={() => { setSelectedIndex(index); setStep("idle"); setCapturedPhoto(null); setResultPhoto(null); setError(null); }}
-              className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${selectedIndex === index ? "border-teal-500 bg-teal-50 ring-2 ring-teal-200" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
+              className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition ${selectedIndex === index ? "border-teal-500 bg-teal-50 ring-2 ring-teal-200" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
             >
               <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                 <Image src={frame.img} alt={frame.name} fill className="object-contain p-1" sizes="56px" />
@@ -319,9 +384,9 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
         </Link>
       </aside>
 
-      <section className="relative flex min-h-[540px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6">
+      <section className="order-1 relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-4 lg:order-2 lg:min-h-[540px] lg:p-6">
         {error ? (
-          <div className="absolute left-4 right-4 top-4 z-30 flex items-start gap-3 rounded-xl border border-amber-800/40 bg-amber-950/90 p-4 text-amber-200 backdrop-blur-sm">
+          <div className="absolute left-3 right-3 top-3 z-30 flex items-start gap-3 rounded-xl border border-amber-800/40 bg-amber-950/90 p-3 text-amber-200 backdrop-blur-sm sm:left-4 sm:right-4 sm:top-4 sm:p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
             <p className="flex-1 text-xs font-bold">{error}</p>
             <button type="button" onClick={() => setError(null)} aria-label="Dismiss message"><X className="h-4 w-4" /></button>
@@ -333,6 +398,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-500/10"><Camera className="h-10 w-10 text-teal-400" /></div>
             <div><h3 className="text-xl font-extrabold text-white">Try {selectedFrame.name} with AI</h3><p className="mt-2 max-w-sm text-sm text-slate-400">Take one selfie. We use this product&apos;s catalog image automatically to generate your preview.</p></div>
             <button type="button" onClick={startCamera} className="vv-button-retail flex w-full max-w-xs justify-center gap-2 py-3"><Camera className="h-5 w-5" /> Open camera</button>
+            <button type="button" onClick={() => selfieFileInputRef.current?.click()} className="vv-button flex w-full max-w-xs justify-center gap-2 border-slate-600 py-3 text-slate-200"><Camera className="h-5 w-5" /> Use phone camera or photo</button>
           </div>
         ) : null}
 
@@ -381,6 +447,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
           </div>
         ) : null}
         <canvas ref={canvasRef} className="hidden" />
+        <input ref={selfieFileInputRef} type="file" accept="image/jpeg,image/png,image/webp" capture="user" className="hidden" onChange={handleSelfieFile} />
       </section>
     </div>
   );

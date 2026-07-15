@@ -71,6 +71,10 @@ export default async function ProductPage({
   }
 
   const sellable = productIsSellable(product);
+  const hasVerifiedTryOnAsset = product.tryOnEligible && (
+    product.images.some((image) => (image.role === "transparent" || image.role === "ar") && image.url.startsWith("https://res.cloudinary.com/")) ||
+    Boolean(product.arImageUrl?.startsWith("https://res.cloudinary.com/"))
+  );
   const related = await getRelatedProducts(product);
   const lensPackages = await getLensOptions();
 
@@ -279,7 +283,7 @@ export default async function ProductPage({
             </div>
 
             {/* Virtual Try-On CTA */}
-            {product.tryOnEligible && product.images.length > 0 ? (
+            {hasVerifiedTryOnAsset ? (
               <Link
                 href={`/frames/try-on?slug=${product.slug}`}
                 className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
@@ -295,7 +299,7 @@ export default async function ProductPage({
                 <Camera className="h-8 w-8 text-slate-400 shrink-0" />
                 <div>
                   <strong className="text-sm font-extrabold text-slate-700">Virtual try-on not available</strong>
-                  <p className="text-xs text-slate-500 mt-0.5">This frame needs a verified product image before AI try-on can be enabled.</p>
+                  <p className="text-xs text-slate-500 mt-0.5">This frame needs a verified transparent Cloudinary product asset before AI try-on can be enabled.</p>
                 </div>
               </div>
             )}

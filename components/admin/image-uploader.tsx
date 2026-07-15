@@ -132,7 +132,7 @@ export function ImageUploader({ images, onChange, productName = "Product" }: Pro
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
+        className={`relative cursor-pointer rounded-xl border-2 border-dashed p-5 text-center transition-all duration-200 sm:p-8 ${
           dragOver
             ? "border-teal-500 bg-teal-50"
             : "border-slate-300 hover:border-teal-400 hover:bg-slate-50"
@@ -179,14 +179,14 @@ export function ImageUploader({ images, onChange, productName = "Product" }: Pro
                 onDragStart={() => handleDragStart(index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={() => setDragIndex(null)}
-                className={`grid grid-cols-[auto_80px_1fr_140px_auto] items-center gap-3 border rounded-lg p-2 bg-white transition-shadow ${
+                className={`grid grid-cols-[auto_64px_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border bg-white p-2 transition-shadow sm:grid-cols-[auto_80px_minmax(0,1fr)_140px_auto] sm:gap-3 ${
                   dragIndex === index ? "shadow-lg ring-2 ring-teal-300" : "shadow-sm hover:shadow-md"
                 }`}
               >
                 <GripVertical className="h-4 w-4 text-slate-300 cursor-grab active:cursor-grabbing" />
 
                 {/* Thumbnail */}
-                <div className="w-20 h-14 rounded-md overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center">
+                <div className="flex h-12 w-16 items-center justify-center overflow-hidden rounded-md border border-slate-100 bg-slate-50 sm:h-14 sm:w-20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={image.url}
@@ -204,7 +204,7 @@ export function ImageUploader({ images, onChange, productName = "Product" }: Pro
                   type="text"
                   value={image.alt}
                   onChange={(e) => updateImageAlt(index, e.target.value)}
-                  className="store-input py-1.5 text-xs"
+                  className="store-input min-w-0 py-1.5 text-xs"
                   placeholder="Alt text..."
                 />
 
@@ -212,7 +212,7 @@ export function ImageUploader({ images, onChange, productName = "Product" }: Pro
                 <select
                   value={image.role}
                   onChange={(e) => updateImageRole(index, e.target.value)}
-                  className="store-input py-1.5 text-xs"
+                  className="col-start-2 col-span-2 store-input py-1.5 text-xs sm:col-auto sm:col-span-1"
                 >
                   {IMAGE_ROLES.map((role) => (
                     <option key={role.value} value={role.value}>

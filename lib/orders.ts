@@ -8,6 +8,8 @@ import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
 import { prisma } from "@/lib/db";
 import { checkoutSchema, tryAtHomeSchema } from "@/lib/validations";
 import { uploadFormFile } from "@/lib/uploads";
+import { getCustomerSession } from "@/lib/customer-auth";
+import { parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
 import { grantOrderAccess } from "@/lib/order-access";
 import {
   getCheckoutReservationExpiry,
@@ -46,24 +48,27 @@ export async function checkoutAction(formData: FormData) {
   const publicId = makePublicOrderId();
   const isOnlinePayment = isOnlinePaymentMethod(parsed.data.paymentMethod);
 
-  // Handle Prescription logic
-  const file = formData.get("prescription") as File | null;
-  const requiresPrescription = cart.items.some(item => item.lensOptionId !== null);
-  const prescriptionUploaded = file && file.size > 0;
-
-  if (prescriptionUploaded && file) {
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-    if (!allowedTypes.includes(file.type)) {
-      redirect("/frames/checkout?error=invalid-prescription-type");
+  const requiresPrescription = cart.items.some((item) => item.lensOption?.requiresPrescription);
+  let prescriptionSubmission;
+  try {
+    prescriptionSubmission = parsePrescriptionSubmission(formData, requiresPrescription);
+  } catch (error) {
+    if (error instanceof PrescriptionValidationError) {
+      redirect(`/frames/checkout?error=${encodeURIComponent(error.message)}`);
     }
-    if (file.size > 10 * 1024 * 1024) {
-      redirect("/frames/checkout?error=prescription-file-too-large");
-    }
+    throw error;
   }
 
-  const orderStatus = (requiresPrescription && !prescriptionUploaded)
-    ? "AWAITING_PRESCRIPTION"
-    : "PENDING";
+  // Every prescription lens order waits for clinical verification before lens
+  // processing, whether its prescription was uploaded, entered manually, or is
+  // still due after an eye-test / upload-later choice.
+  const orderStatus = requiresPrescription ? "AWAITING_PRESCRIPTION" : "PENDING";
+  let customerId: string | null = null;
+  try {
+    customerId = (await getCustomerSession())?.userId ?? null;
+  } catch (error) {
+    console.warn("Could not load customer session while creating order", error);
+  }
 
   let order: { id: string; publicId: string } | null = null;
   const reservationExpiresAt = getCheckoutReservationExpiry(parsed.data.paymentMethod);
@@ -76,6 +81,7 @@ export async function checkoutAction(formData: FormData) {
         const created = await tx.order.create({
           data: {
             publicId,
+            userId: customerId,
             customerName: parsed.data.name,
             phone: parsed.data.phone,
             email: parsed.data.email || null,
@@ -141,22 +147,36 @@ export async function checkoutAction(formData: FormData) {
     redirect("/frames/cart?error=out-of-stock");
   }
 
-  // A prescription upload must either persist successfully or the just-created
-  // order is removed. Placeholder URLs are never acceptable medical records.
-  if (prescriptionUploaded && file) {
+  // A prescription record (manual, upload, eye-test, or upload-later) must be
+  // persisted with the order. Medical files are stored as authenticated assets.
+  if (prescriptionSubmission) {
     try {
-      const uploadResult = await uploadFormFile(file, "vision-vistara/prescriptions");
-      if (!uploadResult) throw new Error("Prescription file was empty.");
+      const uploadResult = prescriptionSubmission.upload
+        ? await uploadFormFile(prescriptionSubmission.upload, "vision-vistara/prescriptions", {
+            maxBytes: 10 * 1024 * 1024,
+            authenticated: true
+          })
+        : null;
+      if (prescriptionSubmission.type === "UPLOAD" && !uploadResult) {
+        throw new Error("Prescription file was empty.");
+      }
 
       await prisma.prescription.create({
         data: {
           orderId: order.id,
-          fileUrl: uploadResult.secureUrl,
-          fileName: file.name
+          userId: customerId,
+          type: prescriptionSubmission.type,
+          status: prescriptionSubmission.status,
+          ...prescriptionSubmission.values,
+          fileUrl: uploadResult?.secureUrl,
+          filePublicId: uploadResult?.publicId,
+          fileResourceType: uploadResult?.resourceType,
+          fileFormat: uploadResult?.format,
+          fileName: uploadResult?.originalFilename
         }
       });
     } catch (uploadError) {
-      console.error("Prescription upload to Cloudinary failed:", uploadError);
+      console.error("Prescription persistence failed:", uploadError);
       await prisma.$transaction(async (tx) => {
         await releaseOrderInventoryReservations(tx, order!.id);
         await tx.order.delete({ where: { id: order!.id } });

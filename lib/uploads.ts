@@ -31,12 +31,14 @@ export type UploadedAsset = {
   originalFilename: string;
   bytes: number;
   format?: string;
+  resourceType: "image" | "raw";
 };
 
 type UploadOptions = {
   allowedTypes?: Set<string>;
   maxBytes?: number;
   maxRetries?: number;
+  authenticated?: boolean;
 };
 
 function sleep(ms: number) {
@@ -75,6 +77,7 @@ export async function uploadFormFile(
           {
             folder,
             resource_type: value.type === "application/pdf" ? "raw" : "image",
+            type: options.authenticated ? "authenticated" : "upload",
             use_filename: true,
             unique_filename: true
           },
@@ -89,7 +92,8 @@ export async function uploadFormFile(
               publicId: result.public_id,
               originalFilename: value.name,
               bytes: result.bytes,
-              format: result.format
+              format: result.format,
+              resourceType: value.type === "application/pdf" ? "raw" : "image"
             });
           }
         );

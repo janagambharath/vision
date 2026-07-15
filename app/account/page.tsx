@@ -5,6 +5,9 @@ import { getCustomerUser } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
+import { uploadFormFile } from "@/lib/uploads";
+import { deletePrescriptionAsset } from "@/lib/prescriptions";
+import { revalidatePath } from "next/cache";
 import { Package, FileText, LogOut, ArrowRight, ClipboardList } from "lucide-react";
 
 export const metadata = { title: "My Account | Vision Vistara" };
@@ -24,7 +27,13 @@ export default async function CustomerDashboardPage() {
 
   // Fetch prescriptions
   const prescriptions = await prisma.prescription.findMany({
-    where: { userId: user.id },
+    where: {
+      OR: [
+        { userId: user.id },
+        ...(user.phone ? [{ order: { phone: user.phone } }] : [])
+      ]
+    },
+    include: { order: { select: { phone: true, publicId: true } } },
     orderBy: { createdAt: "desc" }
   });
 
@@ -33,6 +42,50 @@ export default async function CustomerDashboardPage() {
     const cookieStore = await cookies();
     cookieStore.delete("vv_customer_session");
     redirect("/account/login");
+  }
+
+  async function uploadPrescriptionLater(formData: FormData) {
+    "use server";
+    const currentUser = await getCustomerUser();
+    if (!currentUser) redirect("/account/login");
+    const id = String(formData.get("prescriptionId") ?? "");
+    const prescription = await prisma.prescription.findFirst({
+      where: {
+        id,
+        OR: [
+          { userId: currentUser.id },
+          ...(currentUser.phone ? [{ order: { phone: currentUser.phone } }] : [])
+        ]
+      }
+    });
+    if (!prescription) redirect("/account?prescriptionError=not-found");
+
+    try {
+      const uploaded = await uploadFormFile(formData.get("prescription"), "vision-vistara/prescriptions", {
+        maxBytes: 10 * 1024 * 1024,
+        authenticated: true
+      });
+      if (!uploaded) redirect("/account?prescriptionError=file-required");
+      await prisma.prescription.update({
+        where: { id: prescription.id },
+        data: {
+          userId: currentUser.id,
+          type: "UPLOAD",
+          status: "NEEDS_REVIEW",
+          verified: false,
+          fileUrl: uploaded.secureUrl,
+          filePublicId: uploaded.publicId,
+          fileResourceType: uploaded.resourceType,
+          fileFormat: uploaded.format,
+          fileName: uploaded.originalFilename
+        }
+      });
+      await deletePrescriptionAsset(prescription).catch((error) => console.error("Could not remove replaced prescription asset", error));
+      revalidatePath("/account");
+    } catch (error) {
+      console.error("Customer prescription upload failed", error);
+      redirect("/account?prescriptionError=upload-failed");
+    }
   }
 
   return (
@@ -109,24 +162,25 @@ export default async function CustomerDashboardPage() {
             {prescriptions.length === 0 ? (
               <div className="py-8 text-center text-slate-500 flex-1 flex flex-col items-center justify-center">
                 <FileText className="h-10 w-10 text-slate-300 mb-2" />
-                <p className="text-xs">No uploaded prescription cards found.</p>
+                <p className="text-xs">No prescription records found for this account.</p>
               </div>
             ) : (
               <div className="grid gap-3 flex-grow">
                 {prescriptions.map((rx) => (
                   <div key={rx.id} className="p-3 border border-slate-100 rounded-vv flex justify-between items-center text-xs">
                     <div>
-                      <p className="font-bold text-slate-800">{rx.fileName ?? "Prescription Upload"}</p>
-                      <p className="text-slate-500 mt-0.5">Uploaded: {new Date(rx.createdAt).toLocaleDateString()}</p>
+                      <p className="font-bold text-slate-800">{rx.type === "MANUAL" ? "Manual prescription" : rx.fileName ?? rx.type.replaceAll("_", " ")}</p>
+                      <p className="text-slate-500 mt-0.5">{rx.order?.publicId ? `Order ${rx.order.publicId} · ` : ""}{new Date(rx.createdAt).toLocaleDateString()}</p>
                       <span className={`inline-block mt-1 font-bold rounded px-1.5 py-0.5 scale-90 origin-left ${
-                        rx.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                        rx.status === "VERIFIED" ? "bg-emerald-50 text-emerald-700" : rx.status === "INVALID" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"
                       }`}>
-                        {rx.verified ? "Verified" : "Pending Verification"}
+                        {rx.status.replaceAll("_", " ")}
                       </span>
                     </div>
-                    <a href={rx.fileUrl} target="_blank" rel="noopener noreferrer" className="vv-button-light text-[10px] py-1 px-2.5 font-bold">
-                      View file
-                    </a>
+                    <div className="grid gap-2 justify-items-end">
+                      {rx.filePublicId ? <a href={`/api/prescriptions/${rx.id}/download`} className="vv-button-light text-[10px] py-1 px-2.5 font-bold">Download</a> : null}
+                      {rx.type !== "MANUAL" || rx.status !== "VERIFIED" ? <form action={uploadPrescriptionLater} className="flex items-center gap-1"><input type="hidden" name="prescriptionId" value={rx.id} /><input className="max-w-32 text-[10px]" type="file" name="prescription" accept="application/pdf,image/png,image/jpeg,image/webp,.pdf,.png,.jpeg,.jpg,.webp" required /><button className="text-[10px] font-bold text-retail hover:underline" type="submit">{rx.filePublicId ? "Replace" : "Upload"}</button></form> : null}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -11,11 +11,10 @@ import { getPublishBlockersForDraft } from "@/lib/product-publishing";
 export const metadata = { title: "Edit Product | Admin" };
 
 const errorMessages: Record<string, string> = {
-  "missing-fields": "Name, brand, and SKU are required.",
+  "missing-fields": "Name and brand are required.",
   "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
-  "invalid-values": "Check prices, inventory, and measurements. Values must be valid non-negative numbers.",
+  "invalid-values": "Check prices, inventory, and AI-derived values. Values must be valid non-negative numbers.",
   "duplicate-slug": "Another product already uses that slug.",
-  "duplicate-sku": "Another product already uses that SKU.",
   "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
 
@@ -88,7 +87,8 @@ export default async function EditProductPage({
 
     const name = String(formData.get("name") ?? "").trim();
     const brand = String(formData.get("brand") ?? "").trim();
-    const sku = String(formData.get("sku") ?? "").trim();
+    // SKU is a server-issued catalog identifier and is intentionally not editable.
+    const sku = product!.sku;
     const barcode = String(formData.get("barcode") ?? "").trim() || null;
     const slug = slugify(String(formData.get("slug") ?? "").trim() || `${brand}-${name}`);
     const statusValue = String(formData.get("status") ?? "DRAFT");
@@ -152,14 +152,10 @@ export default async function EditProductPage({
     ) redirect(`/admin/products/${currentSlug}/edit?error=invalid-values`);
 
     const duplicate = await prisma.product.findFirst({
-      where: {
-        id: { not: product!.id },
-        OR: [{ slug }, { sku }]
-      },
-      select: { slug: true, sku: true }
+      where: { id: { not: product!.id }, slug },
+      select: { slug: true }
     });
-    if (duplicate?.slug === slug) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-slug`);
-    if (duplicate?.sku === sku) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-sku`);
+    if (duplicate) redirect(`/admin/products/${currentSlug}/edit?error=duplicate-slug`);
 
     const requestedImageCount = Number(formData.get("image_count") ?? 0);
     const imageCount = Number.isInteger(requestedImageCount) && requestedImageCount >= 0 ? Math.min(requestedImageCount, 24) : 0;
@@ -250,7 +246,7 @@ export default async function EditProductPage({
         </Link>
         <div className="mb-8">
           <p className="vv-kicker text-retail">Admin</p>
-          <h1 className="text-4xl font-extrabold">Edit: {product.brand} {product.name}</h1>
+          <h1 className="text-3xl font-extrabold sm:text-4xl">Edit: {product.brand} {product.name}</h1>
           <p className="mt-2 text-slate-600">Update all product details. Changing the slug will create a 301 redirect from the old URL.</p>
         </div>
         {errorMessage ? (

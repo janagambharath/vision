@@ -48,7 +48,7 @@ textarea {
   }
 
   .vv-section {
-    @apply py-24 md:py-32;
+    @apply py-14 sm:py-20 md:py-32;
   }
 
   .vv-card {
@@ -122,9 +122,23 @@ textarea {
   display: none;
 }
 
+/* Try-on has its own WhatsApp action after a generated preview. Keep the
+   global floating launcher from obscuring its capture/generate controls. */
+.try-on-active .whatsapp-float {
+  display: none;
+}
+
 @media (min-width: 640px) {
   .whatsapp-float-label {
     display: inline;
+  }
+}
+
+@media (max-width: 639px) {
+  .whatsapp-float {
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    padding: 12px;
   }
 }
 

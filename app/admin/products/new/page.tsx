@@ -6,16 +6,17 @@ import { prisma } from "@/lib/db";
 import { getCategories, getBrands } from "@/lib/store-data";
 import { invalidateProductCache } from "@/lib/inventory-actions";
 import { ProductForm } from "@/components/admin/product-form";
-import { getPublishBlockersForDraft } from "@/lib/product-publishing";
+import { getCreateBlockersForDraft, getPublishBlockersForDraft } from "@/lib/product-publishing";
+import { isTrustedProductImageUrl } from "@/lib/product-ai";
+import { createProductSku } from "@/lib/product-sku";
 
 export const metadata = { title: "New Product | Admin" };
 
 const errorMessages: Record<string, string> = {
-  "missing-fields": "Name, brand, and SKU are required.",
+  "missing-fields": "Complete the name, brand, description, selling price, stock quantity, category, and image before creating the product.",
   "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
-  "invalid-values": "Check prices, inventory, and measurements. Values must be valid non-negative numbers.",
+  "invalid-values": "Check prices, inventory, and AI-derived values. Values must be valid non-negative numbers.",
   "duplicate-slug": "Another product already uses that slug.",
-  "duplicate-sku": "Another product already uses that SKU.",
   "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
 
@@ -37,12 +38,12 @@ function readImages(formData: FormData, productId: string, brand: string, name: 
     const alt = String(formData.get(`image_alt_${i}`) ?? "").trim();
     const role = String(formData.get(`image_role_${i}`) ?? "gallery");
     const sortOrder = Number(formData.get(`image_sort_${i}`) ?? i);
-    if (url) {
+    if (url && isTrustedProductImageUrl(url)) {
       images.push({ productId, url, alt, role, sortOrder });
     }
   }
 
-  if (arImageUrl && !images.some((image) => image.role === "ar" && image.url === arImageUrl)) {
+  if (arImageUrl && isTrustedProductImageUrl(arImageUrl) && !images.some((image) => image.role === "ar" && image.url === arImageUrl)) {
     images.push({
       productId,
       url: arImageUrl,
@@ -71,7 +72,6 @@ export default async function NewProductPage({
 
     const name = String(formData.get("name") ?? "").trim();
     const brand = String(formData.get("brand") ?? "").trim();
-    const sku = String(formData.get("sku") ?? "").trim();
     const barcode = String(formData.get("barcode") ?? "").trim() || null;
     const slug = slugify(String(formData.get("slug") ?? "").trim() || `${brand}-${name}`);
     const statusValue = String(formData.get("status") ?? "DRAFT");
@@ -82,13 +82,15 @@ export default async function NewProductPage({
     const tryOnEligible = formData.get("tryOnEligible") === "on";
     const codAvailable = formData.get("codAvailable") === "on";
     const brandId = String(formData.get("brandId") ?? "").trim() || null;
-    const arImageUrl = String(formData.get("arImageUrl") ?? "").trim();
+    const requestedArImageUrl = String(formData.get("arImageUrl") ?? "").trim();
+    const arImageUrl = isTrustedProductImageUrl(requestedArImageUrl) ? requestedArImageUrl : "";
 
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
     const costPricePaise = formData.get("costPricePaise") ? Math.round(Number(formData.get("costPricePaise")) * 100) : null;
     const taxPct = formData.get("taxPct") ? Number(formData.get("taxPct")) : 18;
-    const quantity = Number(formData.get("quantity") ?? 0);
+    const quantityValue = String(formData.get("quantity") ?? "").trim();
+    const quantity = Number(quantityValue);
 
     const description = String(formData.get("description") ?? "").trim();
     const shortDescription = String(formData.get("shortDescription") ?? "").trim() || null;
@@ -126,7 +128,7 @@ export default async function NewProductPage({
     const faceShapes = String(formData.get("faceShapes") ?? "").split(",").map(f => f.trim()).filter(Boolean);
     const lensCompatibility = String(formData.get("lensCompatibility") ?? "").split("\n").map(l => l.trim()).filter(Boolean);
 
-    if (!name || !brand || !sku) redirect("/admin/products/new?error=missing-fields");
+    if (!name || !brand || !description || !pricePaise || pricePaise <= 0 || !quantityValue) redirect("/admin/products/new?error=missing-fields");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect("/admin/products/new?error=invalid-slug");
     if (
       [pricePaise, compareAtPaise, costPricePaise, taxPct, weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight]
@@ -134,20 +136,24 @@ export default async function NewProductPage({
       !Number.isInteger(quantity) || quantity < 0
     ) redirect("/admin/products/new?error=invalid-values");
 
-    const duplicate = await prisma.product.findFirst({
-      where: { OR: [{ slug }, { sku }] },
-      select: { slug: true, sku: true }
-    });
-    if (duplicate?.slug === slug) redirect("/admin/products/new?error=duplicate-slug");
-    if (duplicate?.sku === sku) redirect("/admin/products/new?error=duplicate-sku");
+    const duplicate = await prisma.product.findUnique({ where: { slug }, select: { slug: true } });
+    if (duplicate) redirect("/admin/products/new?error=duplicate-slug");
 
     const requestedImageCount = Number(formData.get("image_count") ?? 0);
     const imageCount = Number.isInteger(requestedImageCount) && requestedImageCount >= 0 ? Math.min(requestedImageCount, 24) : 0;
-    const imageRoles = Array.from({ length: imageCount }, (_, index) => String(formData.get(`image_role_${index}`) ?? "gallery"));
+    const imageRoles = Array.from({ length: imageCount }, (_, index) => {
+      const imageUrl = String(formData.get(`image_url_${index}`) ?? "").trim();
+      return isTrustedProductImageUrl(imageUrl) ? String(formData.get(`image_role_${index}`) ?? "gallery") : "ar";
+    });
     if (arImageUrl) imageRoles.push("ar");
     const categoryCount = selectedCategories.length
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;
+    if (getCreateBlockersForDraft({
+      name, brand, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
+    }).length) redirect("/admin/products/new?error=missing-fields");
+
+    const sku = createProductSku(brand, name);
     if (status === "ACTIVE" && getPublishBlockersForDraft({
       name, brand, sku, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
     }).length) redirect("/admin/products/new?error=publish-incomplete");
@@ -213,7 +219,7 @@ export default async function NewProductPage({
         </Link>
         <div className="mb-8">
           <p className="vv-kicker text-retail">Admin</p>
-          <h1 className="text-4xl font-extrabold">Add New Product</h1>
+          <h1 className="text-3xl font-extrabold sm:text-4xl">Add New Product</h1>
           <p className="mt-2 text-slate-600">Fill in all product details across tabs, upload images, and publish.</p>
         </div>
         {errorMessage ? (

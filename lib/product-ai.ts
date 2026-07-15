@@ -5,8 +5,9 @@ const keywordList = z.array(z.string().trim().min(1).max(80)).max(12);
 
 /**
  * The catalog fields that a vision model may suggest from product photography.
- * Pricing, SKU, measurements, stock, warranty, and return policy are intentionally
- * excluded: they cannot be verified from a frame photograph.
+ * Pricing, SKU, stock, warranty, and return policy are excluded. Measurements
+ * are accepted only when the model can read a printed frame marking; it must
+ * leave them blank rather than estimating physical dimensions from pixels.
  */
 export const productAiDraftSchema = z.object({
   name: z.string().trim().max(120),
@@ -20,6 +21,15 @@ export const productAiDraftSchema = z.object({
   rimType: optionalText,
   gender: z.enum(["", "Men", "Women", "Unisex", "Kids"]),
   ageGroup: z.enum(["", "Adult", "Teen", "Kids"]),
+  size: z.string().trim().max(80),
+  measurements: z.string().trim().max(140),
+  weightGrams: z.number().finite().min(0).max(500).nullable(),
+  frameWidth: z.number().finite().min(0).max(300).nullable(),
+  lensWidth: z.number().finite().min(0).max(200).nullable(),
+  bridgeWidth: z.number().finite().min(0).max(100).nullable(),
+  templeLength: z.number().finite().min(0).max(250).nullable(),
+  frameHeight: z.number().finite().min(0).max(200).nullable(),
+  pdRange: z.string().trim().max(40),
   highlights: z.array(z.string().trim().min(1).max(180)).max(6),
   faceShapes: keywordList,
   lensCompatibility: keywordList,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getPublishBlockersForDraft } from "../lib/product-publishing";
+import { getCreateBlockersForDraft, getPublishBlockersForDraft } from "../lib/product-publishing";
 
 const readyProduct = {
   name: "Vista Classic",
@@ -33,6 +33,24 @@ test("product publish guard rejects missing commercial and catalog essentials", 
   assert.deepEqual(blockers, [
     "a selling price is required",
     "stock quantity must be greater than zero",
+    "at least one product image is required",
+    "at least one category is required"
+  ]);
+});
+
+test("product creation never accepts an incomplete draft", () => {
+  const { sku: _sku, ...createCandidate } = readyProduct;
+  assert.deepEqual(getCreateBlockersForDraft({
+    ...createCandidate,
+    description: "",
+    pricePaise: null,
+    quantity: -1,
+    imageRoles: [],
+    categoryCount: 0
+  }), [
+    "a product description is required",
+    "a selling price is required",
+    "a valid stock quantity is required",
     "at least one product image is required",
     "at least one category is required"
   ]);

@@ -4,25 +4,29 @@ import { prisma } from "@/lib/db";
 import {
   buildGeminiTryOnPrompt,
   geminiTryOnConfigured,
+  geminiTryOnModel,
   generateGeminiTryOn,
+  getTryOnResultUrl,
+  loadTryOnFrameImage,
   parseDataImage,
   selectTryOnProductImage,
-  storeGeminiResult,
+  TryOnError,
   uploadTryOnDataImage
-} from "@/lib/ai/gemini";
+} from "@/lib/integrations/gemini-try-on";
 import { isRateLimited } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 import { slugSchema } from "@/lib/validations";
 
 export const runtime = "nodejs";
 
-const PROMPT_VERSION = "vision-vistara-gemini-v1";
+const PROMPT_VERSION = "vision-vistara-gemini-two-image-v1";
 const PREVIEW_DISCLAIMER =
   "AI try-on is an appearance preview only. It does not guarantee exact fit, lens thickness, prescription suitability, or the final manufactured frame alignment.";
 const CUSTOMER_IMAGE_RETENTION_DAYS = 30;
 
-function publicPreviewError() {
-  return "We couldn't generate your preview right now. Please try again.";
+function publicPreviewError(error: unknown) {
+  if (error instanceof TryOnError && !error.retryable) return error.message;
+  return "Gemini could not generate your preview right now. We logged the failure and retried once; please try again later.";
 }
 
 export async function POST(request: NextRequest) {
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!geminiTryOnConfigured()) {
-    return NextResponse.json({ error: "AI try-on is not configured yet. Please try again later." }, { status: 503 });
+    return NextResponse.json({ error: "AI try-on is unavailable: GEMINI_API_KEY and Cloudinary storage must both be configured." }, { status: 503 });
   }
 
   const body = await request.json().catch(() => null) as {
@@ -44,7 +48,6 @@ export async function POST(request: NextRequest) {
   } | null;
   const parsedSlug = slugSchema.safeParse(body?.frameSlug);
   const customerImage = parseDataImage(body?.customerImage);
-  
   if (!parsedSlug.success || !customerImage || body?.privacyConsent !== true) {
     return NextResponse.json({ error: "Capture a clear JPEG, PNG, or WebP selfie to continue." }, { status: 400 });
   }
@@ -61,7 +64,6 @@ export async function POST(request: NextRequest) {
   if (!frameImage) {
     return NextResponse.json({ error: "This frame needs a product image before AI try-on can be used." }, { status: 422 });
   }
-
   let customerId: string | null = null;
   try {
     customerId = (await getCustomerSession())?.userId ?? null;
@@ -69,21 +71,24 @@ export async function POST(request: NextRequest) {
     // Guest try-on remains available when the account session is unavailable.
   }
 
-  const cached = await prisma.framePreviewRequest.findFirst({
+  // A guest's exact selfie hash must never retrieve another guest's retained
+  // preview. Reuse is allowed only inside the authenticated customer's scope.
+  const cached = customerId ? await prisma.framePreviewRequest.findFirst({
     where: {
       productId: product.id,
       customerImageHash: customerImage.hash,
+      customerId,
       status: "READY",
-      resultImageUrl: { not: null },
-      ...(customerId ? { customerId } : {})
+      resultImageUrl: { not: null }
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, resultImageUrl: true, generationMs: true, frameImageUrl: true }
-  });
-  if (cached?.resultImageUrl) {
+    select: { id: true, resultImageUrl: true, resultImagePublicId: true, generationMs: true, frameImageUrl: true }
+  }) : null;
+  const cachedUrl = cached ? getTryOnResultUrl(cached.resultImagePublicId, cached.resultImageUrl) : null;
+  if (cached?.resultImageUrl && cachedUrl) {
     return NextResponse.json({
       requestId: cached.id,
-      image: cached.resultImageUrl,
+      image: cachedUrl,
       cached: true,
       generationMs: cached.generationMs,
       frameImageUrl: cached.frameImageUrl,
@@ -113,27 +118,33 @@ export async function POST(request: NextRequest) {
         disclaimer: PREVIEW_DISCLAIMER,
         promptVersion: PROMPT_VERSION,
         prompt,
-        model: "gemini-2.5-flash-image",
+        model: geminiTryOnModel(),
         expiresAt: new Date(Date.now() + CUSTOMER_IMAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000)
       },
       select: { id: true }
     });
     previewRequestId = previewRequest.id;
 
+    const trustedFrameImage = await loadTryOnFrameImage(frameImage.url, request.signal);
     let geminiResult: Awaited<ReturnType<typeof generateGeminiTryOn>> | null = null;
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        geminiResult = await generateGeminiTryOn({ customerImage, frameImageUrl: frameImage.url, prompt, signal: request.signal });
+        geminiResult = await generateGeminiTryOn({ customerImage, frameImage: trustedFrameImage, prompt, signal: request.signal });
         break;
       } catch (error) {
         if (request.signal.aborted) throw error;
         lastError = error;
+        if (error instanceof TryOnError && !error.retryable) break;
       }
     }
     if (!geminiResult) throw lastError instanceof Error ? lastError : new Error("Gemini generation failed.");
 
-    const storedResult = await storeGeminiResult(geminiResult.sampleUrl);
+    const storedResult = await uploadTryOnDataImage({
+      dataImage: geminiResult.image,
+      folder: "vision-vistara/ai-try-on-results",
+      tags: ["ai-try-on", "gemini-generated-preview"]
+    });
     await prisma.framePreviewRequest.update({
       where: { id: previewRequest.id },
       data: {
@@ -143,7 +154,8 @@ export async function POST(request: NextRequest) {
         resultBytes: storedResult.bytes,
         providerRequestId: geminiResult.providerRequestId,
         providerCost: geminiResult.providerCost,
-        generationMs: geminiResult.generationMs
+        generationMs: geminiResult.generationMs,
+        model: geminiResult.model
       }
     });
 
@@ -156,13 +168,17 @@ export async function POST(request: NextRequest) {
       disclaimer: PREVIEW_DISCLAIMER
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    console.error("Gemini AI try-on failed", error);
+    console.error("Gemini AI try-on failed", {
+      previewRequestId,
+      productSlug: parsedSlug.data,
+      error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error
+    });
     if (previewRequestId) {
       await prisma.framePreviewRequest.update({
         where: { id: previewRequestId },
-        data: { status: "FAILED", failureReason: publicPreviewError() }
+        data: { status: "FAILED", failureReason: error instanceof Error ? error.message.slice(0, 1000) : "Unknown Gemini generation failure." }
       }).catch(() => undefined);
     }
-    return NextResponse.json({ error: publicPreviewError() }, { status: 502 });
+    return NextResponse.json({ error: publicPreviewError(error) }, { status: error instanceof TryOnError && !error.retryable ? 422 : 502 });
   }
 }
