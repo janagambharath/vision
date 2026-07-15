@@ -45,39 +45,6 @@ function fittedDimensions(width: number, height: number) {
   return { width: Math.round(width * scale), height: Math.round(height * scale) };
 }
 
-function loadImage(source: string) {
-  return new Promise<HTMLImageElement>((resolve, reject) => {
-    const image = new window.Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("The selected frame image could not be prepared."));
-    image.src = source;
-  });
-}
-
-/**
- * FLUX.1 Kontext accepts one image. This invisible, automatic conditioning image
- * combines the captured selfie with the server-selected product asset. It is never
- * shown as a local try-on result and customers never position the frame themselves.
- */
-async function createAutomaticConditioningImage(customerPhoto: string, frameImageUrl: string) {
-  const [customerImage, frameImage] = await Promise.all([loadImage(customerPhoto), loadImage(frameImageUrl)]);
-  const canvas = document.createElement("canvas");
-  const dimensions = fittedDimensions(customerImage.naturalWidth, customerImage.naturalHeight);
-  canvas.width = dimensions.width;
-  canvas.height = dimensions.height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Your browser could not prepare the AI preview.");
-
-  context.drawImage(customerImage, 0, 0, canvas.width, canvas.height);
-  const frameWidth = canvas.width * 0.5;
-  const frameHeight = frameWidth * (frameImage.naturalHeight / frameImage.naturalWidth);
-  const frameX = (canvas.width - frameWidth) / 2;
-  const frameY = canvas.height * 0.29;
-  context.drawImage(frameImage, frameX, frameY, frameWidth, frameHeight);
-
-  return canvas.toDataURL("image/jpeg", 0.88);
-}
 
 export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnProps) {
   const tryOnFrames = useMemo(() => frames ?? [], [frames]);
@@ -90,6 +57,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   const [generationMessage, setGenerationMessage] = useState("Preparing your secure preview…");
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -107,6 +75,46 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     streamRef.current?.getTracks().forEach((track) => track.stop());
     abortRef.current?.abort();
   }, []);
+
+  // Attach the camera stream to the video element once React has rendered it.
+  // This replaces the previous setTimeout(0) which raced against React's render
+  // commit and frequently left videoElementRef.current as null.
+  useEffect(() => {
+    if (step !== "camera" || !streamRef.current) return;
+
+    let cancelled = false;
+
+    function tryAttach() {
+      if (cancelled) return;
+      const video = videoElementRef.current;
+      if (!video) {
+        // Video element is not yet in the DOM — wait for the next frame.
+        requestAnimationFrame(tryAttach);
+        return;
+      }
+      if (video.srcObject !== streamRef.current) {
+        video.srcObject = streamRef.current;
+      }
+      video.play()
+        .then(() => { if (!cancelled) setCameraReady(true); })
+        .catch(() => {
+          // Autoplay may be blocked — user gesture is still required on some
+          // browsers. Try once more after a brief delay.
+          if (!cancelled) {
+            window.setTimeout(() => {
+              video.play()
+                .then(() => { if (!cancelled) setCameraReady(true); })
+                .catch(() => undefined);
+            }, 200);
+          }
+        });
+    }
+
+    // Use rAF to ensure the DOM is committed after React render.
+    requestAnimationFrame(tryAttach);
+
+    return () => { cancelled = true; };
+  }, [step]);
 
   useEffect(() => {
     if (step !== "generating") return;
@@ -128,12 +136,14 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setCameraReady(false);
   }, []);
 
   const startCamera = async () => {
     setError(null);
     setCapturedPhoto(null);
     setResultPhoto(null);
+    setCameraReady(false);
     try {
       stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -141,13 +151,9 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
         audio: false
       });
       streamRef.current = stream;
+      // Transition to the camera step — the useEffect above will reliably
+      // attach the stream once the <video> element is mounted by React.
       setStep("camera");
-      window.setTimeout(() => {
-        if (videoElementRef.current && streamRef.current) {
-          videoElementRef.current.srcObject = streamRef.current;
-          videoElementRef.current.play().catch(() => undefined);
-        }
-      }, 0);
     } catch {
       setError("Unable to access your camera. Check browser permissions and try again.");
       setStep("idle");
@@ -185,14 +191,12 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     abortRef.current = controller;
 
     try {
-      const conditioningImage = await createAutomaticConditioningImage(capturedPhoto, selectedFrame.img);
       const response = await fetch("/api/ai/try-on", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           frameSlug: selectedFrame.slug,
           customerImage: capturedPhoto,
-          conditioningImage,
           privacyConsent: true
         }),
         signal: controller.signal
@@ -335,11 +339,17 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
         {step === "camera" ? (
           <>
             <div className="relative aspect-square w-full max-w-lg overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl">
-              <video ref={videoElementRef} playsInline muted className="h-full w-full scale-x-[-1] object-cover" />
+              <video ref={videoElementRef} autoPlay playsInline muted className="h-full w-full scale-x-[-1] object-cover" />
+              {!cameraReady ? (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-900/80 backdrop-blur-sm">
+                  <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
+                  <p className="text-xs font-bold text-slate-300">Connecting camera…</p>
+                </div>
+              ) : null}
               <div className="pointer-events-none absolute inset-[13%_22%] rounded-[45%] border-2 border-dashed border-teal-300/70" />
               <p className="absolute bottom-3 left-3 right-3 rounded-lg bg-black/60 px-3 py-2 text-center text-xs font-bold text-white backdrop-blur-sm">{CAMERA_GUIDANCE}</p>
             </div>
-            <div className="mt-6 flex gap-3"><button type="button" onClick={capturePhoto} className="vv-button bg-white text-slate-900 border-white"><Camera className="h-4 w-4" /> Capture selfie</button><button type="button" onClick={() => { stopCamera(); setStep("idle"); }} className="vv-button border-slate-700 text-slate-300">Cancel</button></div>
+            <div className="mt-6 flex gap-3"><button type="button" onClick={capturePhoto} disabled={!cameraReady} className="vv-button bg-white text-slate-900 border-white disabled:opacity-50 disabled:cursor-not-allowed"><Camera className="h-4 w-4" /> Capture selfie</button><button type="button" onClick={() => { stopCamera(); setStep("idle"); }} className="vv-button border-slate-700 text-slate-300">Cancel</button></div>
           </>
         ) : null}
 

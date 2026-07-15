@@ -309,6 +309,25 @@ export async function getTryOnFrames(): Promise<TryOnFrame[]> {
     });
 }
 
+export async function getProductsBySlugs(slugs: string[]) {
+  if (!hasDatabaseUrl() || !slugs.length) return [];
+
+  const products = await prisma.product.findMany({
+    where: {
+      slug: { in: slugs },
+      status: "ACTIVE",
+      deletedAt: null
+    },
+    include: PRODUCT_INCLUDE
+  });
+
+  // Preserve the order of the original slugs array
+  const mapped = products.map(mapDbProduct);
+  return slugs
+    .map(slug => mapped.find(p => p.slug === slug))
+    .filter((p): p is StoreProduct => p !== undefined);
+}
+
 export async function getRelatedProducts(product: StoreProduct, limit = 4) {
   if (!hasDatabaseUrl()) return [];
 
@@ -383,6 +402,10 @@ export async function getFilterOptions() {
     };
   }
 
+  const cacheKey = "store:filter-options";
+  const cached = await getCache<any>(cacheKey);
+  if (cached) return cached;
+
   const [categories, brands, genders, materials, shapes, colors] = await Promise.all([
     prisma.category.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, name: true } }),
     prisma.product.findMany({ where: { status: "ACTIVE", deletedAt: null }, select: { brand: true }, distinct: ["brand"] }),
@@ -392,7 +415,7 @@ export async function getFilterOptions() {
     prisma.product.findMany({ where: { status: "ACTIVE", deletedAt: null, colour: { not: null } }, select: { colour: true }, distinct: ["colour"] })
   ]);
 
-  return {
+  const result = {
     categories: categories.map(c => ({ value: c.slug, label: c.name })),
     brands: brands.map(b => ({ value: b.brand, label: b.brand })),
     genders: genders.filter(g => g.gender).map(g => ({ value: g.gender!, label: g.gender! })),
@@ -400,6 +423,9 @@ export async function getFilterOptions() {
     shapes: shapes.filter(s => s.shape).map(s => ({ value: s.shape!, label: s.shape! })),
     colors: colors.filter(c => c.colour).map(c => ({ value: c.colour!, label: c.colour! }))
   };
+
+  await setCache(cacheKey, result, 600);
+  return result;
 }
 
 export async function getProductSlugs() {

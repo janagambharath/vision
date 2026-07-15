@@ -12,7 +12,7 @@ export default async function CheckoutPage() {
   const items = cart?.items ?? [];
   const totals = calculateCartTotals(cart);
 
-  if (!items.length) {
+  if (!cart || !items.length) {
     return (
       <main className="vv-section bg-paper flex min-h-[50vh] items-center justify-center">
         <div className="vv-container text-center">
@@ -26,6 +26,43 @@ export default async function CheckoutPage() {
     );
   }
 
+  const mappedCart = {
+    id: cart.id,
+    items: cart.items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+      lensOption: item.lensOption,
+      product: {
+        ...item.product,
+        currency: "INR" as const,
+        primaryCategory: "Frames",
+        categories: [],
+        inventoryQuantity: item.product.inventory?.quantity ?? 0,
+        inventoryStatus: item.product.inventory?.status ?? "PRICE_REQUIRED",
+        material: item.product.material ?? "Confirm in clinic",
+        colour: item.product.colour ?? "As photographed",
+        shape: item.product.shape ?? "Fit check required",
+        rimType: item.product.rimType ?? "Frame",
+        size: item.product.size ?? item.product.measurements ?? "Fit check required",
+        measurements: item.product.measurements ?? "Fit check required",
+        images: item.product.images.map((img) => ({
+          url: img.url,
+          alt: img.alt,
+          role: img.role as any,
+          sortOrder: img.sortOrder
+        })),
+        highlights: item.product.highlights ?? [],
+        lensCompatibility: item.product.lensCompatibility ?? [],
+        faceShapes: item.product.faceShapes ?? [],
+        careInstructions: item.product.careInstructions ?? "",
+        warranty: item.product.warranty ?? "",
+        returnPolicy: item.product.returnPolicy ?? "",
+        deliveryEstimate: item.product.deliveryEstimate ?? "",
+        seoKeywords: item.product.seoKeywords ?? []
+      }
+    }))
+  };
+
   return (
     <main className="vv-section bg-paper">
       <div className="vv-container">
@@ -35,7 +72,7 @@ export default async function CheckoutPage() {
           <p className="mt-2 text-slate-600">Provide shipping details, prescription attachments, and payment preferences.</p>
         </div>
 
-        <CheckoutForm cart={cart} totals={totals} />
+        <CheckoutForm cart={mappedCart} totals={totals} />
       </div>
     </main>
   );

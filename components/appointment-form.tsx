@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { CalendarCheck, CheckCircle2, Loader2, Phone, User, FileText, Clock } from "lucide-react";
 
 interface AppointmentFormProps {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<{ error?: string } | void>;
 }
 
 const timeSlots = [
@@ -30,12 +30,22 @@ const services = [
 
 export function AppointmentForm({ action }: AppointmentFormProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (formData: FormData) => {
+    setErrorMsg(null);
     startTransition(async () => {
-      await action(formData);
-      setSubmitted(true);
+      try {
+        const result = await action(formData);
+        if (result && result.error) {
+          setErrorMsg(result.error);
+        } else {
+          setSubmitted(true);
+        }
+      } catch (err) {
+        setErrorMsg("An unexpected error occurred. Please try again.");
+      }
     });
   };
 
@@ -139,6 +149,11 @@ export function AppointmentForm({ action }: AppointmentFormProps) {
       </label>
 
       <div className="md:col-span-2">
+        {errorMsg && (
+          <p className="mb-4 text-sm font-bold text-red-600 bg-red-50 border border-red-100 p-3 rounded">
+            {errorMsg}
+          </p>
+        )}
         <button
           className="vv-button-primary w-full md:w-auto"
           type="submit"

@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getCategories } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
+import { serializeJsonLd } from "@/lib/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,34 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   const currentCat = categories.find(c => c.slug === category);
   const label = currentCat?.name ?? category.replace(/-/g, " ");
 
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: SITE_URL
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Frames",
+        item: `${SITE_URL}/frames`
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: label,
+        item: `${SITE_URL}/frames/category/${category}`
+      }
+    ]
+  };
+
   return (
     <main className="vv-section bg-paper">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }} />
       <div className="vv-container">
         <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" />

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, ShoppingBag, Truck, WandSparkles, Heart } from "lucide-react";
+import { Search, ShoppingBag, Truck, WandSparkles, Heart, User } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SITE_URL, STORE_NAME } from "@/lib/constants";
 import { CompareProvider } from "@/components/compare-context";
@@ -46,8 +46,11 @@ export default function FramesLayout({ children }: { children: React.ReactNode }
               <Truck className="h-4 w-4" />
               Track Order
             </Link>
+            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/frames/account">
+              <User className="h-4 w-4" />
+              My Account
+            </Link>
           </nav>
-          <p className="text-xs uppercase tracking-normal text-slate-500">Retail section: product-first, checkout-ready, database-backed</p>
         </div>
       </div>
       {children}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { ArrowRight, Filter, SlidersHorizontal, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getFeaturedProducts, getCategories } from "@/lib/store-data";
+import { getStoreProducts, getFeaturedProducts, getCategories, getFilterOptions } from "@/lib/store-data";
 import { productIsSellable } from "@/lib/inventory";
 import { SITE_URL } from "@/lib/constants";
 
@@ -16,13 +16,20 @@ export const metadata: Metadata = {
 export default async function FramesPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; category?: string; sort?: string }>;
+  searchParams?: Promise<{ q?: string; category?: string; sort?: string; gender?: string; material?: string; shape?: string; color?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const isFiltered = !!(params.q || params.category || params.sort);
-  const products = await getStoreProducts({ query: params.q, category: params.category });
+  const isFiltered = !!(params.q || params.category || params.sort || params.gender || params.material || params.shape || params.color);
+  const products = await getStoreProducts({ 
+    query: params.q, 
+    category: params.category,
+    gender: params.gender,
+    material: params.material,
+    shape: params.shape,
+    color: params.color
+  });
   const featured = await getFeaturedProducts(6);
-  const categories = await getCategories();
+  const filterOptions = await getFilterOptions();
 
   const sortedProducts = [...products].sort((a, b) => {
     if (params.sort === "price-asc") return (a.pricePaise ?? Number.MAX_SAFE_INTEGER) - (b.pricePaise ?? Number.MAX_SAFE_INTEGER);
@@ -39,7 +46,7 @@ export default async function FramesPage({
       {/* Search & Filter Bar */}
       <section className="store-band">
         <div className="vv-container py-4">
-          <form className="grid gap-3 lg:grid-cols-[1fr_200px_200px_auto]" action="/frames">
+          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7" action="/frames">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Search frames
               <input className="store-input" type="search" name="q" defaultValue={params.q ?? ""} placeholder="Brand, SKU, material, shape, colour..." />
@@ -48,10 +55,37 @@ export default async function FramesPage({
               Category
               <select className="store-input" name="category" defaultValue={params.category ?? ""}>
                 <option value="">All categories</option>
-                {categories.map((cat) => (
-                  <option key={cat.slug} value={cat.slug}>
-                    {cat.name}
+                {filterOptions.categories.map((cat: { value: string; label: string }) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
                   </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+              Gender
+              <select className="store-input" name="gender" defaultValue={params.gender ?? ""}>
+                <option value="">Any</option>
+                {filterOptions.genders.map((g: { value: string; label: string }) => (
+                  <option key={g.value} value={g.value}>{g.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+              Shape
+              <select className="store-input" name="shape" defaultValue={params.shape ?? ""}>
+                <option value="">Any</option>
+                {filterOptions.shapes.map((s: { value: string; label: string }) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+              Material
+              <select className="store-input" name="material" defaultValue={params.material ?? ""}>
+                <option value="">Any</option>
+                {filterOptions.materials.map((m: { value: string; label: string }) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
                 ))}
               </select>
             </label>

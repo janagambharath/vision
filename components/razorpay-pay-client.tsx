@@ -48,7 +48,7 @@ export default function RazorpayPayClient({ order }: { order: OrderDetail }) {
         description: `Eyewear Order: ${order.publicId}`,
         image: "/assets/vision-vistara-eye-logo.png",
         order_id: config.razorpayOrderId,
-        handler: async function (response: any) {
+        handler: async function (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) {
           setLoading(true);
           try {
             const verifyRes = await fetch("/api/razorpay/verify", {

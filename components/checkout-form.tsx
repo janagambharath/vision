@@ -2,20 +2,16 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { CreditCard, Lock, ShieldCheck, RefreshCw, Smartphone, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { checkoutAction } from "@/lib/orders";
+import type { CheckoutCart, CheckoutTotals, CheckoutCartItem } from "@/types/checkout";
+import { checkoutSchema } from "@/lib/validations";
 
 interface CheckoutFormProps {
-  cart: any;
-  totals: {
-    subtotalPaise: number;
-    lensTotalPaise: number;
-    shippingPaise: number;
-    taxPaise: number;
-    discountPaise: number;
-    grandTotalPaise: number;
-  };
+  cart: CheckoutCart;
+  totals: CheckoutTotals;
 }
 
 export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
@@ -25,6 +21,7 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
   const [loadingPincode, setLoadingPincode] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("RAZORPAY");
   const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "");
@@ -50,6 +47,38 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
     }
   };
 
+  const handleAction = (formData: FormData) => {
+    const data = Object.fromEntries(formData.entries());
+    const result = checkoutSchema.safeParse(data);
+    
+    if (!result.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const err of result.error.errors) {
+        if (err.path[0]) {
+          fieldErrors[err.path[0] as string] = err.message;
+        }
+      }
+      setErrors(fieldErrors);
+      // Scroll to top to show errors
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    
+    // Also handle file validation for prescription
+    const file = formData.get("prescription") as File | null;
+    if (file && file.size > 0) {
+      if (file.size > 10 * 1024 * 1024) {
+        setErrors({ prescription: "File size must be less than 10MB" });
+        return;
+      }
+    }
+
+    setErrors({});
+    startTransition(async () => {
+      await checkoutAction(formData);
+    });
+  };
+
   const paymentOptions = [
     { id: "RAZORPAY", label: "Razorpay (All-in-one)", desc: "Cards, Netbanking, UPI" },
     { id: "UPI", label: "UPI", desc: "Google Pay, PhonePe, Paytm" },
@@ -60,13 +89,11 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
 
   const items = cart?.items ?? [];
 
+  const inputClass = (name: string) => `store-input ${errors[name] ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : ""}`;
+
   return (
     <form
-      action={(formData) => {
-        startTransition(async () => {
-          await checkoutAction(formData);
-        });
-      }}
+      action={handleAction}
       method="POST"
       encType="multipart/form-data"
       className="grid gap-6 lg:grid-cols-[1fr_380px]"
@@ -78,20 +105,23 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
             Name
-            <input className="store-input" type="text" name="name" required />
+            <input className={inputClass("name")} type="text" name="name" required />
+            {errors.name && <span className="text-xs text-red-500 font-normal">{errors.name}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
             Phone
-            <input className="store-input" type="tel" name="phone" required />
+            <input className={inputClass("phone")} type="tel" name="phone" required />
+            {errors.phone && <span className="text-xs text-red-500 font-normal">{errors.phone}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
             Email optional
-            <input className="store-input" type="email" name="email" />
+            <input className={inputClass("email")} type="email" name="email" />
+            {errors.email && <span className="text-xs text-red-500 font-normal">{errors.email}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600 relative">
             Pincode
             <input
-              className="store-input"
+              className={inputClass("pincode")}
               type="text"
               name="pincode"
               maxLength={6}
@@ -100,52 +130,58 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
               required
             />
             {loadingPincode && (
-              <RefreshCw className="absolute right-3 bottom-3.5 h-4 w-4 animate-spin text-slate-400" />
+              <RefreshCw className="absolute right-3 bottom-9 h-4 w-4 animate-spin text-slate-400" />
             )}
+            {errors.pincode && <span className="text-xs text-red-500 font-normal">{errors.pincode}</span>}
           </label>
         </div>
 
         <label className="grid gap-2 text-sm font-extrabold text-slate-600">
           Address line 1
-          <input className="store-input" type="text" name="line1" required />
+          <input className={inputClass("line1")} type="text" name="line1" required />
+          {errors.line1 && <span className="text-xs text-red-500 font-normal">{errors.line1}</span>}
         </label>
         <label className="grid gap-2 text-sm font-extrabold text-slate-600">
           Address line 2 optional
-          <input className="store-input" type="text" name="line2" />
+          <input className={inputClass("line2")} type="text" name="line2" />
+          {errors.line2 && <span className="text-xs text-red-500 font-normal">{errors.line2}</span>}
         </label>
 
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
             City
             <input
-              className="store-input"
+              className={inputClass("city")}
               type="text"
               name="city"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               required
             />
+            {errors.city && <span className="text-xs text-red-500 font-normal">{errors.city}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
             State optional
             <input
-              className="store-input"
+              className={inputClass("state")}
               type="text"
               name="state"
               value={state}
               onChange={(e) => setState(e.target.value)}
             />
+            {errors.state && <span className="text-xs text-red-500 font-normal">{errors.state}</span>}
           </label>
         </div>
 
         <div className="grid gap-4">
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
             Delivery method
-            <select className="store-input" name="deliveryMethod" required>
+            <select className={inputClass("deliveryMethod")} name="deliveryMethod" required>
               <option value="DELIVERY">Delivery</option>
               <option value="TRY_AT_HOME">Try at home</option>
               <option value="STORE_PICKUP">Store pickup</option>
             </select>
+            {errors.deliveryMethod && <span className="text-xs text-red-500 font-normal">{errors.deliveryMethod}</span>}
           </label>
         </div>
 
@@ -175,12 +211,13 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
               );
             })}
           </div>
+          {errors.paymentMethod && <span className="text-xs text-red-500 font-normal">{errors.paymentMethod}</span>}
         </div>
 
         <label className="grid gap-2 text-sm font-extrabold text-slate-600 mt-2">
           Prescription upload (optional — required for prescription lenses)
           <input
-            className="store-input"
+            className={inputClass("prescription")}
             type="file"
             name="prescription"
             accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -188,28 +225,33 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
           <span className="text-xs text-slate-400 font-normal">
             JPEG, PNG, or PDF · Max 10MB · Required for single vision, progressive, or anti-glare lens orders
           </span>
+          {errors.prescription && <span className="text-xs text-red-500 font-normal">{errors.prescription}</span>}
         </label>
 
         <label className="grid gap-2 text-sm font-extrabold text-slate-600">
           Notes
-          <textarea className="store-input min-h-28 py-3" name="notes" placeholder="Prescription power notes, delivery, or WhatsApp note" />
+          <textarea className={inputClass("notes") + " min-h-28 py-3"} name="notes" placeholder="Prescription power notes, delivery, or WhatsApp note" />
+          {errors.notes && <span className="text-xs text-red-500 font-normal">{errors.notes}</span>}
         </label>
 
         <label className="flex gap-3 text-sm font-bold text-slate-600">
           <input type="checkbox" name="acceptedReturns" required />
-          I accept the return policy for configured prescription eyewear.
+          <span>I accept the <Link href="/return-policy" className="text-retail hover:underline" target="_blank">return policy</Link> for configured prescription eyewear.</span>
         </label>
+        {errors.acceptedReturns && <span className="text-xs text-red-500 font-normal -mt-3">{errors.acceptedReturns}</span>}
+
         <label className="flex gap-3 text-sm font-bold text-slate-600">
           <input type="checkbox" name="acceptedTerms" required />
-          I accept Vision Vistara checkout terms.
+          <span>I accept Vision Vistara <Link href="/terms" className="text-retail hover:underline" target="_blank">checkout terms</Link> and <Link href="/privacy" className="text-retail hover:underline" target="_blank">privacy policy</Link>.</span>
         </label>
+        {errors.acceptedTerms && <span className="text-xs text-red-500 font-normal -mt-3">{errors.acceptedTerms}</span>}
       </section>
 
       <aside className="vv-card sticky top-28 self-start p-6 grid gap-6">
         <div>
           <h2 className="text-2xl font-extrabold border-b border-slate-100 pb-2">Order summary</h2>
           <div className="mt-4 grid gap-3">
-            {items.map((item: any) => {
+            {items.map((item: CheckoutCartItem) => {
               const imgUrl = item.product.images?.[0]?.url || "/placeholder-frame.png";
               return (
                 <div key={item.id} className="flex gap-3 rounded-vv border border-slate-200 p-3 text-sm items-center bg-white">
@@ -236,7 +278,7 @@ export default function CheckoutForm({ cart, totals }: CheckoutFormProps) {
           <SummaryRow label="Frame subtotal" value={formatMoney(totals.subtotalPaise)} />
           <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
           <SummaryRow label="Delivery" value={formatMoney(totals.shippingPaise)} />
-          <SummaryRow label="GST (12%)" value={formatMoney(totals.taxPaise)} />
+          <SummaryRow label={`Tax (${Math.round((totals.taxPaise / (totals.subtotalPaise + totals.lensTotalPaise - totals.discountPaise)) * 100 || 12)}% GST)`} value={formatMoney(totals.taxPaise)} />
           {totals.discountPaise > 0 ? (
             <div className="flex justify-between text-emerald-600 font-bold">
               <dt>Discount</dt>

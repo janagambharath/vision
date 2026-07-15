@@ -22,21 +22,15 @@ export default async function AdminDashboardPage() {
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const [
-    orderCount,
     leadCount,
-    tryAtHomeCount,
     totalRevenue,
     chartOrders,
-    confirmedOrdersCount,
-    deliveredOrdersCount,
-    awaitingPrescriptionCount,
-    pendingTryAtHomeCount,
+    orderStatusGroups,
+    tryAtHomeGroups,
     pendingReviewsCount,
     todaysTrials
   ] = await Promise.all([
-    prisma.order.count().catch(() => 0),
     prisma.lead.count().catch(() => 0),
-    prisma.tryAtHomeRequest.count().catch(() => 0),
     prisma.order.aggregate({ _sum: { grandTotalPaise: true }, where: { status: { in: ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] } } }).catch(() => ({ _sum: { grandTotalPaise: 0 } })),
     // Chart Orders
     prisma.order.findMany({
@@ -46,12 +40,17 @@ export default async function AdminDashboardPage() {
       },
       select: { createdAt: true, grandTotalPaise: true }
     }).catch(() => []),
-    // Funnel Stats
-    prisma.order.count({ where: { status: { in: ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"] } } }).catch(() => 0),
-    prisma.order.count({ where: { status: "DELIVERED" } }).catch(() => 0),
+    // Group Order Statuses
+    prisma.order.groupBy({
+      by: ["status"],
+      _count: true
+    }).catch(() => []),
+    // Group TryAtHome Statuses
+    prisma.tryAtHomeRequest.groupBy({
+      by: ["status"],
+      _count: true
+    }).catch(() => []),
     // Action Items Counts
-    prisma.order.count({ where: { status: "AWAITING_PRESCRIPTION" } }).catch(() => 0),
-    prisma.tryAtHomeRequest.count({ where: { status: "TRY_AT_HOME_BOOKED" } }).catch(() => 0),
     prisma.review.count({ where: { approved: false } }).catch(() => 0),
     // Today's Trials Schedule
     prisma.tryAtHomeRequest.findMany({
@@ -64,6 +63,17 @@ export default async function AdminDashboardPage() {
       orderBy: { preferredSlot: "asc" }
     }).catch(() => [])
   ]);
+
+  type GroupStatus = { status: string; _count: number };
+  const orderCount = orderStatusGroups.reduce((acc: number, group: GroupStatus) => acc + group._count, 0);
+  const confirmedOrdersCount = orderStatusGroups
+    .filter((g: GroupStatus) => ["CONFIRMED", "PACKED", "SHIPPED", "DELIVERED"].includes(g.status))
+    .reduce((acc: number, group: GroupStatus) => acc + group._count, 0);
+  const deliveredOrdersCount = orderStatusGroups.find((g: GroupStatus) => g.status === "DELIVERED")?._count || 0;
+  const awaitingPrescriptionCount = orderStatusGroups.find((g: GroupStatus) => g.status === "AWAITING_PRESCRIPTION")?._count || 0;
+
+  const tryAtHomeCount = tryAtHomeGroups.reduce((acc: number, group: GroupStatus) => acc + group._count, 0);
+  const pendingTryAtHomeCount = tryAtHomeGroups.find((g: GroupStatus) => g.status === "TRY_AT_HOME_BOOKED")?._count || 0;
 
   // Process 30-day Chart Data
   const revenueByDate: Record<string, number> = {};

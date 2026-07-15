@@ -9,6 +9,8 @@ import { addRecentlyViewed } from "@/lib/recently-viewed";
 import LensSelector from "@/components/lens-selector";
 import SizeGuideModal from "@/components/size-guide-modal";
 
+import type { LensOption } from "@prisma/client";
+
 interface ProductCheckoutPanelProps {
   product: {
     slug: string;
@@ -21,7 +23,7 @@ interface ProductCheckoutPanelProps {
     measurements: string | null;
   };
   sellable: boolean;
-  lensPackages: any[];
+  lensPackages: LensOption[];
 }
 
 export default function ProductCheckoutPanel({ product, sellable, lensPackages }: ProductCheckoutPanelProps) {

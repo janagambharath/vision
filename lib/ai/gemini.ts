@@ -101,61 +101,48 @@ export async function generateGeminiTryOn(input: {
   if (!apiKey) throw new Error("Gemini try-on is not configured.");
 
   const startedAt = Date.now();
-  
-  // Fetch frame image as base64
+
+  // Fetch the selected product frame image from the CDN as base64
   const frameRes = await fetch(input.frameImageUrl, { signal: input.signal });
   if (!frameRes.ok) throw new Error("Could not fetch frame image.");
   const frameBuffer = Buffer.from(await frameRes.arrayBuffer());
   const frameBase64 = frameBuffer.toString("base64");
-  const frameContentType = frameRes.headers.get("content-type") || "image/png";
+  const frameContentType = (frameRes.headers.get("content-type") || "image/png").split(";")[0].trim();
 
   const ai = new GoogleGenAI({ apiKey });
-  
+
+  // gemini-2.0-flash-preview-image-generation is the correct model for
+  // image editing with inline image output. responseModalities must include
+  // "IMAGE" or the model returns text only.
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
+    model: "gemini-2.0-flash-preview-image-generation",
     contents: [{
-      role: 'user',
+      role: "user",
       parts: [
         { text: input.prompt },
         { inlineData: { mimeType: input.customerImage.mimeType, data: input.customerImage.base64 } },
-        { inlineData: { mimeType: frameContentType, data: frameBase64 } }
+        { inlineData: { mimeType: frameContentType as "image/jpeg" | "image/png" | "image/webp", data: frameBase64 } }
       ]
     }],
     config: {
-      temperature: 0.2
+      temperature: 0.2,
+      responseModalities: ["IMAGE", "TEXT"]
     }
   });
 
-  const outputBase64 = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  let outputText = "";
-  try {
-    outputText = response.text || "";
-  } catch (e) {
-    // text() might throw if there is no text
-  }
-  
-  let resultBase64 = outputBase64;
-  
-  if (!resultBase64 && outputText) {
-    if (outputText.startsWith('http')) {
-      return { 
-        providerRequestId: "gemini-" + crypto.randomUUID(), 
-        providerCost: null, 
-        sampleUrl: outputText.trim(), 
-        generationMs: Date.now() - startedAt 
-      };
-    } else {
-      resultBase64 = outputText.replace(/^data:image\/(png|jpeg|webp);base64,/, '').trim();
-    }
-  }
+  // With the correct model, the generated image is always in the first part's inlineData.
+  const imagePart = response.candidates?.[0]?.content?.parts?.find(
+    (part) => part.inlineData?.data
+  );
+  const resultBase64 = imagePart?.inlineData?.data;
 
   if (!resultBase64) {
-    throw new Error("Gemini did not return a valid image.");
+    throw new Error("Gemini did not return a valid image. Check the GEMINI_API_KEY and model access.");
   }
-  
-  const mimeType = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.mimeType || 'image/jpeg';
+
+  const mimeType = imagePart?.inlineData?.mimeType || "image/jpeg";
   const dataUri = `data:${mimeType};base64,${resultBase64}`;
-  
+
   return {
     providerRequestId: "gemini-" + crypto.randomUUID(),
     providerCost: null,

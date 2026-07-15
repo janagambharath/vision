@@ -168,7 +168,7 @@ export async function checkoutAction(formData: FormData) {
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
   // Increment coupon usage counter
-  if (cart.coupon) {
+  if (cart.coupon && totals.discountPaise > 0) {
     await prisma.coupon.update({
       where: { id: cart.coupon.id },
       data: { usedCount: { increment: 1 } }
@@ -178,6 +178,12 @@ export async function checkoutAction(formData: FormData) {
       data: { couponCode: cart.coupon.code }
     });
     // Detach coupon from cart after use
+    await prisma.cart.update({
+      where: { id: cart.id },
+      data: { couponId: null }
+    });
+  } else if (cart.coupon) {
+    // If there was a coupon but it was invalid (expired, min order not met), just detach it
     await prisma.cart.update({
       where: { id: cart.id },
       data: { couponId: null }

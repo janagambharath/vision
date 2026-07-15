@@ -4,8 +4,8 @@ import "./globals.css";
 import { CLINIC_NAME, SITE_URL } from "@/lib/constants";
 import { WhatsAppFloat } from "@/components/whatsapp-float";
 
-// Product, account, and admin pages read private services that are unavailable during Railway builds.
-export const dynamic = "force-dynamic";
+
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,6 +45,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <link rel="preconnect" href="https://res.cloudinary.com" />
+        <link rel="dns-prefetch" href="https://res.cloudinary.com" />
+      </head>
       <body className={inter.className}>
         {children}
         <WhatsAppFloat />

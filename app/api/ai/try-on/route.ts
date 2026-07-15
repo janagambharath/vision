@@ -40,13 +40,12 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null) as {
     frameSlug?: unknown;
     customerImage?: unknown;
-    conditioningImage?: unknown;
     privacyConsent?: unknown;
   } | null;
   const parsedSlug = slugSchema.safeParse(body?.frameSlug);
   const customerImage = parseDataImage(body?.customerImage);
-  const conditioningImage = parseDataImage(body?.conditioningImage);
-  if (!parsedSlug.success || !customerImage || !conditioningImage || body?.privacyConsent !== true) {
+  
+  if (!parsedSlug.success || !customerImage || body?.privacyConsent !== true) {
     return NextResponse.json({ error: "Capture a clear JPEG, PNG, or WebP selfie to continue." }, { status: 400 });
   }
 

@@ -30,6 +30,11 @@ import { AppointmentForm } from "@/components/appointment-form";
 import { CLINIC_NAME, CLINIC_PHONE, CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/json-ld";
+import { headers } from "next/headers";
+import { rateLimit } from "@/lib/rate-limit";
+import { leadSchema } from "@/lib/validations";
+
+export const dynamic = "force-dynamic";
 
 export default function ClinicHomePage() {
   const schema = {
@@ -53,6 +58,14 @@ export default function ClinicHomePage() {
   async function bookAppointment(formData: FormData) {
     "use server";
 
+    const headersList = await headers();
+    const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed } = await rateLimit(`appointment:${ip}`, 5, 3600);
+    
+    if (!allowed) {
+      return { error: "Too many appointment requests. Please try again later or call the clinic." };
+    }
+
     const name = String(formData.get("name") ?? "").trim();
     const phone = String(formData.get("phone") ?? "").trim();
     const service = String(formData.get("service") ?? "").trim();
@@ -60,25 +73,38 @@ export default function ClinicHomePage() {
     const timeSlot = String(formData.get("timeSlot") ?? "").trim();
     const notes = String(formData.get("notes") ?? "").trim();
 
-    if (!name || !phone || !service || !preferredDate || !timeSlot) return;
+    const data = {
+      name,
+      phone,
+      source: "appointment_form",
+      intent: service,
+      payload: {
+        preferredDate,
+        timeSlot,
+        notes: notes || undefined,
+      }
+    };
+    
+    const result = leadSchema.safeParse(data);
+    if (!result.success) {
+      return { error: "Invalid form data. Please check your inputs and try again." };
+    }
 
     try {
       await prisma.lead.create({
         data: {
-          name,
-          phone,
-          source: "appointment_form",
+          name: result.data.name,
+          phone: result.data.phone,
+          source: result.data.source,
+          intent: result.data.intent,
+          email: result.data.email,
+          payload: result.data.payload as any,
           status: "NEW",
-          intent: service,
-          payload: {
-            preferredDate,
-            timeSlot,
-            notes: notes || undefined,
-          },
-        },
+        }
       });
     } catch (err) {
       console.error("Appointment booking failed:", err);
+      return { error: "Failed to book appointment. Please call us directly." };
     }
   }
 

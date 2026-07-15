@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { AlertTriangle, Camera, CheckCircle2, Ruler, ShieldCheck, Sparkles, Truck, Star, Clock } from "lucide-react";
+import { rateLimit } from "@/lib/rate-limit";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
@@ -9,8 +11,9 @@ import ProductCheckoutPanel from "@/components/product-checkout-panel";
 import { SITE_URL } from "@/lib/constants";
 import { productIsSellable } from "@/lib/inventory";
 import { formatMoney } from "@/lib/money";
-import { getRelatedProducts, getStoreProduct, getStoreProducts, getLensOptions } from "@/lib/store-data";
+import { getRelatedProducts, getStoreProduct, getProductsBySlugs, getLensOptions } from "@/lib/store-data";
 import { prisma } from "@/lib/db";
+import type { Review } from "@prisma/client";
 import { getRecentlyViewed } from "@/lib/recently-viewed";
 import { serializeJsonLd } from "@/lib/json-ld";
 
@@ -25,8 +28,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   return {
-    title: `${product.brand} ${product.name} | Vision Vistara`,
-    description: product.description,
+    title: product.seoTitle || product.name,
+    description: product.seoDescription || product.shortDescription || product.description.slice(0, 160),
+    robots: product.status === "ACTIVE" ? { index: true, follow: true } : { index: false, follow: false },
     alternates: { canonical: `${SITE_URL}/frames/${product.slug}` },
     openGraph: {
       title: `${product.brand} ${product.name} | Vision Vistara`,
@@ -43,7 +47,7 @@ export default async function ProductPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ blocked?: string; reviewSubmitted?: string }>;
+  searchParams?: Promise<{ blocked?: string; reviewSubmitted?: string; error?: string }>;
 }) {
   const { slug } = await params;
   const product = await getStoreProduct(slug);
@@ -71,13 +75,12 @@ export default async function ProductPage({
   const lensPackages = await getLensOptions();
 
   const recentlyViewedSlugs = await getRecentlyViewed();
-  const allProductsForRV = await getStoreProducts({ includeDrafts: false });
-  const recentlyViewedProducts = allProductsForRV.filter(
-    (p) => p.slug !== product.slug && recentlyViewedSlugs.includes(p.slug)
+  const recentlyViewedProducts = await getProductsBySlugs(
+    recentlyViewedSlugs.filter(s => s !== product.slug)
   );
 
   // Fetch approved reviews safely
-  let reviews: any[] = [];
+  let reviews: Review[] = [];
   try {
     if (product.id) {
       reviews = await prisma.review.findMany({
@@ -91,7 +94,7 @@ export default async function ProductPage({
   }
 
   const avgRating = reviews.length
-    ? (reviews.reduce((sum, r: any) => sum + r.rating, 0) / reviews.length).toFixed(1)
+    ? (reviews.reduce((sum, r: Review) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null;
 
   // Schema BreadcrumbList
@@ -156,6 +159,19 @@ export default async function ProductPage({
 
   async function addReviewAction(formData: FormData) {
     "use server";
+    
+    // Anti-spam honeypot
+    if (formData.get("website")) return;
+    
+    // Rate limit: max 3 reviews per hour per IP
+    const headersList = await headers();
+    const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { allowed } = await rateLimit(`review:${ip}`, 3, 3600);
+    
+    if (!allowed) {
+      redirect(`/frames/${product!.slug}?error=rate-limit`);
+    }
+
     const name = String(formData.get("name") ?? "").trim();
     const rating = Number(formData.get("rating") ?? 5);
     const title = String(formData.get("title") ?? "").trim();
@@ -370,6 +386,14 @@ export default async function ProductPage({
                   ✓ Review submitted! It will appear after moderation approval.
                 </p>
               )}
+              {query.error === "rate-limit" && (
+                <p className="text-xs font-bold text-red-700 bg-red-50 border border-red-100 p-2 rounded">
+                  You have submitted too many reviews recently. Please try again later.
+                </p>
+              )}
+              {/* Honeypot field - visually hidden */}
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
+              
               <label className="grid gap-1 text-xs font-bold text-slate-600">
                 Your Name
                 <input className="store-input py-1.5 px-3" type="text" name="name" required placeholder="e.g. Bharat J." />
