@@ -53,6 +53,7 @@ export async function getProductPublishBlockers(slug: string) {
   });
 
   if (!product) return ["Product no longer exists."];
+  if (product.deletedAt) return ["Archived products cannot be published."];
 
   return getPublishBlockersForDraft({
     name: product.name,

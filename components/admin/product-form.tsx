@@ -23,7 +23,6 @@ type ProductData = {
   pricePaise?: number | null;
   compareAtPaise?: number | null;
   costPricePaise?: number | null;
-  taxPct?: number | null;
   quantity?: number;
   description?: string;
   shortDescription?: string | null;
@@ -375,11 +374,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
               <input className="store-input" type="number" step="0.01" name="costPricePaise"
                 defaultValue={product?.costPricePaise ? product.costPricePaise / 100 : ""}
                 placeholder="For margin calculation" />
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Tax %
-              <input className="store-input" type="number" name="taxPct"
-                defaultValue={product?.taxPct ?? 18} placeholder="18" />
             </label>
           </div>
 

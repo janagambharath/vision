@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { hasOrderAccess } from "@/lib/order-access";
+import { CLINIC_NAME, CLINIC_PHONE } from "@/lib/constants";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -60,10 +61,8 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
             <p className="text-xs text-slate-400 mt-0.5">Date: {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
           </div>
           <div className="text-right">
-            <strong className="block text-lg text-slate-800 font-sans">Vision Vistara</strong>
-            <p className="text-xs text-slate-500 mt-1">Optics & Lasers Eye Care</p>
-            <p className="text-xs text-slate-500">123 Optic Lane, Hyderabad, IN</p>
-            <p className="text-xs text-slate-500">support@visionvistara.online</p>
+            <strong className="block text-lg text-slate-800 font-sans">{CLINIC_NAME}</strong>
+            <p className="text-xs text-slate-500 mt-1">Phone: {CLINIC_PHONE}</p>
           </div>
         </div>
         
@@ -137,10 +136,12 @@ export default async function InvoicePage({ params }: InvoicePageProps) {
               <span>Shipping</span>
               <span>{order.shippingPaise === 0 ? "Free" : formatMoney(order.shippingPaise)}</span>
             </div>
-            <div className="flex justify-between text-slate-500">
-              <span>18% GST (Included)</span>
-              <span>{formatMoney(order.taxPaise)}</span>
-            </div>
+            {order.taxPaise > 0 ? (
+              <div className="flex justify-between text-slate-500">
+                <span>Legacy tax</span>
+                <span>{formatMoney(order.taxPaise)}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between text-base font-extrabold text-slate-900 border-t border-slate-100 pt-3 mt-1">
               <span>Grand Total</span>
               <span className="text-teal-700">{formatMoney(order.grandTotalPaise)}</span>

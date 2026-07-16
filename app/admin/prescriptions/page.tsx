@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { FileCheck2, FileText } from "lucide-react";
-import { requireAdmin, requireManager } from "@/lib/admin-auth";
+import { requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { updateOrderStatusWithInventory } from "@/lib/order-status";
 
@@ -19,8 +19,7 @@ function describeManualPrescription(rx: {
 export const metadata = { title: "Prescriptions | Admin" };
 
 export default async function AdminPrescriptionsPage() {
-  const session = await requireAdmin();
-  const role = (session.user as { role?: string }).role;
+  await requireManager();
   const prescriptions = await prisma.prescription.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -74,7 +73,7 @@ export default async function AdminPrescriptionsPage() {
               </div>
               <div className="grid content-start gap-2">
                 {rx.filePublicId ? <a className="vv-button-light justify-center" href={`/api/prescriptions/${rx.id}/download`}><FileCheck2 className="h-4 w-4" /> Download file</a> : null}
-                {["OWNER", "MANAGER"].includes(role ?? "") ? <form action={updateStatus} className="flex gap-2"><input type="hidden" name="id" value={rx.id} /><select className="store-input min-w-36 py-2 text-xs" name="status" defaultValue={rx.status}>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select><button className="vv-button-retail text-xs" type="submit">Save</button></form> : null}
+                <form action={updateStatus} className="flex gap-2"><input type="hidden" name="id" value={rx.id} /><select className="store-input min-w-36 py-2 text-xs" name="status" defaultValue={rx.status}>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select><button className="vv-button-retail text-xs" type="submit">Save</button></form>
               </div>
             </article>
           )) : <div className="vv-card p-10 text-center text-slate-500">No prescription records yet.</div>}

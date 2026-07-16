@@ -26,7 +26,7 @@ const CUSTOMER_IMAGE_RETENTION_DAYS = 30;
 
 function publicPreviewError(error: unknown) {
   if (error instanceof TryOnError && !error.retryable) return error.message;
-  return "Gemini could not generate your preview right now. We logged the failure and retried once; please try again later.";
+  return "Gemini could not generate your preview right now. We logged the failure; please try again later.";
 }
 
 export async function POST(request: NextRequest) {
@@ -127,19 +127,9 @@ export async function POST(request: NextRequest) {
     previewRequestId = previewRequest.id;
 
     const trustedFrameImage = await loadTryOnFrameImage(frameImage.url, request.signal);
-    let geminiResult: Awaited<ReturnType<typeof generateGeminiTryOn>> | null = null;
-    let lastError: unknown;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        geminiResult = await generateGeminiTryOn({ customerImage, frameImage: trustedFrameImage, prompt, signal: request.signal });
-        break;
-      } catch (error) {
-        if (request.signal.aborted) throw error;
-        lastError = error;
-        if (error instanceof TryOnError && !error.retryable) break;
-      }
-    }
-    if (!geminiResult) throw lastError instanceof Error ? lastError : new Error("Gemini generation failed.");
+    // A retry can produce a second billable generation. Record one attempt and
+    // let the customer choose whether to try again after a transient failure.
+    const geminiResult = await generateGeminiTryOn({ customerImage, frameImage: trustedFrameImage, prompt, signal: request.signal });
 
     const storedResult = await uploadTryOnDataImage({
       dataImage: geminiResult.image,

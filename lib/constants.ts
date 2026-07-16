@@ -5,8 +5,6 @@ export const STORE_NAME = "Vision Vistara Frames";
 export const CLINIC_NAME = "Vision Vistara Optics & Lasers Eye Care";
 export const CART_COOKIE = "vv_cart_session";
 export const WISHLIST_COOKIE = "vv_wishlist_session";
-export const HOME_TRIAL_SERVICE_FEE_PAISE = 19900;
-export const HOME_TRIAL_DEPOSIT_PAISE = 50000;
 export const MAX_HOME_TRIAL_FRAMES = 5;
 
 export const ORDER_STATUS_LABELS: Record<string, string> = {

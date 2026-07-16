@@ -26,7 +26,7 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https://res.cloudinary.com; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.postalpincode.in; frame-src https://api.razorpay.com https://checkout.razorpay.com"
+            value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https://res.cloudinary.com; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.postalpincode.in https://res.cloudinary.com; frame-src https://api.razorpay.com https://checkout.razorpay.com"
           },
           {
             key: "Permissions-Policy",

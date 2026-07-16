@@ -3,9 +3,10 @@ import { Buffer } from "node:buffer";
 import { GoogleGenAI } from "@google/genai";
 import { cloudinaryConfigured, configureCloudinary } from "@/lib/integrations/cloudinary";
 
-const MAX_CUSTOMER_IMAGE_BYTES = 6 * 1024 * 1024;
-const MAX_FRAME_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_CUSTOMER_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_FRAME_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAX_RESULT_IMAGE_BYTES = 15 * 1024 * 1024;
+export const MAX_GEMINI_INLINE_INPUT_BYTES = 11 * 1024 * 1024;
 const GEMINI_TIMEOUT_MS = 55_000;
 
 type ProductImage = { url: string; role: string; sortOrder: number };
@@ -119,6 +120,17 @@ export function parseDataImage(value: unknown, maxBytes = MAX_CUSTOMER_IMAGE_BYT
   };
 }
 
+/**
+ * Gemini inline data is base64 encoded in the request. Keep the combined raw
+ * image payload well below the provider's 20 MB request ceiling so encoding
+ * and prompt metadata cannot turn a valid upload into a paid provider error.
+ */
+export function assertGeminiInlineImageBudget(customerImage: DataImage, frameImage: DataImage) {
+  if (customerImage.bytes + frameImage.bytes > MAX_GEMINI_INLINE_INPUT_BYTES) {
+    throw new TryOnError("The selected selfie and frame image are too large to generate a preview together. Use a smaller image and try again.", false);
+  }
+}
+
 export function buildGeminiTryOnPrompt(product: {
   brand: string;
   name: string;
@@ -172,7 +184,7 @@ export async function loadTryOnFrameImage(url: string, signal?: AbortSignal): Pr
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   if (!buffer.length || buffer.length > MAX_FRAME_IMAGE_BYTES) {
-    throw new TryOnError("The selected frame image is empty or exceeds the 10 MB safety limit.", false);
+    throw new TryOnError("The selected frame image is empty or exceeds the 6 MB safety limit.", false);
   }
   const image = parseDataImage(`data:${contentType};base64,${buffer.toString("base64")}`, MAX_FRAME_IMAGE_BYTES);
   if (!image) throw new TryOnError("The selected frame image could not be decoded.", false);
@@ -192,6 +204,7 @@ export async function generateGeminiTryOn(input: {
 }): Promise<GeminiTryOnResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) throw new TryOnError("GEMINI_API_KEY is not configured.", false);
+  assertGeminiInlineImageBudget(input.customerImage, input.frameImage);
 
   const startedAt = Date.now();
   const ai = new GoogleGenAI({ apiKey });

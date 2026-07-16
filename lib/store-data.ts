@@ -17,7 +17,6 @@ type DbStoreProduct = {
   pricePaise: number | null;
   compareAtPaise: number | null;
   costPricePaise: number | null;
-  taxPct: number | null;
   currency: string;
   codAvailable: boolean;
   shortDescription: string | null;
@@ -80,7 +79,6 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     pricePaise: product.pricePaise,
     compareAtPaise: product.compareAtPaise,
     costPricePaise: product.costPricePaise,
-    taxPct: product.taxPct,
     currency: "INR",
     codAvailable: product.codAvailable,
     primaryCategory: product.categories?.[0]?.category?.name ?? "Frames",

@@ -114,19 +114,20 @@ A product can be active only when:
 ## Railway Scheduled Workers
 
 Railway cron jobs must be deployed as separate scheduled services; a web
-service start command does not make a worker run on its own. Create one service
-per command from this repository, give each the same database and provider
-environment variables as the web service, and configure these schedules in the
-Railway service settings:
+service start command does not make a worker run on its own. The root
+`railway.json` is deliberately web-only. Create one service per worker, link
+the same variable group as the web service, set its Railway config-file path to
+the listed `/railway.workers/*.json` file, and deploy the web service (including
+migrations) before enabling the worker services:
 
-| Schedule (UTC) | Command |
-| --- | --- |
-| `0 */6 * * *` | `npm run worker:abandoned-carts` |
-| `0 9 * * *` | `npm run worker:order-followup` |
-| `0 8 * * *` | `npm run worker:low-stock-alert` |
-| `0 3 * * *` | `npm run worker:purge-previews` |
-| `*/15 * * * *` | `npm run worker:retry-shipments` |
-| `*/10 * * * *` | `npm run worker:reconcile-payments` |
+| Railway config file | Schedule (UTC) | Command |
+| --- | --- | --- |
+| `/railway.workers/abandoned-carts.json` | `0 */6 * * *` | `npm run worker:abandoned-carts` |
+| `/railway.workers/order-followup.json` | `0 9 * * *` | `npm run worker:order-followup` |
+| `/railway.workers/low-stock-alert.json` | `0 8 * * *` | `npm run worker:low-stock-alert` |
+| `/railway.workers/purge-previews.json` | `0 3 * * *` | `npm run worker:purge-previews` |
+| `/railway.workers/retry-shipments.json` | `*/15 * * * *` | `npm run worker:retry-shipments` |
+| `/railway.workers/reconcile-payments.json` | `*/10 * * * *` | `npm run worker:reconcile-payments` |
 
 Each worker command exits after one pass. Verify the first run in Railway logs;
 the order follow-up worker writes an `ORDER_FOLLOWUP` notification for phone-

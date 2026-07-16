@@ -28,7 +28,7 @@ export type PaymentCaptureResult = {
   awaitingPrescription?: boolean;
 };
 
-type OrderConfirmation = {
+export type OrderConfirmation = {
   id: string;
   publicId: string;
   customerName: string;
@@ -49,6 +49,40 @@ type OrderConfirmation = {
 
 function isSerializationFailure(error: unknown) {
   return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2034";
+}
+
+export async function sendOrderReceivedNotifications(confirmedOrder: OrderConfirmation) {
+  const notificationTasks: Array<Promise<unknown>> = [];
+  if (confirmedOrder.email) {
+    notificationTasks.push(
+      sendEmail(confirmedOrder.email, `Order received: ${confirmedOrder.publicId} | Vision Vistara`, getOrderConfirmationTemplate(confirmedOrder))
+    );
+  }
+  notificationTasks.push(
+    sendWhatsAppTemplate(confirmedOrder.phone, "order_confirmed", [
+      confirmedOrder.customerName,
+      confirmedOrder.publicId,
+      (confirmedOrder.grandTotalPaise / 100).toFixed(2),
+      `${process.env.NEXT_PUBLIC_SITE_URL || "https://visionvistara.online"}/frames/orders/${confirmedOrder.publicId}`
+    ])
+  );
+
+  const settled = await Promise.allSettled(notificationTasks);
+  const failures = settled.filter((entry) => entry.status === "rejected");
+  if (failures.length) {
+    await prisma.notification.create({
+      data: {
+        orderId: confirmedOrder.id,
+        channel: "SYSTEM",
+        status: "PENDING",
+        recipient: "admin",
+        subject: "Customer confirmation delivery failed",
+        body: `${failures.length} order-confirmation channel(s) require manual follow-up for ${confirmedOrder.publicId}.`,
+        entityType: "Order",
+        entityId: confirmedOrder.id
+      }
+    }).catch((error) => console.error("Could not create confirmation-delivery notification", error));
+  }
 }
 
 // Orders created before stock reservations existed still need a safe path. We
@@ -275,37 +309,7 @@ export async function captureRazorpayPayment(input: CapturedPaymentInput): Promi
   // propagate its assignment through control-flow analysis.
   const confirmedOrder = confirmation as OrderConfirmation | null;
   if (confirmedOrder) {
-    const notificationTasks: Array<Promise<unknown>> = [];
-    if (confirmedOrder.email) {
-      notificationTasks.push(
-        sendEmail(confirmedOrder.email, `Order received: ${confirmedOrder.publicId} | Vision Vistara`, getOrderConfirmationTemplate(confirmedOrder))
-      );
-    }
-    notificationTasks.push(
-      sendWhatsAppTemplate(confirmedOrder.phone, "order_confirmed", [
-        confirmedOrder.customerName,
-        confirmedOrder.publicId,
-        (confirmedOrder.grandTotalPaise / 100).toFixed(2),
-        `${process.env.NEXT_PUBLIC_SITE_URL || "https://visionvistara.online"}/frames/orders/${confirmedOrder.publicId}`
-      ])
-    );
-
-    const settled = await Promise.allSettled(notificationTasks);
-    const failures = settled.filter((entry) => entry.status === "rejected");
-    if (failures.length) {
-      await prisma.notification.create({
-        data: {
-          orderId: confirmedOrder.id,
-          channel: "SYSTEM",
-          status: "PENDING",
-          recipient: "admin",
-          subject: "Customer confirmation delivery failed",
-          body: `${failures.length} order-confirmation channel(s) require manual follow-up for ${confirmedOrder.publicId}.`,
-          entityType: "Order",
-          entityId: confirmedOrder.id
-        }
-      });
-    }
+    await sendOrderReceivedNotifications(confirmedOrder);
   }
 
   return result;

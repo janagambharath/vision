@@ -24,7 +24,6 @@ export type StoreProduct = {
   pricePaise: number | null;
   compareAtPaise?: number | null;
   costPricePaise?: number | null;
-  taxPct?: number | null;
   currency: "INR";
   codAvailable: boolean;
   primaryCategory: string;

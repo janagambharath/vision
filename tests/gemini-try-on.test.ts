@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  assertGeminiInlineImageBudget,
   buildGeminiTryOnPrompt,
   classifyGeminiGenerationError,
   geminiTryOnModel,
+  MAX_GEMINI_INLINE_INPUT_BYTES,
   parseDataImage,
   selectTryOnProductImage
 } from "../lib/integrations/gemini-try-on";
@@ -68,4 +70,13 @@ test("try-on validates compact customer image data and produces an exact-frame p
   assert.match(prompt, /Classic Rectangle/);
   assert.match(prompt, /Image 1.*selfie/i);
   assert.match(prompt, /Image 2.*frame/i);
+});
+
+test("try-on rejects a combined inline payload that would risk the Gemini request limit", () => {
+  const image = parseDataImage("data:image/jpeg;base64,aGVsbG8=")!;
+  assert.doesNotThrow(() => assertGeminiInlineImageBudget(image, image));
+  assert.throws(
+    () => assertGeminiInlineImageBudget({ ...image, bytes: MAX_GEMINI_INLINE_INPUT_BYTES }, { ...image, bytes: 1 }),
+    /too large/i
+  );
 });

@@ -286,10 +286,9 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
 
         <dl className="grid gap-3 text-sm">
           <SummaryRow label="Frame subtotal" value={formatMoney(totals.subtotalPaise)} />
-           <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
+          <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
           <SummaryRow label="Prescription" value={prescriptionSummary} />
           <SummaryRow label="Delivery" value={formatMoney(totals.shippingPaise)} />
-          <SummaryRow label={`Tax (${Math.round((totals.taxPaise / (totals.subtotalPaise + totals.lensTotalPaise - totals.discountPaise)) * 100 || 12)}% GST)`} value={formatMoney(totals.taxPaise)} />
           {totals.discountPaise > 0 ? (
             <div className="flex justify-between text-emerald-600 font-bold">
               <dt>Discount</dt>

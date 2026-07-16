@@ -6,6 +6,13 @@ import { requireManager } from "@/lib/admin-auth";
 import { invalidateProductCache } from "@/lib/inventory-actions";
 import { getProductPublishBlockers } from "@/lib/product-publishing";
 
+class ReservedInventoryError extends Error {
+  constructor(readonly slugs: string[]) {
+    super("Stock cannot be set below units reserved by open checkouts.");
+    this.name = "ReservedInventoryError";
+  }
+}
+
 // ─── SINGLE PRODUCT ACTIONS ───
 
 export async function deleteProduct(slug: string) {
@@ -138,7 +145,6 @@ export async function duplicateProduct(slug: string) {
       pricePaise: product.pricePaise,
       compareAtPaise: product.compareAtPaise,
       costPricePaise: product.costPricePaise,
-      taxPct: product.taxPct,
       currency: product.currency,
       codAvailable: product.codAvailable,
       shortDescription: product.shortDescription,
@@ -235,13 +241,39 @@ export async function duplicateProduct(slug: string) {
 
 export async function bulkUpdateStatus(slugs: string[], status: "ACTIVE" | "DRAFT" | "ARCHIVED") {
   const admin = await requireManager();
+  const uniqueSlugs = [...new Set(slugs.filter(Boolean))];
+  if (!uniqueSlugs.length) return { updated: 0, blockers: {} as Record<string, string[]> };
 
-  const updateData: Record<string, unknown> = { status };
-  if (status === "ACTIVE") updateData.publishedAt = new Date();
+  if (status === "ACTIVE") {
+    const checks = await Promise.all(
+      uniqueSlugs.map(async (slug) => [slug, await getProductPublishBlockers(slug)] as const)
+    );
+    const blockers = Object.fromEntries(checks.filter(([, reasons]) => reasons.length));
+    if (Object.keys(blockers).length) {
+      return { updated: 0, blockers };
+    }
 
-  await prisma.product.updateMany({
-    where: { slug: { in: slugs } },
-    data: updateData
+    const published = await prisma.product.updateMany({
+      where: { slug: { in: uniqueSlugs }, deletedAt: null },
+      data: { status: "ACTIVE", publishedAt: new Date() }
+    });
+    await prisma.activityLog.create({
+      data: {
+        adminUserId: admin.user?.id,
+        action: "BULK_STATUS_UPDATE",
+        entityType: "product",
+        metadata: { slugs: uniqueSlugs, status, count: published.count }
+      }
+    });
+    await invalidateProductCache();
+    revalidatePath("/admin/products");
+    revalidatePath("/frames");
+    return { updated: published.count, blockers: {} as Record<string, string[]> };
+  }
+
+  const updated = await prisma.product.updateMany({
+    where: { slug: { in: uniqueSlugs } },
+    data: { status }
   });
 
   await prisma.activityLog.create({
@@ -249,13 +281,14 @@ export async function bulkUpdateStatus(slugs: string[], status: "ACTIVE" | "DRAF
       adminUserId: admin.user?.id,
       action: "BULK_STATUS_UPDATE",
       entityType: "product",
-      metadata: { slugs, status, count: slugs.length }
+      metadata: { slugs: uniqueSlugs, status, count: updated.count }
     }
   });
 
   await invalidateProductCache();
   revalidatePath("/admin/products");
   revalidatePath("/frames");
+  return { updated: updated.count, blockers: {} as Record<string, string[]> };
 }
 
 export async function bulkDelete(slugs: string[]) {
@@ -361,21 +394,46 @@ export async function bulkInventoryUpdate(
   quantity: number
 ) {
   const admin = await requireManager();
+  const uniqueSlugs = [...new Set(slugs.filter(Boolean))];
+  if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > 1_000_000 || !uniqueSlugs.length) {
+    return { updated: 0, blockedSlugs: [] as string[] };
+  }
 
   const products = await prisma.product.findMany({
-    where: { slug: { in: slugs } },
-    select: { id: true, pricePaise: true },
-    
+    where: { slug: { in: uniqueSlugs } },
+    select: { id: true, slug: true, pricePaise: true, inventory: { select: { id: true, reservedStock: true, lowStockThreshold: true } } }
   });
+  const blockedSlugs = products
+    .filter((product) => quantity < (product.inventory?.reservedStock ?? 0))
+    .map((product) => product.slug);
+  if (blockedSlugs.length) return { updated: 0, blockedSlugs };
 
-  for (const product of products) {
-    const status = quantity === 0 ? "OUT_OF_STOCK" : product.pricePaise ? "IN_STOCK" : "PRICE_REQUIRED";
-
-    await prisma.inventory.upsert({
-      where: { productId: product.id },
-      update: { quantity, status },
-      create: { productId: product.id, quantity, status }
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const product of products) {
+        const status = quantity === 0
+          ? "OUT_OF_STOCK"
+          : !product.pricePaise
+            ? "PRICE_REQUIRED"
+            : quantity <= (product.inventory?.lowStockThreshold ?? 2)
+              ? "LOW_STOCK"
+              : "IN_STOCK";
+        if (product.inventory) {
+          const updated = await tx.inventory.updateMany({
+            where: { id: product.inventory.id, reservedStock: { lte: quantity } },
+            data: { quantity, status }
+          });
+          if (updated.count !== 1) throw new ReservedInventoryError([product.slug]);
+        } else {
+          await tx.inventory.create({ data: { productId: product.id, quantity, status } });
+        }
+      }
     });
+  } catch (error) {
+    if (error instanceof ReservedInventoryError) {
+      return { updated: 0, blockedSlugs: error.slugs };
+    }
+    throw error;
   }
 
   await prisma.activityLog.create({
@@ -383,11 +441,12 @@ export async function bulkInventoryUpdate(
       adminUserId: admin.user?.id,
       action: "BULK_INVENTORY_UPDATE",
       entityType: "product",
-      metadata: { slugs, quantity, count: products.length }
+      metadata: { slugs: uniqueSlugs, quantity, count: products.length }
     }
   });
 
   await invalidateProductCache();
   revalidatePath("/admin/products");
   revalidatePath("/admin/inventory");
+  return { updated: products.length, blockedSlugs: [] as string[] };
 }

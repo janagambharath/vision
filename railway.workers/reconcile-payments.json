@@ -1,0 +1,9 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": { "builder": "RAILPACK" },
+  "deploy": {
+    "startCommand": "npm run worker:reconcile-payments",
+    "cronSchedule": "*/10 * * * *",
+    "restartPolicyType": "NEVER"
+  }
+}

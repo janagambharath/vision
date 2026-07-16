@@ -16,18 +16,18 @@ function makeCart(overrides: Record<string, unknown> = {}) {
   } as any;
 }
 
-test("calculateCartTotals totals frame, lens, shipping, GST, and grand total", () => {
+test("calculateCartTotals totals frame, lens, shipping, and final grand total", () => {
   const totals = calculateCartTotals(makeCart());
 
   assert.equal(totals.subtotalPaise, 20000);
   assert.equal(totals.lensTotalPaise, 10000);
   assert.equal(totals.shippingPaise, 9900);
   assert.equal(totals.discountPaise, 0);
-  assert.equal(totals.taxPaise, 3600);
-  assert.equal(totals.grandTotalPaise, 43500);
+  assert.equal(totals.taxPaise, 0);
+  assert.equal(totals.grandTotalPaise, 39900);
 });
 
-test("calculateCartTotals applies active percentage coupons before GST", () => {
+test("calculateCartTotals applies active percentage coupons to the final amount", () => {
   const totals = calculateCartTotals(
     makeCart({
       coupon: {
@@ -43,8 +43,8 @@ test("calculateCartTotals applies active percentage coupons before GST", () => {
   );
 
   assert.equal(totals.discountPaise, 3000);
-  assert.equal(totals.taxPaise, 3240);
-  assert.equal(totals.grandTotalPaise, 40140);
+  assert.equal(totals.taxPaise, 0);
+  assert.equal(totals.grandTotalPaise, 36900);
 });
 
 test("calculateCartTotals rejects expired and exhausted coupons", () => {

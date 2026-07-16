@@ -17,6 +17,7 @@ const errorMessages: Record<string, string> = {
   "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
   "invalid-values": "Check prices, inventory, and AI-derived values. Values must be valid non-negative numbers.",
   "duplicate-slug": "Another product already uses that slug.",
+  "reserved-stock": "Stock cannot be set below units currently reserved by open checkouts.",
   "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
 
@@ -105,7 +106,6 @@ export default async function EditProductPage({
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
     const costPricePaise = formData.get("costPricePaise") ? Math.round(Number(formData.get("costPricePaise")) * 100) : null;
-    const taxPct = formData.get("taxPct") ? Number(formData.get("taxPct")) : 18;
     const quantity = Number(formData.get("quantity") ?? 0);
 
     const description = String(formData.get("description") ?? "").trim();
@@ -138,7 +138,7 @@ export default async function EditProductPage({
     if (!name || !brand || !sku) redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect(`/admin/products/${currentSlug}/edit?error=invalid-slug`);
     if (
-      [pricePaise, compareAtPaise, costPricePaise, taxPct]
+      [pricePaise, compareAtPaise, costPricePaise]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
       !Number.isInteger(quantity) || quantity < 0
     ) redirect(`/admin/products/${currentSlug}/edit?error=invalid-values`);
@@ -172,7 +172,8 @@ export default async function EditProductPage({
       name, brand, sku, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
     }).length) redirect(`/admin/products/${currentSlug}/edit?error=publish-incomplete`);
 
-    await prisma.$transaction(async (tx) => {
+    try {
+      await prisma.$transaction(async (tx) => {
       if (slug !== currentSlug) {
         await tx.slugRedirect.upsert({
           where: { oldSlug: currentSlug },
@@ -186,7 +187,7 @@ export default async function EditProductPage({
         data: {
           slug, sku, barcode, name, brand, brandId, status, featured, tryAtHomeEligible, tryOnEligible,
           arImageUrl: arImageUrl || null, codAvailable,
-          pricePaise, compareAtPaise, costPricePaise, taxPct, description, shortDescription,
+          pricePaise, compareAtPaise, costPricePaise, description, shortDescription,
           gender, ageGroup, material, colour, finish, shape, rimType, size, measurements,
           weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight, pdRange,
           springHinges, blueLightCompatible, prescriptionCompatible,
@@ -198,22 +199,29 @@ export default async function EditProductPage({
         }
       });
 
-      await tx.inventory.upsert({
-        where: { productId: product!.id },
-        update: {
-          quantity,
-          status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
-          warehouse: String(formData.get("warehouse") ?? "").trim() || undefined,
-          supplier: String(formData.get("supplier") ?? "").trim() || undefined
-        },
-        create: {
-          productId: product!.id,
-          quantity,
-          status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
-          warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
-          location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"
-        }
-      });
+      const inventoryStatus = pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED";
+      if (product!.inventory) {
+        const inventoryUpdate = await tx.inventory.updateMany({
+          where: { id: product!.inventory.id, reservedStock: { lte: quantity } },
+          data: {
+            quantity,
+            status: inventoryStatus,
+            warehouse: String(formData.get("warehouse") ?? "").trim() || undefined,
+            supplier: String(formData.get("supplier") ?? "").trim() || undefined
+          }
+        });
+        if (inventoryUpdate.count !== 1) throw new Error("RESERVED_INVENTORY");
+      } else {
+        await tx.inventory.create({
+          data: {
+            productId: product!.id,
+            quantity,
+            status: inventoryStatus,
+            warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
+            location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"
+          }
+        });
+      }
 
       await tx.productImage.deleteMany({ where: { productId: product!.id } });
       const images = candidateImages;
@@ -235,7 +243,13 @@ export default async function EditProductPage({
       await tx.activityLog.create({
         data: { adminUserId: admin.user?.id, action: "PRODUCT_UPDATED", entityType: "product", entityId: product!.id, metadata: { slug, name, brand, tryOnEligible } }
       });
-    });
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "RESERVED_INVENTORY") {
+        redirect(`/admin/products/${currentSlug}/edit?error=reserved-stock`);
+      }
+      throw error;
+    }
 
     await invalidateProductCache();
     redirect("/admin/products");

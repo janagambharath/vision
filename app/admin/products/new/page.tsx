@@ -87,7 +87,6 @@ export default async function NewProductPage({
     const pricePaise = formData.get("pricePaise") ? Math.round(Number(formData.get("pricePaise")) * 100) : null;
     const compareAtPaise = formData.get("compareAtPaise") ? Math.round(Number(formData.get("compareAtPaise")) * 100) : null;
     const costPricePaise = formData.get("costPricePaise") ? Math.round(Number(formData.get("costPricePaise")) * 100) : null;
-    const taxPct = formData.get("taxPct") ? Number(formData.get("taxPct")) : 18;
     const quantityValue = String(formData.get("quantity") ?? "").trim();
     const quantity = Number(quantityValue);
 
@@ -121,7 +120,7 @@ export default async function NewProductPage({
     if (!name || !brand || !description || !pricePaise || pricePaise <= 0 || !quantityValue) redirect("/admin/products/new?error=missing-fields");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect("/admin/products/new?error=invalid-slug");
     if (
-      [pricePaise, compareAtPaise, costPricePaise, taxPct]
+      [pricePaise, compareAtPaise, costPricePaise]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
       !Number.isInteger(quantity) || quantity < 0
     ) redirect("/admin/products/new?error=invalid-values");
@@ -162,7 +161,7 @@ export default async function NewProductPage({
         data: {
           slug, sku, barcode, name, brand, brandId, status, featured, tryAtHomeEligible, tryOnEligible,
           arImageUrl: arImageUrl || null, codAvailable,
-          pricePaise, compareAtPaise, costPricePaise, taxPct, description, shortDescription,
+          pricePaise, compareAtPaise, costPricePaise, description, shortDescription,
           gender, ageGroup, material, colour, finish, shape, rimType, size, measurements,
           weightGrams, frameWidth, lensWidth, bridgeWidth, templeLength, frameHeight, pdRange,
           springHinges, blueLightCompatible, prescriptionCompatible,

@@ -105,9 +105,12 @@ export function calculateCartTotals(cart: Awaited<ReturnType<typeof getCartOrNul
     }
   }
 
-  const taxableAmountPaise = subtotalPaise + lensTotalPaise - discountPaise;
-  const taxPaise = Math.round(taxableAmountPaise * 0.12); // 12% GST
-  const grandTotalPaise = Math.max(0, taxableAmountPaise + shippingPaise + taxPaise);
+  // Prices are final customer-facing amounts. Keep the persisted tax field at
+  // zero for backwards-compatible order records, but never add a tax charge
+  // to a new checkout.
+  const merchandiseTotalPaise = subtotalPaise + lensTotalPaise - discountPaise;
+  const taxPaise = 0;
+  const grandTotalPaise = Math.max(0, merchandiseTotalPaise + shippingPaise);
 
   return {
     subtotalPaise,

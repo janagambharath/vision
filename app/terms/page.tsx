@@ -32,7 +32,7 @@ export default function TermsPage() {
 
             <section>
               <h2>3. Orders and Payments</h2>
-              <p>All prices are displayed in Indian Rupees (INR) and include applicable GST unless stated otherwise. By placing an order, you authorise us to charge the selected payment method. Orders are confirmed only after successful payment verification via our payment partner, Razorpay. We reserve the right to cancel orders if pricing errors, stock issues, or payment verification failures occur.</p>
+              <p>All prices are displayed in Indian Rupees (INR). The checkout total shows every amount charged for the order; no separate tax line is added. By placing an order, you authorise us to charge the selected payment method. Orders are confirmed only after successful payment verification via our payment partner, Razorpay. We reserve the right to cancel orders if pricing errors, stock issues, or payment verification failures occur.</p>
             </section>
 
             <section>

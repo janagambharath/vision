@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { ImageIcon, Sparkles } from "lucide-react";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireManager } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { deleteTryOnAsset, getTryOnResultUrl } from "@/lib/integrations/gemini-try-on";
 
 async function deletePreviewImages(formData: FormData) {
   "use server";
 
-  await requireAdmin();
+  const admin = await requireManager();
   const requestId = formData.get("requestId");
   if (typeof requestId !== "string" || !requestId) return;
 
@@ -32,11 +32,19 @@ async function deletePreviewImages(formData: FormData) {
       resultBytes: null
     }
   });
+  await prisma.activityLog.create({
+    data: {
+      adminUserId: admin.user?.id,
+      action: "AI_PREVIEW_ASSETS_DELETED",
+      entityType: "frame_preview_request",
+      entityId: requestId
+    }
+  });
   revalidatePath("/admin/previews");
 }
 
 export default async function AdminPreviewsPage() {
-  await requireAdmin();
+  await requireManager();
   const [requests, statusGroups] = await Promise.all([
     prisma.framePreviewRequest.findMany({
       orderBy: { createdAt: "desc" },

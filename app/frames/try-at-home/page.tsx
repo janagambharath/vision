@@ -6,7 +6,7 @@ import { tryAtHomeAction } from "@/lib/orders";
 import { getStoreProducts } from "@/lib/store-data";
 import { formatMoney } from "@/lib/money";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
-import { HOME_TRIAL_DEPOSIT_PAISE, HOME_TRIAL_SERVICE_FEE_PAISE, MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
+import { MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Try at Home",
@@ -32,7 +32,7 @@ export default async function TryAtHomePage({
           <CheckCircle2 className="mx-auto h-16 w-16 text-retail" />
           <h1 className="mt-6 text-4xl font-extrabold">Home trial booked!</h1>
           <p className="mt-4 text-lg text-slate-600">
-            Your try-at-home request has been submitted. Our team will contact you within 24 hours to confirm the visit.
+            Your request has been submitted. We will check frame availability and contact you to confirm the visit.
           </p>
           <p className="mt-2 text-sm text-slate-500">Request ID: {params.request}</p>
           <div className="mt-8 flex justify-center gap-3">
@@ -73,7 +73,7 @@ export default async function TryAtHomePage({
 
         {params.error ? (
           <div className="mb-6 rounded-vv border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
-            Please fill in all required fields correctly.
+            {params.error === "frames-unavailable" ? "One or more selected frames are no longer available. Please choose another frame." : "Please fill in all required fields correctly."}
           </div>
         ) : null}
 
@@ -147,36 +147,26 @@ export default async function TryAtHomePage({
                   ))}
                 </select>
               </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+              {/* Home-trial requests do not accept prescription uploads.
                 Prescription upload (optional)
                 <input
                   className="store-input"
                   type="file"
-                  name="prescription"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
                 />
                 <span className="text-xs text-slate-400 font-normal">
                   JPEG, PNG, or PDF · Upload your latest prescription if available
                 </span>
-              </label>
+              */}
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Notes (optional)
-                <textarea className="store-input min-h-16 py-2" name="notes" placeholder="Prescription info, special requests..." />
+                <textarea className="store-input min-h-16 py-2" name="notes" placeholder="Special requests for the visit..." />
               </label>
             </div>
 
             <div className="mt-5 rounded-vv bg-slate-50 p-4 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Service fee</span>
-                <strong>{formatMoney(HOME_TRIAL_SERVICE_FEE_PAISE)}</strong>
-              </div>
-              <div className="mt-2 flex justify-between">
-                <span className="text-slate-600">Deposit (3+ frames)</span>
-                <strong>{formatMoney(HOME_TRIAL_DEPOSIT_PAISE)}</strong>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Deposit is fully refundable. Adjusted against purchase if you buy.
-              </p>
+              <p className="font-bold text-slate-700">No payment is collected with this request.</p>
+              <p className="mt-2 text-xs text-slate-500">A team member confirms availability, visit details, and any applicable charges before the home trial is scheduled.</p>
             </div>
 
             <button className="vv-button-retail mt-5 w-full" type="submit">

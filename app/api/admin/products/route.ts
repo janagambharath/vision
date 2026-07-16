@@ -45,6 +45,9 @@ export async function POST(request: Request) {
     const updated = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({ where: { slug }, include: { inventory: true } });
       if (!product) return null;
+      if (hasQuantity && quantity! < (product.inventory?.reservedStock ?? 0)) {
+        return { kind: "RESERVED" as const, reservedStock: product.inventory?.reservedStock ?? 0 };
+      }
 
       const nextPricePaise = hasPrice ? pricePaise! : product.pricePaise;
       const nextQuantity = hasQuantity ? quantity! : product.inventory?.quantity ?? 0;
@@ -54,21 +57,27 @@ export async function POST(request: Request) {
           ? "OUT_OF_STOCK"
           : "IN_STOCK";
 
+      if (product.inventory) {
+        const inventoryUpdate = await tx.inventory.updateMany({
+          where: hasQuantity
+            ? { id: product.inventory.id, reservedStock: { lte: nextQuantity } }
+            : { id: product.inventory.id },
+          data: {
+            quantity: hasQuantity ? nextQuantity : undefined,
+            status: inventoryStatus
+          }
+        });
+        if (inventoryUpdate.count !== 1) {
+          return { kind: "RESERVED" as const, reservedStock: product.inventory.reservedStock };
+        }
+      } else {
+        await tx.inventory.create({
+          data: { productId: product.id, quantity: nextQuantity, status: inventoryStatus }
+        });
+      }
       const savedProduct = await tx.product.update({
         where: { id: product.id },
         data: { pricePaise: hasPrice ? pricePaise : undefined }
-      });
-      await tx.inventory.upsert({
-        where: { productId: product.id },
-        update: {
-          quantity: hasQuantity ? quantity : undefined,
-          status: inventoryStatus
-        },
-        create: {
-          productId: product.id,
-          quantity: nextQuantity,
-          status: inventoryStatus
-        }
       });
       await tx.activityLog.create({
         data: {
@@ -79,12 +88,18 @@ export async function POST(request: Request) {
           metadata: { slug, pricePaise: hasPrice ? pricePaise : undefined, quantity: hasQuantity ? quantity : undefined }
         }
       });
-      return savedProduct;
+      return { kind: "UPDATED" as const, product: savedProduct };
     });
 
     if (!updated) return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    if (updated.kind === "RESERVED") {
+      return NextResponse.json(
+        { error: `Stock cannot be set below ${updated.reservedStock} unit(s) reserved by open checkouts.` },
+        { status: 409 }
+      );
+    }
     await invalidateProductCache();
-    return NextResponse.json({ product: { id: updated.id, slug: updated.slug } });
+    return NextResponse.json({ product: { id: updated.product.id, slug: updated.product.slug } });
   }
 
   if (method === "DELETE") {

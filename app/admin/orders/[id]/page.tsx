@@ -678,7 +678,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
               </dl>
             </aside>
 
-            {/* Payment Summary with 12% GST */}
+            {/* Payment Summary */}
             <aside className="vv-card p-6">
               <h2 className="text-lg font-extrabold mb-3 flex items-center gap-2 border-b border-slate-100 pb-2">
                 <ShieldCheck className="h-5 w-5 text-retail" />
@@ -697,10 +697,12 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                   <dt className="text-slate-500">Shipping</dt>
                   <dd className="font-bold">{formatMoney(order.shippingPaise)}</dd>
                 </div>
-                <div className="flex justify-between text-slate-600">
-                  <dt>GST (12%)</dt>
-                  <dd className="font-bold">{formatMoney(order.taxPaise)}</dd>
-                </div>
+                {order.taxPaise > 0 ? (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Legacy tax</dt>
+                    <dd className="font-bold">{formatMoney(order.taxPaise)}</dd>
+                  </div>
+                ) : null}
                 {order.discountPaise > 0 ? (
                   <div className="flex justify-between text-emerald-600 font-bold">
                     <dt>Discount</dt>

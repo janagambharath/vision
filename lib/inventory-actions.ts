@@ -24,17 +24,22 @@ export async function updateInventoryAction(formData: FormData) {
     include: { inventory: true } 
   });
   if (!product) return;
-
   const status: InventoryStatus =
     quantity === 0 ? "OUT_OF_STOCK" :
     quantity <= (product.inventory?.lowStockThreshold ?? 2) ? "LOW_STOCK" :
     product.pricePaise ? "IN_STOCK" : "PRICE_REQUIRED";
 
-  await prisma.inventory.upsert({
-    where: { productId: product.id },
-    update: { quantity, status },
-    create: { productId: product.id, quantity, status }
-  });
+  if (product.inventory) {
+    const updated = await prisma.inventory.updateMany({
+      where: { id: product.inventory.id, reservedStock: { lte: quantity } },
+      data: { quantity, status }
+    });
+    if (updated.count !== 1) {
+      throw new Error("Stock cannot be set below units currently reserved by open checkouts.");
+    }
+  } else {
+    await prisma.inventory.create({ data: { productId: product.id, quantity, status } });
+  }
 
   await prisma.activityLog.create({
     data: {

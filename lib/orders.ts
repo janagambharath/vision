@@ -3,14 +3,14 @@
 import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { HOME_TRIAL_DEPOSIT_PAISE, HOME_TRIAL_SERVICE_FEE_PAISE } from "@/lib/constants";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
 import { prisma } from "@/lib/db";
-import { checkoutSchema, tryAtHomeSchema } from "@/lib/validations";
+import { checkoutSchema, normalizePhone, tryAtHomeSchema } from "@/lib/validations";
 import { uploadFormFile } from "@/lib/uploads";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
 import { grantOrderAccess } from "@/lib/order-access";
+import { sendOrderReceivedNotifications } from "@/lib/payment-fulfillment";
 import {
   getCheckoutReservationExpiry,
   InventoryReservationConflictError,
@@ -216,6 +216,45 @@ export async function checkoutAction(formData: FormData) {
   if (isOnlinePayment) {
     redirect(`/frames/checkout/pay/${publicId}`);
   } else {
+    const offlineOrder = await prisma.order.findUnique({
+      where: { id: order.id },
+      select: {
+        id: true,
+        publicId: true,
+        customerName: true,
+        phone: true,
+        email: true,
+        subtotalPaise: true,
+        lensTotalPaise: true,
+        shippingPaise: true,
+        discountPaise: true,
+        grandTotalPaise: true,
+        paymentMethod: true,
+        items: { select: { quantity: true, unitPricePaise: true, productSnapshot: true, lensSnapshot: true } }
+      }
+    });
+    if (offlineOrder) {
+      await prisma.notification.create({
+        data: {
+          orderId: offlineOrder.id,
+          channel: "SYSTEM",
+          status: "PENDING",
+          recipient: "fulfillment",
+          subject: "Offline order requires confirmation",
+          body: `${offlineOrder.paymentMethod} order ${offlineOrder.publicId} needs customer/payment confirmation before shipment.`,
+          entityType: "Order",
+          entityId: offlineOrder.id
+        }
+      });
+      await sendOrderReceivedNotifications({
+        ...offlineOrder,
+        items: offlineOrder.items.map((item) => ({
+          ...item,
+          productSnapshot: item.productSnapshot as { brand?: string; name?: string; sku?: string },
+          lensSnapshot: item.lensSnapshot as { name?: string } | null
+        }))
+      });
+    }
     redirect(`/frames/orders/${publicId}`);
   }
 }
@@ -230,35 +269,73 @@ export async function tryAtHomeAction(formData: FormData) {
 
   if (!parsed.success) redirect("/frames/try-at-home?error=invalid-details");
 
-  const request = await prisma.tryAtHomeRequest.create({
-    data: {
-      name: parsed.data.name,
-      phone: parsed.data.phone,
-      address: parsed.data.address,
-      preferredDate: new Date(parsed.data.preferredDate),
-      preferredSlot: parsed.data.preferredSlot,
-      frameCount: parsed.data.productIds.length,
-      productIds: parsed.data.productIds,
-      serviceFeePaise: HOME_TRIAL_SERVICE_FEE_PAISE,
-      depositPaise: parsed.data.productIds.length >= 3 ? HOME_TRIAL_DEPOSIT_PAISE : 0,
-      notes: parsed.data.notes
-    }
-  });
+  const uniqueProductIds = [...new Set(parsed.data.productIds)];
+  if (uniqueProductIds.length !== parsed.data.productIds.length) {
+    redirect("/frames/try-at-home?error=invalid-details");
+  }
 
-  await prisma.lead.create({
-    data: {
-      name: parsed.data.name,
-      phone: parsed.data.phone,
-      source: "frames_try_at_home",
-      status: "HOME_TRIAL_BOOKED",
-      intent: "Try at home",
-      payload: {
-        requestId: request.id,
-        productIds: parsed.data.productIds,
-        preferredDate: parsed.data.preferredDate,
-        preferredSlot: parsed.data.preferredSlot
+  const eligibleProducts = await prisma.product.findMany({
+    where: {
+      slug: { in: uniqueProductIds },
+      status: "ACTIVE",
+      deletedAt: null,
+      tryAtHomeEligible: true
+    },
+    select: { slug: true, inventory: { select: { quantity: true, reservedStock: true } } }
+  });
+  if (
+    eligibleProducts.length !== uniqueProductIds.length ||
+    eligibleProducts.some((product) => !product.inventory || product.inventory.quantity - product.inventory.reservedStock <= 0)
+  ) {
+    redirect("/frames/try-at-home?error=frames-unavailable");
+  }
+
+  const phone = normalizePhone(parsed.data.phone);
+  const request = await prisma.$transaction(async (tx) => {
+    const created = await tx.tryAtHomeRequest.create({
+      data: {
+        name: parsed.data.name,
+        phone,
+        address: parsed.data.address,
+        preferredDate: new Date(parsed.data.preferredDate),
+        preferredSlot: parsed.data.preferredSlot,
+        frameCount: uniqueProductIds.length,
+        productIds: uniqueProductIds,
+        // This is an availability request only. Never record money that was
+        // not collected through a payment flow.
+        serviceFeePaise: 0,
+        depositPaise: 0,
+        notes: parsed.data.notes
       }
-    }
+    });
+    await tx.lead.create({
+      data: {
+        name: parsed.data.name,
+        phone,
+        source: "frames_try_at_home",
+        status: "HOME_TRIAL_BOOKED",
+        intent: "Try at home",
+        payload: {
+          requestId: created.id,
+          productIds: uniqueProductIds,
+          preferredDate: parsed.data.preferredDate,
+          preferredSlot: parsed.data.preferredSlot
+        }
+      }
+    });
+    await tx.notification.create({
+      data: {
+        channel: "INTERNAL",
+        recipient: "operations",
+        subject: "Home-trial request needs confirmation",
+        body: `${parsed.data.name} requested ${uniqueProductIds.length} frame(s) for ${parsed.data.preferredDate} (${parsed.data.preferredSlot}).`,
+        status: "pending",
+        entityType: "try_at_home_request",
+        entityId: created.id,
+        metadata: { productIds: uniqueProductIds, preferredDate: parsed.data.preferredDate, preferredSlot: parsed.data.preferredSlot }
+      }
+    });
+    return created;
   });
 
   redirect(`/frames/try-at-home?request=${request.id}`);

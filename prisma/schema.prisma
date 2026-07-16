@@ -229,7 +229,7 @@ model Product {
   pricePaise     Int?
   compareAtPaise Int?
   costPricePaise Int?
-  taxPct         Int?    @default(18)
+  taxPct         Int?    @default(0) // Legacy field; checkout does not calculate tax.
   currency       String  @default("INR")
   codAvailable   Boolean @default(true)
 
@@ -611,7 +611,7 @@ model TryAtHomeRequest {
   preferredSlot   String
   frameCount      Int
   depositPaise    Int         @default(0)
-  serviceFeePaise Int         @default(19900)
+  serviceFeePaise Int         @default(0)
   status          OrderStatus @default(TRY_AT_HOME_BOOKED)
   productIds      String[]
   notes           String?
