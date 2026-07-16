@@ -1,5 +1,3 @@
-import type { StoreImage } from "@/lib/inventory";
-
 export type CheckoutCartItem = {
   id: string;
   product: {
@@ -8,7 +6,12 @@ export type CheckoutCartItem = {
     name: string;
     brand: string;
     pricePaise: number | null;
-    images: StoreImage[];
+    images: Array<{
+      url: string;
+      alt: string;
+      role: string;
+      sortOrder: number;
+    }>;
   };
   quantity: number;
   lensOption: {
