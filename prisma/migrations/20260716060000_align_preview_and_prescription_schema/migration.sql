@@ -1,11 +1,11 @@
 -- Keep previously generated fallback previews available after retiring the
 -- FALLBACK_READY state from the application enum.
-ALTER TABLE "TryOnPreview" ALTER COLUMN "status" DROP DEFAULT;
+ALTER TABLE "frame_preview_requests" ALTER COLUMN "status" DROP DEFAULT;
 
 ALTER TYPE "PreviewStatus" RENAME TO "PreviewStatus_old";
 CREATE TYPE "PreviewStatus" AS ENUM ('RECEIVED', 'PROCESSING', 'READY', 'FAILED');
 
-ALTER TABLE "TryOnPreview"
+ALTER TABLE "frame_preview_requests"
 ALTER COLUMN "status" TYPE "PreviewStatus"
 USING (
   CASE
@@ -14,7 +14,7 @@ USING (
   END
 )::"PreviewStatus";
 
-ALTER TABLE "TryOnPreview" ALTER COLUMN "status" SET DEFAULT 'RECEIVED';
+ALTER TABLE "frame_preview_requests" ALTER COLUMN "status" SET DEFAULT 'RECEIVED';
 DROP TYPE "PreviewStatus_old";
 
 -- Prisma's @updatedAt is maintained by the client and must not introduce a
