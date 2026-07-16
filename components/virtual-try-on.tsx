@@ -357,7 +357,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
       <aside className="order-2 self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-soft lg:order-1 lg:sticky lg:top-28 lg:p-6">
         <h2 className="text-lg font-extrabold text-slate-800">Select Frame</h2>
         <p className="mt-1 text-xs text-slate-500">The selected product image is used automatically. No frame upload or positioning is needed.</p>
-        <div className="mt-4 grid grid-flow-col auto-cols-[minmax(220px,82%)] gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] lg:grid-flow-row lg:auto-cols-auto lg:overflow-visible lg:pb-0">
+        <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] lg:max-h-none lg:overflow-visible lg:pr-0">
           {tryOnFrames.map((frame, index) => (
             <button
               key={frame.slug}
