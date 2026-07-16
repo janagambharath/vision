@@ -19,7 +19,7 @@ export async function addToCart(formData: FormData) {
     redirect(`/frames/${slug}?blocked=price-required`);
   }
 
-  const availableStock = product.inventory?.quantity ?? 0;
+  const availableStock = Math.max(0, (product.inventory?.quantity ?? 0) - (product.inventory?.reservedStock ?? 0));
   if (product.inventory?.status === "OUT_OF_STOCK" || availableStock <= 0) {
     redirect(`/frames/${slug}?blocked=out-of-stock`);
   }
@@ -73,7 +73,10 @@ export async function addToCart(formData: FormData) {
 export async function removeCartItem(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (id) {
-    await prisma.cartItem.delete({ where: { id } }).catch(() => null);
+    const cart = await getOrCreateCart();
+    // Scope mutations to the caller's httpOnly cart session. A CartItem CUID
+    // alone must never authorize modifying another visitor's cart.
+    await prisma.cartItem.deleteMany({ where: { id, cartId: cart.id } });
   }
   redirect("/frames/cart");
 }
@@ -83,22 +86,22 @@ export async function updateCartItemQuantity(formData: FormData) {
   const quantity = Number(formData.get("quantity") ?? 1);
 
   if (id && quantity >= 1 && quantity <= 5) {
-    const item = await prisma.cartItem.findUnique({
-      where: { id },
+    const cart = await getOrCreateCart();
+    const item = await prisma.cartItem.findFirst({
+      where: { id, cartId: cart.id },
       include: { product: { include: { inventory: true } } }
     });
 
     if (item) {
-      const availableStock = item.product.inventory?.quantity ?? 0;
+      const availableStock = Math.max(0, (item.product.inventory?.quantity ?? 0) - (item.product.inventory?.reservedStock ?? 0));
       if (quantity > availableStock) {
         redirect("/frames/cart?error=insufficient-stock");
       }
+      await prisma.cartItem.updateMany({
+        where: { id, cartId: cart.id },
+        data: { quantity }
+      });
     }
-
-    await prisma.cartItem.update({
-      where: { id },
-      data: { quantity }
-    }).catch(() => null);
   }
   redirect("/frames/cart");
 }

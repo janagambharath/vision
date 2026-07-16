@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import type { StoreProduct } from "@/lib/inventory";
+import type { StoreImage } from "@/lib/inventory";
 import { Maximize2, X } from "lucide-react";
 
-export function ProductGallery({ product }: { product: StoreProduct }) {
+export function ProductGallery({ images: productImages }: { images: StoreImage[] }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
-  const galleryImages = product.images.filter((image) => image.role !== "ar");
+  const galleryImages = productImages.filter((image) => image.role !== "ar");
   const images =
     galleryImages.length > 0
       ? galleryImages

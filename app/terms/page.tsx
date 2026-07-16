@@ -32,7 +32,7 @@ export default function TermsPage() {
 
             <section>
               <h2>3. Orders and Payments</h2>
-              <p>All prices are displayed in Indian Rupees (INR). The checkout total shows every amount charged for the order; no separate tax line is added. By placing an order, you authorise us to charge the selected payment method. Orders are confirmed only after successful payment verification via our payment partner, Razorpay. We reserve the right to cancel orders if pricing errors, stock issues, or payment verification failures occur.</p>
+              <p>All prices are displayed in Indian Rupees (INR). The checkout total shows every amount charged for the order; no separate tax line is added. Where you select online payment, you authorise us to charge the selected payment method and the order is confirmed only after successful verification via our payment partner, Razorpay. For an offline payment option, we confirm the next steps before shipment. We reserve the right to cancel orders if pricing errors, stock issues, or payment verification failures occur.</p>
             </section>
 
             <section>
@@ -47,7 +47,7 @@ export default function TermsPage() {
 
             <section>
               <h2>6. Try-at-Home Service</h2>
-              <p>The try-at-home service allows you to try up to 5 frames at your location. A refundable deposit and service fee apply. Frames must be returned in their original condition within the agreed timeframe. Damaged or unreturned frames will be charged at full retail price.</p>
+              <p>Submitting a Try-at-Home form is an availability request, not a confirmed booking or reservation of frames. We do not collect payment, a deposit, or a service fee through that request. A trial is subject to eligible frame stock, service-area coverage, and team capacity; your requested date and time are preferences only. We will contact you to confirm visit details before a trial is scheduled. For a confirmed trial, frames must be returned in the condition and timeframe agreed during that confirmation.</p>
             </section>
 
             <section>

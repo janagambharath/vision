@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { ArrowRight, Filter, SlidersHorizontal, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getFeaturedProducts, getFilterOptions } from "@/lib/store-data";
-import { productIsSellable } from "@/lib/inventory";
+import { getStoreProducts, getStoreProductsCount, getFeaturedProducts, getFilterOptions, normalizeCatalogPage, normalizeStoreProductSort, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
+import { toPublicStoreProduct } from "@/lib/inventory";
 
 export const metadata: Metadata = {
   title: "Frames Store",
@@ -16,27 +16,31 @@ export const metadata: Metadata = {
 export default async function FramesPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; category?: string; sort?: string; gender?: string; material?: string; shape?: string; color?: string }>;
+  searchParams?: Promise<{ q?: string; category?: string; sort?: string; gender?: string; material?: string; shape?: string; color?: string; page?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const isFiltered = !!(params.q || params.category || params.sort || params.gender || params.material || params.shape || params.color);
-  const products = await getStoreProducts({ 
-    query: params.q, 
+  const sort = normalizeStoreProductSort(params.sort);
+  const requestedPage = normalizeCatalogPage(params.page);
+  const hasActiveFilters = !!(params.q || params.category || params.gender || params.material || params.shape || params.color || sort !== "featured");
+  const catalogOptions = {
+    query: params.q,
     category: params.category,
     gender: params.gender,
     material: params.material,
     shape: params.shape,
-    color: params.color
-  });
-  const featured = await getFeaturedProducts(6);
-  const filterOptions = await getFilterOptions();
-
-  const sortedProducts = [...products].sort((a, b) => {
-    if (params.sort === "price-asc") return (a.pricePaise ?? Number.MAX_SAFE_INTEGER) - (b.pricePaise ?? Number.MAX_SAFE_INTEGER);
-    if (params.sort === "price-desc") return (b.pricePaise ?? 0) - (a.pricePaise ?? 0);
-    if (params.sort === "new") return b.slug.localeCompare(a.slug);
-    return Number(b.featured) - Number(a.featured) || Number(productIsSellable(b)) - Number(productIsSellable(a));
-  });
+    color: params.color,
+    sort
+  };
+  const [totalCount, filterOptions] = await Promise.all([
+    getStoreProductsCount(catalogOptions),
+    getFilterOptions()
+  ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_CATALOG_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const [products, featured] = await Promise.all([
+    getStoreProducts({ ...catalogOptions, page: currentPage, limit: PUBLIC_CATALOG_PAGE_SIZE }),
+    !hasActiveFilters && currentPage === 1 ? getFeaturedProducts(6) : Promise.resolve([])
+  ]);
 
   const shopByGender = [
     { label: "All frames", value: "" },
@@ -52,7 +56,20 @@ export default async function FramesPage({
     if (params.material) query.set("material", params.material);
     if (params.shape) query.set("shape", params.shape);
     if (params.color) query.set("color", params.color);
-    if (params.sort && params.sort !== "featured") query.set("sort", params.sort);
+    if (sort !== "featured") query.set("sort", sort);
+    const search = query.toString();
+    return search ? `/frames?${search}` : "/frames";
+  };
+  const pageHref = (page: number) => {
+    const query = new URLSearchParams();
+    if (params.q) query.set("q", params.q);
+    if (params.category) query.set("category", params.category);
+    if (params.gender) query.set("gender", params.gender);
+    if (params.material) query.set("material", params.material);
+    if (params.shape) query.set("shape", params.shape);
+    if (params.color) query.set("color", params.color);
+    if (sort !== "featured") query.set("sort", sort);
+    if (page > 1) query.set("page", String(page));
     const search = query.toString();
     return search ? `/frames?${search}` : "/frames";
   };
@@ -85,7 +102,7 @@ export default async function FramesPage({
               })}
             </nav>
           </div>
-          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7" action="/frames">
+          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-8" action="/frames">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Search frames
               <input className="store-input" type="search" name="q" defaultValue={params.q ?? ""} placeholder="Brand, SKU, material, shape, colour..." />
@@ -129,8 +146,17 @@ export default async function FramesPage({
               </select>
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+              Colour
+              <select className="store-input" name="color" defaultValue={params.color ?? ""}>
+                <option value="">Any</option>
+                {filterOptions.colors.map((color: { value: string; label: string }) => (
+                  <option key={color.value} value={color.value}>{color.label}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Sort
-              <select className="store-input" name="sort" defaultValue={params.sort ?? "featured"}>
+              <select className="store-input" name="sort" defaultValue={sort}>
                 <option value="featured">Featured</option>
                 <option value="new">New arrivals</option>
                 <option value="price-asc">Price: low to high</option>
@@ -146,7 +172,7 @@ export default async function FramesPage({
       </section>
 
       {/* Featured Section (only on unfiltered view) */}
-      {!isFiltered && featured.length > 0 ? (
+      {!hasActiveFilters && currentPage === 1 && featured.length > 0 ? (
         <section className="vv-section bg-white">
           <div className="vv-container">
             <div className="mb-8 flex items-end justify-between gap-4">
@@ -164,7 +190,7 @@ export default async function FramesPage({
             </div>
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {featured.map((product) => (
-                <ProductCard key={product.slug} product={product} />
+                <ProductCard key={product.slug} product={toPublicStoreProduct(product)} />
               ))}
             </div>
           </div>
@@ -176,21 +202,21 @@ export default async function FramesPage({
         <div className="vv-container">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="vv-kicker text-retail">{isFiltered ? "Search results" : "All frames"}</p>
+              <p className="vv-kicker text-retail">{hasActiveFilters ? "Search results" : "All frames"}</p>
               <h2 className="text-3xl font-extrabold">
-                {isFiltered ? `${sortedProducts.length} frame${sortedProducts.length !== 1 ? "s" : ""} found` : "Complete collection"}
+                {hasActiveFilters ? `${totalCount} frame${totalCount !== 1 ? "s" : ""} found` : "Complete collection"}
               </h2>
               {params.q ? <p className="mt-2 text-slate-600">Showing results for &quot;{params.q}&quot;</p> : null}
             </div>
             <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-extrabold text-slate-600">
-              {sortedProducts.length} frames
+              {totalCount} frames
             </span>
           </div>
 
-          {sortedProducts.length ? (
+          {products.length ? (
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {sortedProducts.map((product) => (
-                <ProductCard key={product.slug} product={product} />
+              {products.map((product) => (
+                <ProductCard key={product.slug} product={toPublicStoreProduct(product)} />
               ))}
             </div>
           ) : (
@@ -203,6 +229,22 @@ export default async function FramesPage({
               </Link>
             </div>
           )}
+
+          {totalPages > 1 ? (
+            <nav className="mt-8 flex flex-wrap items-center justify-center gap-3" aria-label="Catalog pages">
+              {currentPage > 1 ? (
+                <Link href={pageHref(currentPage - 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-800">
+                  Previous
+                </Link>
+              ) : null}
+              <span className="text-sm font-bold text-slate-600">Page {currentPage} of {totalPages}</span>
+              {currentPage < totalPages ? (
+                <Link href={pageHref(currentPage + 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-800">
+                  Next
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
         </div>
       </section>
 

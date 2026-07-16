@@ -2,6 +2,7 @@ import type { PrescriptionStatus, PrescriptionType } from "@prisma/client";
 import { configureCloudinary } from "@/lib/integrations/cloudinary";
 
 const BASE_VALUES = new Set(["IN", "OUT", "UP", "DOWN"]);
+const DECIMAL_VALUE_PATTERN = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/;
 
 export type PrescriptionSubmission = {
   type: PrescriptionType;
@@ -42,14 +43,25 @@ function text(value: FormDataEntryValue | null, max: number) {
   return valueText || null;
 }
 
-function decimal(value: FormDataEntryValue | null, label: string, min: number, max: number) {
+function decimal(value: FormDataEntryValue | null, label: string, min: number, max: number, increment: number) {
   const raw = typeof value === "string" ? value.trim() : "";
   if (!raw) return null;
+  if (!DECIMAL_VALUE_PATTERN.test(raw)) {
+    throw new PrescriptionValidationError(`${label} must be a decimal number.`);
+  }
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
     throw new PrescriptionValidationError(`${label} must be between ${min} and ${max}.`);
   }
-  return parsed;
+
+  // Store clinically meaningful values with a fixed two-decimal representation.
+  // This avoids accepting values that a browser number input would normally reject
+  // (for example -1.13 for a 0.25D field) when a request is submitted directly.
+  const hundredths = Math.round(parsed * 100);
+  if (Math.abs(parsed * 100 - hundredths) > Number.EPSILON * 100 || hundredths % Math.round(increment * 100) !== 0) {
+    throw new PrescriptionValidationError(`${label} must use ${increment.toFixed(increment === 0.5 ? 1 : 2)} increments.`);
+  }
+  return hundredths / 100;
 }
 
 function axis(value: FormDataEntryValue | null, label: string) {
@@ -57,7 +69,7 @@ function axis(value: FormDataEntryValue | null, label: string) {
   if (!raw) return null;
   if (!/^\d+$/.test(raw)) throw new PrescriptionValidationError(`${label} must be a whole number from 0 to 180.`);
   const parsed = Number(raw);
-  if (parsed < 0 || parsed > 180) throw new PrescriptionValidationError(`${label} must be between 0 and 180.`);
+  if (!Number.isSafeInteger(parsed) || parsed < 0 || parsed > 180) throw new PrescriptionValidationError(`${label} must be between 0 and 180.`);
   return parsed;
 }
 
@@ -79,12 +91,12 @@ function parsePrescriptionDate(value: FormDataEntryValue | null) {
 }
 
 function parseEye(formData: FormData, prefix: "right" | "left", label: "Right eye (OD)" | "Left eye (OS)") {
-  const sphere = decimal(formData.get(`${prefix}Sphere`), `${label} sphere`, -20, 20);
-  const cylinder = decimal(formData.get(`${prefix}Cylinder`), `${label} cylinder`, -8, 0);
+  const sphere = decimal(formData.get(`${prefix}Sphere`), `${label} sphere`, -20, 20, 0.25);
+  const cylinder = decimal(formData.get(`${prefix}Cylinder`), `${label} cylinder`, -8, 0, 0.25);
   const eyeAxis = axis(formData.get(`${prefix}Axis`), `${label} axis`);
-  const add = decimal(formData.get(`${prefix}Add`), `${label} ADD`, 0, 4);
-  const pd = decimal(formData.get(`${prefix}Pd`), `${label} PD`, 20, 45);
-  const prism = decimal(formData.get(`${prefix}Prism`), `${label} prism`, 0, 15);
+  const add = decimal(formData.get(`${prefix}Add`), `${label} ADD`, 0, 4, 0.25);
+  const pd = decimal(formData.get(`${prefix}Pd`), `${label} PD`, 20, 45, 0.5);
+  const prism = decimal(formData.get(`${prefix}Prism`), `${label} prism`, 0, 15, 0.25);
   const eyeBase = base(formData.get(`${prefix}Base`), `${label} base`);
   if (cylinder !== null && eyeAxis === null) {
     throw new PrescriptionValidationError(`${label} axis is required when cylinder is entered.`);
@@ -94,6 +106,9 @@ function parseEye(formData: FormData, prefix: "right" | "left", label: "Right ey
   }
   if (prism !== null && eyeBase === null) {
     throw new PrescriptionValidationError(`${label} base is required when prism is entered.`);
+  }
+  if (eyeBase !== null && prism === null) {
+    throw new PrescriptionValidationError(`${label} prism is required when base is entered.`);
   }
   return { sphere, cylinder, axis: eyeAxis, add, pd, prism, base: eyeBase };
 }
@@ -128,8 +143,8 @@ export function parsePrescriptionSubmission(formData: FormData, prescriptionRequ
 
   const right = parseEye(formData, "right", "Right eye (OD)");
   const left = parseEye(formData, "left", "Left eye (OS)");
-  if ([right.sphere, right.cylinder, right.add, left.sphere, left.cylinder, left.add].every((value) => value === null)) {
-    throw new PrescriptionValidationError("Enter at least one sphere, cylinder, or ADD value for a manual prescription.");
+  if ([right.sphere, right.cylinder, right.add, right.prism, left.sphere, left.cylinder, left.add, left.prism].every((value) => value === null)) {
+    throw new PrescriptionValidationError("Enter at least one sphere, cylinder, ADD, or prism value for a manual prescription.");
   }
   return {
     type: "MANUAL",
@@ -169,9 +184,15 @@ export async function deletePrescriptionAsset(prescription: {
 }) {
   if (!prescription.filePublicId) return;
   const cloudinary = configureCloudinary();
-  await cloudinary.uploader.destroy(prescription.filePublicId, {
+  const result = await cloudinary.uploader.destroy(prescription.filePublicId, {
     resource_type: prescription.fileResourceType === "raw" ? "raw" : "image",
     type: "authenticated",
     invalidate: true
-  });
+  }) as { result?: unknown };
+  // Cloudinary deletion is idempotent. Any other response is unconfirmed and
+  // must be surfaced to the caller instead of silently claiming medical-file
+  // cleanup succeeded.
+  if (result.result !== "ok" && result.result !== "not found") {
+    throw new Error("Cloudinary did not confirm prescription asset deletion.");
+  }
 }

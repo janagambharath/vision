@@ -4,6 +4,7 @@ import {
   assertGeminiInlineImageBudget,
   buildGeminiTryOnPrompt,
   classifyGeminiGenerationError,
+  deleteTryOnAsset,
   geminiTryOnModel,
   MAX_GEMINI_INLINE_INPUT_BYTES,
   parseDataImage,
@@ -79,4 +80,26 @@ test("try-on rejects a combined inline payload that would risk the Gemini reques
     () => assertGeminiInlineImageBudget({ ...image, bytes: MAX_GEMINI_INLINE_INPUT_BYTES }, { ...image, bytes: 1 }),
     /too large/i
   );
+});
+
+test("preview deletion fails closed when Cloudinary credentials are unavailable", async () => {
+  const previous = {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET
+  };
+  delete process.env.CLOUDINARY_CLOUD_NAME;
+  delete process.env.CLOUDINARY_API_KEY;
+  delete process.env.CLOUDINARY_API_SECRET;
+
+  try {
+    await assert.rejects(deleteTryOnAsset("temporary-preview"), /deletion cannot be confirmed/i);
+  } finally {
+    if (previous.cloudName === undefined) delete process.env.CLOUDINARY_CLOUD_NAME;
+    else process.env.CLOUDINARY_CLOUD_NAME = previous.cloudName;
+    if (previous.apiKey === undefined) delete process.env.CLOUDINARY_API_KEY;
+    else process.env.CLOUDINARY_API_KEY = previous.apiKey;
+    if (previous.apiSecret === undefined) delete process.env.CLOUDINARY_API_SECRET;
+    else process.env.CLOUDINARY_API_SECRET = previous.apiSecret;
+  }
 });

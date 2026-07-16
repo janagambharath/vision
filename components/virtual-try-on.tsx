@@ -37,6 +37,7 @@ type TryOnStep = "idle" | "camera" | "review" | "generating" | "result";
 
 const CAMERA_GUIDANCE = "Centre your face in the guide, keep your glasses off, and use even light.";
 const MAX_CAPTURE_DIMENSION = 1440;
+const AI_PRIVACY_CONSENT_VERSION = "2026-07-v1";
 
 function fittedDimensions(width: number, height: number) {
   const longestSide = Math.max(width, height);
@@ -262,7 +263,8 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
         body: JSON.stringify({
           frameSlug: selectedFrame.slug,
           customerImage: capturedPhoto,
-          privacyConsent: true
+          privacyConsent: true,
+          privacyConsentVersion: AI_PRIVACY_CONSENT_VERSION
         }),
         signal: controller.signal
       });
@@ -422,7 +424,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
         {step === "review" && capturedPhoto ? (
           <div className="flex w-full max-w-lg flex-col gap-5">
             <div className="relative aspect-square overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">{/* The source is a camera data URL, which is incompatible with next/image optimization. */}<img src={capturedPhoto} alt="Captured selfie ready for AI try-on" className="h-full w-full object-cover" /><div className="absolute bottom-3 left-3 right-3 rounded-lg bg-black/65 px-3 py-2 text-center text-xs font-bold text-white backdrop-blur-sm">{selectedFrame.brand} {selectedFrame.name} will be added automatically by AI.</div></div>
-            <label className="flex items-start gap-2 rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-left text-xs leading-5 text-slate-300"><input type="checkbox" checked={privacyConsent} onChange={(event) => setPrivacyConsent(event.target.checked)} className="mt-1" /><span>I consent to temporary processing of this selfie and preview. Both are automatically deleted within 30 days; do not use this tool for medical assessment.</span></label>
+            <label className="flex items-start gap-2 rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-left text-xs leading-5 text-slate-300"><input type="checkbox" checked={privacyConsent} onChange={(event) => setPrivacyConsent(event.target.checked)} className="mt-1" /><span>I consent to temporary processing of this selfie and preview by Google Gemini and Cloudinary. Both are automatically deleted within 30 days; do not use this tool for medical assessment.</span></label>
             <button type="button" onClick={generateAiTryOn} disabled={!privacyConsent} className="vv-button flex justify-center gap-2 border-0 bg-gradient-to-r from-teal-500 to-emerald-600 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Sparkles className="h-5 w-5" /> Generate AI preview</button>
             <button type="button" onClick={retake} className="vv-button justify-center border-slate-700 text-slate-300"><RotateCcw className="h-4 w-4" /> Retake selfie</button>
           </div>
@@ -442,7 +444,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
               <span className="absolute left-3 top-3 z-20 rounded bg-slate-800/80 px-2 py-1 text-[10px] font-bold text-white">Before</span><span className="absolute right-3 top-3 z-20 rounded bg-teal-600/80 px-2 py-1 text-[10px] font-bold text-white">AI preview</span>
             </div>
             <p className="rounded-lg border border-amber-800/40 bg-amber-950/70 px-3 py-2 text-center text-[11px] font-semibold text-amber-200">AI appearance preview only. Frame fit, prescription suitability, and final product details must be confirmed by the clinic.</p>
-            <div className="grid grid-cols-2 gap-3"><button type="button" onClick={downloadResult} className="vv-button-retail justify-center"><Download className="h-4 w-4" /> Save</button><button type="button" onClick={shareResult} className="vv-button border-slate-700 text-white justify-center"><Share2 className="h-4 w-4" /> Share</button><button type="button" onClick={shareWhatsApp} className="vv-button border-emerald-700 text-emerald-300 justify-center"><MessageCircle className="h-4 w-4" /> WhatsApp</button><Link href={`/frames/${selectedFrame.slug}`} className="vv-button border-teal-600 text-teal-200 justify-center"><ShoppingBag className="h-4 w-4" /> Buy this frame</Link><Link href={`/frames/try-at-home?slug=${selectedFrame.slug}`} className="vv-button border-dashed border-slate-600 text-slate-300 justify-center">Try at home</Link><Link href="/frames" className="vv-button border-slate-700 text-slate-300 justify-center">Continue shopping</Link></div>
+            <div className="grid grid-cols-2 gap-3"><button type="button" onClick={downloadResult} className="vv-button-retail justify-center"><Download className="h-4 w-4" /> Save</button><button type="button" onClick={shareResult} className="vv-button border-slate-700 text-white justify-center"><Share2 className="h-4 w-4" /> Share</button><button type="button" onClick={shareWhatsApp} className="vv-button border-emerald-700 text-emerald-300 justify-center"><MessageCircle className="h-4 w-4" /> WhatsApp</button><Link href={`/frames/${selectedFrame.slug}`} className="vv-button border-teal-600 text-teal-200 justify-center"><ShoppingBag className="h-4 w-4" /> Buy this frame</Link><Link href={`/frames/try-at-home?productIds=${encodeURIComponent(selectedFrame.slug)}`} className="vv-button border-dashed border-slate-600 text-slate-300 justify-center">Request a home trial</Link><Link href="/frames" className="vv-button border-slate-700 text-slate-300 justify-center">Continue shopping</Link></div>
             <button type="button" onClick={retake} className="text-center text-sm font-bold text-slate-400 underline hover:text-white">Try another selfie</button>
           </div>
         ) : null}

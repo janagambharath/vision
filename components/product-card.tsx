@@ -7,12 +7,12 @@ import { Camera, Eye, Home, MessageCircle, ShoppingBag, Star, Heart } from "luci
 import { addToCart } from "@/lib/cart-actions";
 import { CLINIC_WHATSAPP_NUMBER } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
-import { productIsSellable, type StoreProduct } from "@/lib/inventory";
+import type { PublicStoreProduct } from "@/lib/inventory";
 import { useCompare } from "@/components/compare-context";
 import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 
-export function ProductCard({ product }: { product: StoreProduct }) {
-  const sellable = productIsSellable(product);
+export function ProductCard({ product }: { product: PublicStoreProduct }) {
+  const sellable = product.sellable;
   const frontImage = product.images.find((image) => image.role === "front") ?? product.images[0];
   const angleImage = product.images.find((image) => image.role === "angle" || image.role === "gallery");
   const whatsappText = encodeURIComponent(`Hello Vision Vistara, I want details for ${product.brand} ${product.name} SKU ${product.sku}.`);
@@ -94,9 +94,9 @@ export function ProductCard({ product }: { product: StoreProduct }) {
               {discountPct}% OFF
             </span>
           ) : null}
-          {product.inventoryStatus === "LOW_STOCK" || (product.inventoryQuantity <= 3 && product.inventoryQuantity > 0) ? (
+          {product.lowStock ? (
             <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white animate-pulse">
-              Only {product.inventoryQuantity} left!
+              Low stock
             </span>
           ) : null}
           {product.tryAtHomeEligible ? (

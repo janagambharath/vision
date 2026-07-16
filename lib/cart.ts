@@ -83,6 +83,41 @@ export async function getCartItemCount() {
   return cart?.items.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 }
 
+// Never serialize the raw Prisma cart graph. Products in a cart include cost,
+// barcode, supplier/publish fields, and exact inventory needed only for server
+// validation. This DTO is safe for the browser and API consumers.
+export function toPublicCart(cart: Awaited<ReturnType<typeof getCartOrNull>>) {
+  if (!cart) return null;
+  return {
+    id: cart.id,
+    coupon: cart.coupon ? { code: cart.coupon.code } : null,
+    items: cart.items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+      deliveryMethod: item.deliveryMethod,
+      tryAtHome: item.tryAtHome,
+      product: {
+        slug: item.product.slug,
+        sku: item.product.sku,
+        name: item.product.name,
+        brand: item.product.brand,
+        pricePaise: item.product.pricePaise,
+        images: item.product.images.map((image) => ({ url: image.url, alt: image.alt, role: image.role, sortOrder: image.sortOrder }))
+      },
+      lensOption: item.lensOption
+        ? {
+            code: item.lensOption.code,
+            name: item.lensOption.name,
+            description: item.lensOption.description,
+            pricePaise: item.lensOption.pricePaise,
+            active: item.lensOption.active,
+            requiresPrescription: item.lensOption.requiresPrescription
+          }
+        : null
+    }))
+  };
+}
+
 export function calculateCartTotals(cart: Awaited<ReturnType<typeof getCartOrNull>>) {
   const items = cart?.items ?? [];
   const subtotalPaise = items.reduce((sum, item) => sum + (item.product.pricePaise ?? 0) * item.quantity, 0);

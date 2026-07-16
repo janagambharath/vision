@@ -34,13 +34,13 @@ export default function ReturnPolicyPage() {
             </section>
 
             <section>
-              <h2>3. Try-at-Home Deposits</h2>
-              <p>For our Try-at-Home service, a fully refundable deposit is collected. This deposit will be refunded to your original payment method once the try-at-home frames are returned in good condition. The non-refundable service fee will be deducted if you do not proceed with a purchase.</p>
+              <h2>3. Try-at-Home Requests</h2>
+              <p>Submitting a Try-at-Home form creates a no-payment availability request, not a paid order or a confirmed booking. It does not reserve frames. We assess service-area coverage, eligible-frame availability, and team capacity, then contact you if we can confirm the visit details. Because no payment, deposit, or service fee is collected through the request, there is no Try-at-Home deposit refund process.</p>
             </section>
 
             <section>
-              <h2>4. Refund Process</h2>
-              <p>Once your return is received and inspected, we will notify you of the approval or rejection of your refund. If approved, the refund will be processed, and a credit will automatically be applied to your credit card or original method of payment within 5-7 business days.</p>
+              <h2>4. Refund Process for Paid Orders</h2>
+              <p>Once a return for a paid order is received and inspected, we will notify you of the approval or rejection of the refund. If approved, we will process it to the original payment method where possible within 5-7 business days.</p>
             </section>
 
             <section>

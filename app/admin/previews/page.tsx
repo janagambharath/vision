@@ -60,6 +60,7 @@ export default async function AdminPreviewsPage() {
     : 0;
   const storedResultBytes = completed.reduce((total, request) => total + (request.resultBytes ?? 0), 0);
   const providerCredits = completed.reduce((total, request) => total + (request.providerCost ?? 0), 0);
+  const now = new Date();
   const mostTried = [...requests].reduce<Record<string, number>>((counts, request) => {
     counts[request.productSlug] = (counts[request.productSlug] ?? 0) + 1;
     return counts;
@@ -86,7 +87,16 @@ export default async function AdminPreviewsPage() {
 
         <div className="mt-8 grid gap-3">
           {requests.length ? (
-            requests.map((request) => (
+            requests.map((request) => {
+              const imagesWithinRetention = Boolean(request.expiresAt && request.expiresAt > now);
+              const customerImageUrl = imagesWithinRetention
+                ? getTryOnResultUrl(request.customerImagePublicId, request.customerImageUrl)
+                : null;
+              const resultImageUrl = imagesWithinRetention
+                ? getTryOnResultUrl(request.resultImagePublicId, request.resultImageUrl)
+                : null;
+              const hasStoredImages = Boolean(request.customerImageUrl || request.resultImageUrl);
+              return (
               <article key={request.id} className="vv-card grid gap-4 p-5 lg:grid-cols-[1fr_auto]">
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -106,28 +116,30 @@ export default async function AdminPreviewsPage() {
                   <Link className="vv-button-light" href={`/frames/${request.product.slug}?preview=admin`}>
                     View frame
                   </Link>
-                  {getTryOnResultUrl(request.customerImagePublicId, request.customerImageUrl) ? (
-                    <a className="vv-button-light" href={getTryOnResultUrl(request.customerImagePublicId, request.customerImageUrl) ?? "#"} target="_blank" rel="noopener">
+                  {customerImageUrl ? (
+                    <a className="vv-button-light" href={customerImageUrl} target="_blank" rel="noopener">
                       <ImageIcon className="h-4 w-4" />
                       Customer image
                     </a>
                   ) : null}
-                  {getTryOnResultUrl(request.resultImagePublicId, request.resultImageUrl) ? (
-                    <a className="vv-button-retail" href={getTryOnResultUrl(request.resultImagePublicId, request.resultImageUrl) ?? "#"} target="_blank" rel="noopener">
+                  {resultImageUrl ? (
+                    <a className="vv-button-retail" href={resultImageUrl} target="_blank" rel="noopener">
                       Result image
                     </a>
                   ) : null}
-                  {request.customerImageUrl || request.resultImageUrl ? (
+                  {!imagesWithinRetention && hasStoredImages ? <p className="rounded bg-amber-50 px-2 py-1 text-center text-xs font-bold text-amber-800">Retention expired — cleanup pending</p> : null}
+                  {hasStoredImages ? (
                     <form action={deletePreviewImages}>
                       <input type="hidden" name="requestId" value={request.id} />
                       <button type="submit" className="vv-button-light w-full text-rose-700">
-                        Delete stored images
+                        {imagesWithinRetention ? "Delete stored images" : "Retry cleanup"}
                       </button>
                     </form>
                   ) : null}
                 </div>
               </article>
-            ))
+              );
+            })
           ) : (
             <p className="vv-card p-6 text-slate-600">No preview requests yet.</p>
           )}

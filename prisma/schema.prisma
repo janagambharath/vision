@@ -612,7 +612,9 @@ model TryAtHomeRequest {
   frameCount      Int
   depositPaise    Int         @default(0)
   serviceFeePaise Int         @default(0)
-  status          OrderStatus @default(TRY_AT_HOME_BOOKED)
+  // A customer submission is only an availability request. Operations must
+  // explicitly move it to CONFIRMED after serviceability and stock checks.
+  status          OrderStatus @default(PENDING)
   productIds      String[]
   notes           String?
   order           Order?      @relation(fields: [orderId], references: [id])
@@ -696,6 +698,7 @@ model Review {
   createdAt DateTime @default(now())
 
   @@index([productId, approved])
+  @@unique([userId, productId])
 }
 
 model WishlistItem {
@@ -731,6 +734,8 @@ model FramePreviewRequest {
   expiresAt             DateTime?
   status                PreviewStatus @default(RECEIVED)
   disclaimer            String
+  privacyConsentVersion String?
+  privacyConsentAt      DateTime?
   promptVersion         String
   prompt                String
   failureReason         String?
@@ -742,6 +747,7 @@ model FramePreviewRequest {
   @@index([status])
   @@index([productId, customerImageHash, status])
   @@index([customerId, createdAt])
+  @@index([privacyConsentAt])
   @@index([expiresAt])
   @@index([createdAt])
   @@map("frame_preview_requests")
@@ -804,6 +810,26 @@ model ActivityLog {
 
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+// Durable outbox for authenticated/private Cloudinary assets that could not be
+// deleted synchronously. This prevents a transient provider failure from
+// turning a selfie or prescription replacement into an orphaned file.
+model AssetDeletionTask {
+  id            String   @id @default(cuid())
+  publicId      String
+  resourceType  String
+  kind          String
+  attempts      Int      @default(0)
+  nextAttemptAt DateTime @default(now())
+  lastError     String?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([publicId, resourceType])
+  @@index([completedAt, nextAttemptAt])
+  @@index([kind, createdAt])
 }
 
 model Notification {

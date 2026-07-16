@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { isRateLimited } from "@/lib/rate-limit";
+import { isRateLimited, rateLimit } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 import { normalizePhone, tryAtHomeSchema } from "@/lib/validations";
 
@@ -16,6 +16,10 @@ export async function POST(request: Request) {
   const parsed = tryAtHomeSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   const customerPhone = normalizePhone(parsed.data.phone);
+  const phoneLimit = await rateLimit(`try-at-home:${customerPhone}`, 3, 24 * 60 * 60);
+  if (!phoneLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests for this phone number. Please contact us if you need help." }, { status: 429 });
+  }
 
   const eligibleProducts = await prisma.product.findMany({
     where: {
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         phone: customerPhone,
         source: "api_try_at_home",
-        status: "HOME_TRIAL_BOOKED",
+        status: "NEW",
         intent: "Try at home",
         payload: {
           requestId: homeTrial.id,

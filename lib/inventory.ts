@@ -70,6 +70,19 @@ export type StoreProduct = {
   scheduledPublishAt?: Date | null;
 };
 
+// This is the only product shape that may cross a server-to-client boundary on
+// the storefront. Cost, barcode, publication state, exact stock, and internal
+// catalogue timestamps stay server-only.
+export type PublicStoreProduct = Omit<
+  StoreProduct,
+  "id" | "barcode" | "brandId" | "status" | "costPricePaise" |
+  "inventoryQuantity" | "inventoryStatus" | "publishedAt" |
+  "scheduledPublishAt" | "seoKeywords"
+> & {
+  sellable: boolean;
+  lowStock: boolean;
+};
+
 export type LensPackage = {
   id?: string;
   code: string;
@@ -89,6 +102,28 @@ export function productIsSellable(product: Pick<StoreProduct, "status" | "priceP
     product.inventoryStatus !== "OUT_OF_STOCK" &&
     product.inventoryStatus !== "PRICE_REQUIRED"
   );
+}
+
+export function toPublicStoreProduct(product: StoreProduct): PublicStoreProduct {
+  const {
+    id: _id,
+    barcode: _barcode,
+    brandId: _brandId,
+    status: _status,
+    costPricePaise: _costPricePaise,
+    inventoryQuantity,
+    inventoryStatus,
+    publishedAt: _publishedAt,
+    scheduledPublishAt: _scheduledPublishAt,
+    seoKeywords: _seoKeywords,
+    ...publicProduct
+  } = product;
+
+  return {
+    ...publicProduct,
+    sellable: productIsSellable(product),
+    lowStock: inventoryStatus === "LOW_STOCK" || (inventoryQuantity > 0 && inventoryQuantity <= 3)
+  };
 }
 
 export function productMatches(product: StoreProduct, query = "", category = "") {

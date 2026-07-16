@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getStoreProducts } from "@/lib/store-data";
+import { getProductsBySlugs } from "@/lib/store-data";
 import { formatMoney } from "@/lib/money";
 import { ArrowLeft, Check, X, ShoppingBag } from "lucide-react";
 
@@ -12,10 +12,13 @@ export const metadata = {
 export default async function ComparePage({ searchParams }: { searchParams: Promise<{ slugs?: string }> }) {
   const params = await searchParams;
   const slugsStr = params.slugs ?? "";
-  const slugs = slugsStr ? slugsStr.split(",") : [];
+  const slugs = slugsStr
+    ? [...new Set(slugsStr.split(",").map((slug) => slug.trim().toLowerCase()).filter((slug) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)))].slice(0, 3)
+    : [];
 
-  const allProducts = await getStoreProducts({ includeDrafts: true });
-  const products = allProducts.filter((p) => slugs.includes(p.slug));
+  // Public comparison may only resolve published products. Query exactly the
+  // bounded selection instead of loading the admin catalogue into this route.
+  const products = await getProductsBySlugs(slugs);
 
   return (
     <main className="vv-section bg-paper min-h-screen">

@@ -7,6 +7,47 @@ This application requires Node.js 20. The checked-in `engines.node` and
 Node 20 or later. If a Railway build still reports Node 18, remove any
 conflicting `NIXPACKS_NODE_VERSION=18` service variable or set it to `20`.
 
+## Production Readiness Preflight
+
+Run the non-secret release gate from an environment that has the same variables
+as production. It checks variable presence without printing their values,
+performs read-only PostgreSQL/Redis checks, validates the checked-in worker
+manifests, and, with `--live`, checks the public health endpoint and security
+headers:
+
+```powershell
+$env:NODE_ENV = "production"
+node --env-file=.env scripts/production-preflight.mjs --live --strict
+```
+
+In Railway, run `npm run ops:preflight -- --live --strict` from a one-off
+service/shell after setting `NODE_ENV=production`. Never put `.env` or any
+secret value in source control or CI output.
+
+Before this can pass, set `REQUIRE_REDIS_FOR_RATE_LIMITS=true` in Railway.
+When Redis is unavailable, public rate-limited mutations then fail closed
+instead of relying on per-instance memory limits. Local development may keep
+the variable `false` or unset.
+
+The three timestamp variables are deliberate operational attestations, not
+automatic proof:
+
+- `PRODUCTION_WORKERS_VERIFIED_AT`: update only after every Railway scheduled
+  service is deployed, has the web-service variable group, and has a successful
+  first log entry. It must be refreshed weekly.
+- `PRODUCTION_BACKUP_RESTORE_VERIFIED_AT`: update only after a current backup
+  is restored into a disposable staging database. It must be refreshed every
+  90 days.
+- `PRODUCTION_PROVIDER_CANARY_VERIFIED_AT`: update only after controlled test
+  canaries verify the signed Razorpay webhook, delivery email, approved
+  WhatsApp template, Shiprocket sandbox/test path, and a consented Gemini
+  preview followed by deletion. It must be refreshed every 14 days and after a
+  provider credential/configuration change.
+
+The preflight can validate the local worker manifests, but it cannot discover
+Railway scheduled services or safely invoke chargeable/mutating provider APIs.
+Do not set an attestation timestamp without the evidence above.
+
 ## Database Backups
 
 Run a verified local dump before every production release and schedule the same command hourly on the host:
@@ -18,8 +59,13 @@ npm run db:backup -- -OutputDir C:\vision-vistara-backups -RetentionDays 14
 Requirements:
 
 - `DATABASE_URL` must point at the production PostgreSQL database.
-- `pg_dump` must be installed on the machine running the backup.
+- `pg_dump` and `pg_restore` must be installed on the machine running the backup.
 - Store the backup directory on durable storage, not only the app container disk.
+
+The backup script fails if `pg_dump` fails, the archive is suspiciously small,
+or `pg_restore --list` cannot read the custom archive. It also prints a SHA-256
+digest for release evidence. This validates archive integrity; it is not a
+substitute for the staging restore drill below.
 
 Restore drill:
 
@@ -104,7 +150,11 @@ A product can be active only when:
 ## AI Try-On Retention
 
 - Set `GEMINI_API_KEY`, `GEMINI_TRY_ON_MODEL=gemini-3.1-flash-lite-image`, and the Cloudinary credentials before enabling customer AI try-on. Flash Lite Image is the default cost-saving customer-preview model. The chosen Gemini image model needs available paid-tier quota; a key with free-tier quota of zero will return `429 RESOURCE_EXHAUSTED` and cannot generate previews. Never use a `NEXT_PUBLIC_` key.
-- Run `npm run worker:purge-previews` daily. It removes temporary customer selfie assets after their 30-day retention window while retaining generated preview records for cache and audit purposes.
+- Run `npm run worker:purge-previews` daily. It processes the 100 oldest expired
+  preview records first and emits JSON logs with `selected`, `purged`, `failed`,
+  and `backlogRemaining`. A Cloudinary deletion that is not confirmed leaves the
+  database references intact for a retry, writes an `AI_PREVIEW_RETENTION_PURGE_FAILED`
+  activity log, and exits nonzero. Alert on any failed run or a growing backlog.
 
 ## AI Product Detail Prefill
 
@@ -132,3 +182,8 @@ migrations) before enabling the worker services:
 Each worker command exits after one pass. Verify the first run in Railway logs;
 the order follow-up worker writes an `ORDER_FOLLOWUP` notification for phone-
 only deliveries too, preventing repeat WhatsApp sends on later schedules.
+
+For the preview-retention worker specifically, retain the structured completion
+log as release evidence and investigate a nonzero exit immediately. `backlogRemaining`
+above zero is expected during a large historical cleanup, but must trend down on
+successive daily runs; it is not a reason to clear image references manually.

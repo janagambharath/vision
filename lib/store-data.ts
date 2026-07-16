@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { productMatches, type StoreImage, type StoreProduct, type StoreProductStatus } from "@/lib/inventory";
+import { type StoreImage, type StoreProduct, type StoreProductStatus } from "@/lib/inventory";
 import { getCache, setCache } from "@/lib/redis";
 
 const hasDatabaseUrl = () => Boolean(process.env.DATABASE_URL);
@@ -157,68 +157,132 @@ export type GetStoreProductsOptions = {
   featuredOnly?: boolean;
   page?: number;
   limit?: number;
-  sort?: string;
+  sort?: StoreProductSort;
 };
+
+export const PUBLIC_CATALOG_PAGE_SIZE = 24;
+
+const DEFAULT_STORE_PRODUCT_LIMIT = 100;
+const MAX_STORE_PRODUCT_LIMIT = 100;
+const MAX_CATALOG_PAGE = 10_000;
+const MAX_PRODUCT_PRICE_PAISE = 2_147_483_647;
+
+export const STORE_PRODUCT_SORTS = ["featured", "price-asc", "price-desc", "new", "name"] as const;
+export type StoreProductSort = (typeof STORE_PRODUCT_SORTS)[number];
+
+type NormalizedStoreProductOptions = {
+  query: string;
+  category: string;
+  brand: string;
+  gender: string;
+  material: string;
+  shape: string;
+  color: string;
+  status?: StoreProductStatus;
+  priceMin?: number;
+  priceMax?: number;
+  includeDrafts: boolean;
+  featuredOnly: boolean;
+  page: number;
+  limit: number;
+  sort: StoreProductSort;
+};
+
+function normalizedText(value: string | undefined) {
+  return value?.trim() ?? "";
+}
+
+function normalizedPrice(value: number | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) return undefined;
+  return Math.min(Math.floor(value), MAX_PRODUCT_PRICE_PAISE);
+}
+
+export function normalizeCatalogPage(value: string | number | undefined) {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isSafeInteger(parsed)) return 1;
+  return Math.min(Math.max(parsed, 1), MAX_CATALOG_PAGE);
+}
+
+function normalizeStoreProductLimit(value: number | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return DEFAULT_STORE_PRODUCT_LIMIT;
+  return Math.min(Math.max(Math.floor(value), 1), MAX_STORE_PRODUCT_LIMIT);
+}
+
+export function normalizeStoreProductSort(value: string | undefined): StoreProductSort {
+  return STORE_PRODUCT_SORTS.find((sort) => sort === value) ?? "featured";
+}
+
+function normalizeStoreProductOptions(options: GetStoreProductsOptions): NormalizedStoreProductOptions {
+  return {
+    query: normalizedText(options.query),
+    category: normalizedText(options.category),
+    brand: normalizedText(options.brand),
+    gender: normalizedText(options.gender),
+    material: normalizedText(options.material),
+    shape: normalizedText(options.shape),
+    color: normalizedText(options.color),
+    status: options.status,
+    priceMin: normalizedPrice(options.priceMin),
+    priceMax: normalizedPrice(options.priceMax),
+    includeDrafts: options.includeDrafts ?? false,
+    featuredOnly: options.featuredOnly ?? false,
+    page: normalizeCatalogPage(options.page),
+    limit: normalizeStoreProductLimit(options.limit),
+    sort: normalizeStoreProductSort(options.sort)
+  };
+}
+
+function storeProductWhere(options: NormalizedStoreProductOptions) {
+  const where: Record<string, unknown> = { deletedAt: null };
+  if (!options.includeDrafts) where.status = "ACTIVE";
+  else if (options.status) where.status = options.status;
+  if (options.featuredOnly) where.featured = true;
+  if (options.gender) where.gender = options.gender;
+  if (options.shape) where.shape = { contains: options.shape, mode: "insensitive" };
+  if (options.material) where.material = { contains: options.material, mode: "insensitive" };
+  if (options.color) where.colour = { contains: options.color, mode: "insensitive" };
+  if (options.brand) where.brand = { contains: options.brand, mode: "insensitive" };
+  if (options.priceMin !== undefined || options.priceMax !== undefined) {
+    const pricePaise: Record<string, number> = {};
+    if (options.priceMin !== undefined) pricePaise.gte = options.priceMin;
+    if (options.priceMax !== undefined) pricePaise.lte = options.priceMax;
+    where.pricePaise = pricePaise;
+  }
+  if (options.category) {
+    where.categories = { some: { category: { slug: options.category } } };
+  }
+  if (options.query) {
+    where.searchText = { contains: options.query.toLowerCase(), mode: "insensitive" };
+  }
+  return where;
+}
+
+function storeProductOrderBy(sort: StoreProductSort) {
+  if (sort === "price-asc") return [{ pricePaise: { sort: "asc" as const, nulls: "last" as const } }, { createdAt: "desc" as const }, { id: "desc" as const }];
+  if (sort === "price-desc") return [{ pricePaise: { sort: "desc" as const, nulls: "last" as const } }, { createdAt: "desc" as const }, { id: "desc" as const }];
+  if (sort === "new") return [{ createdAt: "desc" as const }, { id: "desc" as const }];
+  if (sort === "name") return [{ name: "asc" as const }, { id: "desc" as const }];
+  return [{ featured: "desc" as const }, { createdAt: "desc" as const }, { id: "desc" as const }];
+}
 
 export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
   if (!hasDatabaseUrl()) return [];
 
-  const {
-    query = "",
-    category = "",
-    brand = "",
-    gender = "",
-    material = "",
-    shape = "",
-    color = "",
-    status,
-    priceMin,
-    priceMax,
-    includeDrafts = false,
-    featuredOnly = false,
-    page = 1,
-    limit = 100,
-    sort = "featured"
-  } = options;
-
-  const isSimpleRequest = !query && !category && !brand && !gender && !material && !shape && !color && !status && !priceMin && !priceMax;
+  const normalized = normalizeStoreProductOptions(options);
+  const { query, category, brand, gender, material, shape, color, status, priceMin, priceMax, includeDrafts, featuredOnly, page, limit, sort } = normalized;
+  const isSimpleRequest = !query && !category && !brand && !gender && !material && !shape && !color && !status && priceMin === undefined && priceMax === undefined;
   if (isSimpleRequest) {
-    const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:p${page}:l${limit}`;
+    const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:s${sort}:p${page}:l${limit}`;
     const cached = await getCache<StoreProduct[]>(cacheKey);
     if (cached) return cached;
   }
 
-  const where: Record<string, unknown> = { deletedAt: null };
-  if (!includeDrafts) where.status = "ACTIVE";
-  else if (status) where.status = status;
-  if (featuredOnly) where.featured = true;
-  if (gender) where.gender = gender;
-  if (shape) where.shape = { contains: shape, mode: "insensitive" };
-  if (material) where.material = { contains: material, mode: "insensitive" };
-  if (color) where.colour = { contains: color, mode: "insensitive" };
-  if (brand) where.brand = { contains: brand, mode: "insensitive" };
-  if (priceMin || priceMax) {
-    where.pricePaise = {};
-    if (priceMin) (where.pricePaise as Record<string, number>).gte = priceMin;
-    if (priceMax) (where.pricePaise as Record<string, number>).lte = priceMax;
-  }
-  if (category) {
-    where.categories = { some: { category: { slug: category } } };
-  }
-  if (query) {
-    where.searchText = { contains: query.toLowerCase(), mode: "insensitive" };
-  }
-
-  let orderBy: Record<string, string>[] = [{ featured: "desc" }, { createdAt: "desc" }];
-  if (sort === "price-asc") orderBy = [{ pricePaise: "asc" }];
-  else if (sort === "price-desc") orderBy = [{ pricePaise: "desc" }];
-  else if (sort === "new") orderBy = [{ createdAt: "desc" }];
-  else if (sort === "name") orderBy = [{ name: "asc" }];
+  const where = storeProductWhere(normalized);
 
   const products = await prisma.product.findMany({
     where,
     include: PRODUCT_INCLUDE,
-    orderBy,
+    orderBy: storeProductOrderBy(sort),
     skip: (page - 1) * limit,
     take: limit
   });
@@ -226,12 +290,8 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
   const mapped = products.map(mapDbProduct);
 
   if (isSimpleRequest && mapped.length) {
-    const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:p${page}:l${limit}`;
+    const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:s${sort}:p${page}:l${limit}`;
     await setCache(cacheKey, mapped, 300);
-  }
-
-  if (query && !where.searchText) {
-    return mapped.filter((product) => productMatches(product, query, ""));
   }
 
   return mapped;
@@ -240,34 +300,30 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
 export async function getStoreProductsCount(options: GetStoreProductsOptions = {}) {
   if (!hasDatabaseUrl()) return 0;
 
-  const { includeDrafts = false, category = "", brand = "", gender = "", query = "", status } = options;
-  const where: Record<string, unknown> = { deletedAt: null };
-  if (!includeDrafts) where.status = "ACTIVE";
-  else if (status) where.status = status;
-  if (category) where.categories = { some: { category: { slug: category } } };
-  if (brand) where.brand = { contains: brand, mode: "insensitive" };
-  if (gender) where.gender = gender;
-  if (query) where.searchText = { contains: query.toLowerCase(), mode: "insensitive" };
-  return prisma.product.count({ where });
+  return prisma.product.count({ where: storeProductWhere(normalizeStoreProductOptions(options)) });
 }
 
 export async function getStoreProduct(slug: string) {
   if (!hasDatabaseUrl()) return null;
 
   const product = await prisma.product.findFirst({
-    where: { slug, deletedAt: null },
+    where: { slug, status: "ACTIVE", deletedAt: null },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
       inventory: true,
       categories: { include: { category: true } },
-      reviews: { where: { approved: true }, take: 5, orderBy: { createdAt: "desc" } }
+      reviews: { where: { approved: true, verified: true }, take: 5, orderBy: { createdAt: "desc" } }
     }
   });
   if (product) return mapDbProduct(product);
 
   const redirect = await prisma.slugRedirect.findUnique({ where: { oldSlug: slug } });
   if (redirect) {
-    return { __redirect: redirect.newSlug } as unknown as StoreProduct;
+    const redirectTarget = await prisma.product.findFirst({
+      where: { slug: redirect.newSlug, status: "ACTIVE", deletedAt: null },
+      select: { id: true }
+    });
+    if (redirectTarget) return { __redirect: redirect.newSlug } as unknown as StoreProduct;
   }
 
   return null;

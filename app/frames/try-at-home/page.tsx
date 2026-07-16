@@ -10,7 +10,7 @@ import { MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Try at Home",
-  description: "Select up to 5 frames for a Vision Vistara home trial. Try them on in the comfort of your home before buying.",
+  description: "Request a Vision Vistara home trial for up to 5 eligible frames. We confirm service-area coverage, availability, and visit details before scheduling.",
   alternates: { canonical: `${SITE_URL}/frames/try-at-home` }
 };
 
@@ -30,14 +30,14 @@ export default async function TryAtHomePage({
       <main className="vv-section bg-paper">
         <div className="vv-container max-w-2xl text-center">
           <CheckCircle2 className="mx-auto h-16 w-16 text-retail" />
-          <h1 className="mt-6 text-4xl font-extrabold">Home trial booked!</h1>
+          <h1 className="mt-6 text-4xl font-extrabold">Home trial request received</h1>
           <p className="mt-4 text-lg text-slate-600">
-            Your request has been submitted. We will check frame availability and contact you to confirm the visit.
+            This is not a confirmed booking. We will check service-area coverage and frame availability, then contact you to confirm the visit details.
           </p>
           <p className="mt-2 text-sm text-slate-500">Request ID: {params.request}</p>
           <div className="mt-8 flex justify-center gap-3">
-            <Link className="vv-button-retail" href="/frames">Continue Shopping</Link>
-            <Link className="vv-button-light" href="/frames/orders/lookup">Track Orders</Link>
+            <Link className="vv-button-retail" href="/frames">Browse frames</Link>
+            <Link className="vv-button-light" href="/frames/try-at-home">Make another request</Link>
           </div>
         </div>
       </main>
@@ -67,24 +67,29 @@ export default async function TryAtHomePage({
           </p>
           <h1 className="text-4xl font-extrabold">Try frames at home before you buy.</h1>
           <p className="mt-3 text-slate-600">
-            Select up to {MAX_HOME_TRIAL_FRAMES} frames, choose a date and time, and our team will bring them to your doorstep.
+            Select up to {MAX_HOME_TRIAL_FRAMES} eligible frames, choose your preferred date and time, and send an availability request. A trial is scheduled only after we confirm coverage, frame availability, and team capacity.
           </p>
         </div>
 
         {params.error ? (
           <div className="mb-6 rounded-vv border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
-            {params.error === "frames-unavailable" ? "One or more selected frames are no longer available. Please choose another frame." : "Please fill in all required fields correctly."}
+            {params.error === "frames-unavailable"
+              ? "One or more selected frames are no longer available. Please choose another frame."
+              : params.error === "rate-limited"
+                ? "You have reached the request limit for this phone number. Please contact us if you need help."
+                : "Please fill in all required fields correctly."}
           </div>
         ) : null}
 
         {/* Info Cards */}
         <StaggerContainer className="mb-8 grid gap-4 md:grid-cols-3">
-          <StaggerItem><InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} frames you'd like to try.`} /></StaggerItem>
-          <StaggerItem><InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Pick a slot" body="Choose your preferred date and time window." /></StaggerItem>
-          <StaggerItem><InfoCard icon={<Truck className="h-8 w-8" />} title="We deliver" body="Our team brings the frames to your door." /></StaggerItem>
+          <StaggerItem><InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} eligible frames you'd like to try.`} /></StaggerItem>
+          <StaggerItem><InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Pick a preferred slot" body="Tell us the date and time window that work best for you." /></StaggerItem>
+          <StaggerItem><InfoCard icon={<Truck className="h-8 w-8" />} title="We confirm first" body="We check serviceability, availability, and team capacity before scheduling." /></StaggerItem>
         </StaggerContainer>
 
         <form action={tryAtHomeAction} className="grid gap-8 lg:grid-cols-[1fr_380px]">
+          <input className="hidden" type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
           {/* Frame Selector */}
           <div>
             <h2 className="mb-4 text-2xl font-extrabold">Select frames to try</h2>
@@ -121,7 +126,7 @@ export default async function TryAtHomePage({
 
           {/* Booking Form */}
           <aside className="vv-card sticky top-28 self-start p-6">
-            <h2 className="text-xl font-extrabold">Your details</h2>
+            <h2 className="text-xl font-extrabold">Your request details</h2>
             <div className="mt-5 grid gap-4">
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Name
@@ -140,24 +145,13 @@ export default async function TryAtHomePage({
                 <input className="store-input" type="date" name="preferredDate" required min={new Date().toISOString().split("T")[0]} />
               </label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Time slot
+                Preferred time window
                 <select className="store-input" name="preferredSlot" required>
                   {timeSlots.map((slot) => (
                     <option key={slot} value={slot}>{slot}</option>
                   ))}
                 </select>
               </label>
-              {/* Home-trial requests do not accept prescription uploads.
-                Prescription upload (optional)
-                <input
-                  className="store-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,application/pdf"
-                />
-                <span className="text-xs text-slate-400 font-normal">
-                  JPEG, PNG, or PDF · Upload your latest prescription if available
-                </span>
-              */}
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Notes (optional)
                 <textarea className="store-input min-h-16 py-2" name="notes" placeholder="Special requests for the visit..." />
@@ -165,13 +159,13 @@ export default async function TryAtHomePage({
             </div>
 
             <div className="mt-5 rounded-vv bg-slate-50 p-4 text-sm">
-              <p className="font-bold text-slate-700">No payment is collected with this request.</p>
-              <p className="mt-2 text-xs text-slate-500">A team member confirms availability, visit details, and any applicable charges before the home trial is scheduled.</p>
+              <p className="font-bold text-slate-700">No payment, deposit, or service fee is collected with this request.</p>
+              <p className="mt-2 text-xs text-slate-500">This does not reserve frames or confirm a visit. We will contact you after confirming service-area coverage, frame availability, and team capacity.</p>
             </div>
 
             <button className="vv-button-retail mt-5 w-full" type="submit">
               <Home className="h-4 w-4" />
-              Book Home Trial
+              Request Home Trial
             </button>
           </aside>
         </form>

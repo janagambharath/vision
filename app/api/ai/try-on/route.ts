@@ -3,6 +3,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
 import {
   buildGeminiTryOnPrompt,
+  deleteTryOnAsset,
   geminiTryOnConfigured,
   geminiTryOnModel,
   generateGeminiTryOn,
@@ -23,6 +24,7 @@ const PROMPT_VERSION = "vision-vistara-gemini-two-image-v1";
 const PREVIEW_DISCLAIMER =
   "AI try-on is an appearance preview only. It does not guarantee exact fit, lens thickness, prescription suitability, or the final manufactured frame alignment.";
 const CUSTOMER_IMAGE_RETENTION_DAYS = 30;
+const AI_PRIVACY_CONSENT_VERSION = "2026-07-v1";
 
 function publicPreviewError(error: unknown) {
   if (error instanceof TryOnError && !error.retryable) return error.message;
@@ -45,11 +47,15 @@ export async function POST(request: NextRequest) {
     frameSlug?: unknown;
     customerImage?: unknown;
     privacyConsent?: unknown;
+    privacyConsentVersion?: unknown;
   } | null;
   const parsedSlug = slugSchema.safeParse(body?.frameSlug);
   const customerImage = parseDataImage(body?.customerImage);
   if (!parsedSlug.success || !customerImage || body?.privacyConsent !== true) {
     return NextResponse.json({ error: "Capture a clear JPEG, PNG, or WebP selfie to continue." }, { status: 400 });
+  }
+  if (body?.privacyConsentVersion !== AI_PRIVACY_CONSENT_VERSION) {
+    return NextResponse.json({ error: "Please refresh and review the current image-processing notice before generating a preview." }, { status: 409 });
   }
 
   const product = await prisma.product.findFirst({
@@ -80,7 +86,8 @@ export async function POST(request: NextRequest) {
       customerImageHash: customerImage.hash,
       customerId,
       status: "READY",
-      resultImageUrl: { not: null }
+      resultImageUrl: { not: null },
+      expiresAt: { gt: new Date() }
     },
     orderBy: { createdAt: "desc" },
     select: { id: true, resultImageUrl: true, resultImagePublicId: true, generationMs: true, frameImageUrl: true }
@@ -99,6 +106,10 @@ export async function POST(request: NextRequest) {
 
   const prompt = buildGeminiTryOnPrompt(product);
   let previewRequestId: string | null = null;
+  // An external upload can succeed just before a database write fails. Track
+  // those as-yet-unpersisted IDs so the error path compensates immediately
+  // instead of leaving an unreferenced private selfie or generated image.
+  const untrackedAssetIds = new Set<string>();
 
   try {
     const uploadedCustomer = await uploadTryOnDataImage({
@@ -106,6 +117,7 @@ export async function POST(request: NextRequest) {
       folder: "vision-vistara/ai-try-on-customers",
       tags: ["ai-try-on", "temporary-customer-image"]
     });
+    untrackedAssetIds.add(uploadedCustomer.publicId);
     const previewRequest = await prisma.framePreviewRequest.create({
       data: {
         productId: product.id,
@@ -117,6 +129,8 @@ export async function POST(request: NextRequest) {
         frameImageUrl: frameImage.url,
         status: "PROCESSING",
         disclaimer: PREVIEW_DISCLAIMER,
+        privacyConsentVersion: AI_PRIVACY_CONSENT_VERSION,
+        privacyConsentAt: new Date(),
         promptVersion: PROMPT_VERSION,
         prompt,
         model: geminiTryOnModel(),
@@ -125,6 +139,7 @@ export async function POST(request: NextRequest) {
       select: { id: true }
     });
     previewRequestId = previewRequest.id;
+    untrackedAssetIds.delete(uploadedCustomer.publicId);
 
     const trustedFrameImage = await loadTryOnFrameImage(frameImage.url, request.signal);
     // A retry can produce a second billable generation. Record one attempt and
@@ -136,6 +151,7 @@ export async function POST(request: NextRequest) {
       folder: "vision-vistara/ai-try-on-results",
       tags: ["ai-try-on", "gemini-generated-preview"]
     });
+    untrackedAssetIds.add(storedResult.publicId);
     await prisma.framePreviewRequest.update({
       where: { id: previewRequest.id },
       data: {
@@ -149,6 +165,7 @@ export async function POST(request: NextRequest) {
         model: geminiResult.model
       }
     });
+    untrackedAssetIds.delete(storedResult.publicId);
 
     return NextResponse.json({
       requestId: previewRequest.id,
@@ -164,11 +181,56 @@ export async function POST(request: NextRequest) {
       productSlug: parsedSlug.data,
       error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : error
     });
+    if (untrackedAssetIds.size) {
+      const cleanup = await Promise.allSettled(
+        [...untrackedAssetIds].map((assetId) => deleteTryOnAsset(assetId))
+      );
+      if (cleanup.some((result) => result.status === "rejected")) {
+        console.error("Could not confirm deletion of untracked AI preview assets", { previewRequestId });
+      }
+    }
     if (previewRequestId) {
-      await prisma.framePreviewRequest.update({
-        where: { id: previewRequestId },
-        data: { status: "FAILED", failureReason: error instanceof Error ? error.message.slice(0, 1000) : "Unknown Gemini generation failure." }
-      }).catch(() => undefined);
+      const cancelled = request.signal.aborted;
+      if (cancelled) {
+        const preview = await prisma.framePreviewRequest.findUnique({
+          where: { id: previewRequestId },
+          select: { customerImagePublicId: true, resultImagePublicId: true }
+        }).catch(() => null);
+        const assetIds = [preview?.customerImagePublicId, preview?.resultImagePublicId]
+          .filter((assetId): assetId is string => Boolean(assetId));
+        const cleanup = await Promise.allSettled(assetIds.map((assetId) => deleteTryOnAsset(assetId)));
+        const cleanupConfirmed = cleanup.every((result) => result.status === "fulfilled");
+        if (!cleanupConfirmed) {
+          console.error("Could not confirm deletion of cancelled AI preview assets", { previewRequestId });
+        }
+        await prisma.framePreviewRequest.update({
+          where: { id: previewRequestId },
+          data: cleanupConfirmed
+            ? {
+                status: "FAILED",
+                failureReason: "Customer cancelled the generation.",
+                customerImageUrl: null,
+                customerImagePublicId: null,
+                customerImageHash: null,
+                resultImageUrl: null,
+                resultImagePublicId: null,
+                resultBytes: null
+              }
+            : {
+                status: "FAILED",
+                failureReason: "Customer cancelled the generation; asset cleanup is pending.",
+                customerImageHash: null,
+                // Make the failed record immediately eligible for the retention
+                // worker, which will retry deletion without losing its references.
+                expiresAt: new Date()
+              }
+        }).catch(() => undefined);
+      } else {
+        await prisma.framePreviewRequest.update({
+          where: { id: previewRequestId },
+          data: { status: "FAILED", failureReason: error instanceof Error ? error.message.slice(0, 1000) : "Unknown Gemini generation failure." }
+        }).catch(() => undefined);
+      }
     }
     const status = error instanceof TryOnError ? error.status : 502;
     const headers = error instanceof TryOnError && error.retryAfterSeconds

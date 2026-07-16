@@ -31,6 +31,7 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Personal Details:</strong> Name, phone number, email address, and shipping/billing address.</li>
                 <li><strong>Medical Information:</strong> Details you provide when booking appointments or uploading optical prescriptions.</li>
                 <li><strong>Photos for AI Try-On:</strong> Selfies or facial images you upload for the virtual try-on feature.</li>
+                <li><strong>Try-at-Home Request Details:</strong> Selected frames, preferred date and time, service address, contact details, and any notes you submit.</li>
                 <li><strong>Usage Data:</strong> IP address, browser type, pages visited, and interaction data via cookies and analytics.</li>
                 <li><strong>Order Information:</strong> Purchase history, cart contents, and payment status (note: actual payment processing is handled securely by Razorpay; we do not store full card numbers).</li>
               </ul>
@@ -40,7 +41,8 @@ export default function PrivacyPolicyPage() {
               <h2>3. How We Use Your Information</h2>
               <p>We use the collected data to:</p>
               <ul className="list-disc pl-5 mt-2 space-y-2">
-                <li>Provide our services, process orders, and facilitate try-at-home requests.</li>
+                <li>Provide our services, process orders, and assess try-at-home request availability.</li>
+                <li>Check service-area coverage, eligible-frame availability, and team capacity for a try-at-home request, then contact you to confirm a visit where available. Submitting a request does not book a visit or collect a payment, deposit, or service fee.</li>
                 <li>Schedule and confirm clinic appointments.</li>
                 <li>Generate AI-powered previews of frames on your face.</li>
                 <li>Communicate with you regarding orders, appointments, and support via email or WhatsApp.</li>
@@ -83,7 +85,7 @@ export default function PrivacyPolicyPage() {
 
             <section>
               <h2>8. Your Rights</h2>
-              <p>You have the right to access, correct, or request deletion of your personal data. For requests regarding your data, please contact us using the information below.</p>
+              <p>You may ask to access, correct, export, or delete your personal data. Submit an export or deletion request from <Link href="/account" className="text-clinic font-bold hover:underline">My Account</Link>, or contact us using the information below. We may retain limited information where required by law or needed for tax, accounting, fraud prevention, dispute resolution, or an ongoing order; we will explain if we cannot fulfil a request in full.</p>
             </section>
 
             <section>
