@@ -73,6 +73,79 @@ export default async function FramesPage({
     const search = query.toString();
     return search ? `/frames?${search}` : "/frames";
   };
+  const activeFilterCount = [
+    params.q,
+    params.category,
+    params.gender,
+    params.material,
+    params.shape,
+    params.color,
+    sort !== "featured"
+  ].filter(Boolean).length;
+  const renderFilterFields = () => (
+    <>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Search frames
+        <input className="store-input" type="search" name="q" defaultValue={params.q ?? ""} placeholder="Brand, SKU, material, shape, colour..." />
+      </label>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Category
+        <select className="store-input" name="category" defaultValue={params.category ?? ""}>
+          <option value="">All categories</option>
+          {filterOptions.categories.map((cat: { value: string; label: string }) => (
+            <option key={cat.value} value={cat.value}>
+              {cat.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Gender
+        <select className="store-input" name="gender" defaultValue={params.gender ?? ""}>
+          <option value="">Any</option>
+          {filterOptions.genders.map((g: { value: string; label: string }) => (
+            <option key={g.value} value={g.value}>{g.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Shape
+        <select className="store-input" name="shape" defaultValue={params.shape ?? ""}>
+          <option value="">Any</option>
+          {filterOptions.shapes.map((s: { value: string; label: string }) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Material
+        <select className="store-input" name="material" defaultValue={params.material ?? ""}>
+          <option value="">Any</option>
+          {filterOptions.materials.map((m: { value: string; label: string }) => (
+            <option key={m.value} value={m.value}>{m.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Colour
+        <select className="store-input" name="color" defaultValue={params.color ?? ""}>
+          <option value="">Any</option>
+          {filterOptions.colors.map((color: { value: string; label: string }) => (
+            <option key={color.value} value={color.value}>{color.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+        Sort
+        <select className="store-input" name="sort" defaultValue={sort}>
+          <option value="featured">Featured</option>
+          <option value="new">New arrivals</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </select>
+      </label>
+    </>
+  );
 
   return (
     <main>
@@ -102,67 +175,26 @@ export default async function FramesPage({
               })}
             </nav>
           </div>
-          <form className="grid gap-3 sm:grid-cols-2 lg:grid-cols-8" action="/frames">
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Search frames
-              <input className="store-input" type="search" name="q" defaultValue={params.q ?? ""} placeholder="Brand, SKU, material, shape, colour..." />
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Category
-              <select className="store-input" name="category" defaultValue={params.category ?? ""}>
-                <option value="">All categories</option>
-                {filterOptions.categories.map((cat: { value: string; label: string }) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Gender
-              <select className="store-input" name="gender" defaultValue={params.gender ?? ""}>
-                <option value="">Any</option>
-                {filterOptions.genders.map((g: { value: string; label: string }) => (
-                  <option key={g.value} value={g.value}>{g.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Shape
-              <select className="store-input" name="shape" defaultValue={params.shape ?? ""}>
-                <option value="">Any</option>
-                {filterOptions.shapes.map((s: { value: string; label: string }) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Material
-              <select className="store-input" name="material" defaultValue={params.material ?? ""}>
-                <option value="">Any</option>
-                {filterOptions.materials.map((m: { value: string; label: string }) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Colour
-              <select className="store-input" name="color" defaultValue={params.color ?? ""}>
-                <option value="">Any</option>
-                {filterOptions.colors.map((color: { value: string; label: string }) => (
-                  <option key={color.value} value={color.value}>{color.label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Sort
-              <select className="store-input" name="sort" defaultValue={sort}>
-                <option value="featured">Featured</option>
-                <option value="new">New arrivals</option>
-                <option value="price-asc">Price: low to high</option>
-                <option value="price-desc">Price: high to low</option>
-              </select>
-            </label>
+          <details className="group sm:hidden">
+            <summary className="vv-button-retail flex w-full cursor-pointer list-none justify-center [&::-webkit-details-marker]:hidden">
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters &amp; sort
+              {activeFilterCount > 0 ? <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{activeFilterCount}</span> : null}
+            </summary>
+            <form className="mt-3 grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3" action="/frames">
+              {renderFilterFields()}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button className="vv-button-retail w-full px-3" type="submit">
+                  Apply filters
+                </button>
+                <Link className="vv-button-light w-full px-3" href="/frames">
+                  Clear all
+                </Link>
+              </div>
+            </form>
+          </details>
+          <form className="hidden gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-8" action="/frames">
+            {renderFilterFields()}
             <button className="vv-button-retail self-end" type="submit">
               <SlidersHorizontal className="h-4 w-4" />
               Apply

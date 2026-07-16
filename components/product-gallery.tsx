@@ -19,14 +19,14 @@ export function ProductGallery({ images: productImages }: { images: StoreImage[]
   return (
     <div className="grid gap-3">
       {/* Active Image Card */}
-      <div className="vv-card relative aspect-[16/10] overflow-hidden bg-slate-50 group">
+      <div className="vv-card relative aspect-square overflow-hidden bg-slate-50 group sm:aspect-[16/10]">
         <Image
           src={activeImage.url}
           alt={activeImage.alt}
           fill
           priority
           sizes="(max-width: 900px) 100vw, 55vw"
-          className="object-contain p-8 transition-transform duration-300 group-hover:scale-105"
+          className="object-contain p-3 transition-transform duration-300 group-hover:scale-105 sm:p-6 lg:p-8"
         />
         <button
           onClick={() => setIsZoomed(true)}
@@ -40,12 +40,12 @@ export function ProductGallery({ images: productImages }: { images: StoreImage[]
 
       {/* Thumbnails */}
       {images.length > 1 ? (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-flow-col auto-cols-[76px] grid-rows-1 gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] sm:grid-flow-row sm:auto-cols-auto sm:grid-cols-4 sm:overflow-visible sm:pb-0">
           {images.map((image, index) => (
             <button
               key={`${image.url}-${image.role}-${index}`}
               onClick={() => setActiveIdx(index)}
-              className={`vv-card relative aspect-[4/3] overflow-hidden bg-slate-50 transition border-2 ${
+              className={`vv-card relative aspect-square overflow-hidden bg-slate-50 transition border-2 sm:aspect-[4/3] ${
                 index === activeIdx ? "border-retail ring-2 ring-teal-100" : "border-slate-100 hover:border-slate-300"
               }`}
               type="button"

@@ -249,12 +249,12 @@ export default async function ProductPage({
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(productSchema) }} />
       
-      <section className="vv-section bg-white/40">
-        <FadeIn className="vv-container grid gap-10 lg:grid-cols-[1.05fr_.95fr]">
+      <section className="bg-white/40 py-8 sm:py-20 md:py-32">
+        <FadeIn className="vv-container grid gap-6 sm:gap-10 lg:grid-cols-[1.05fr_.95fr]">
           <ProductGallery images={product.images} />
 
           <div>
-            <nav className="mb-4 text-xs font-bold text-slate-500" aria-label="Breadcrumb">
+            <nav className="mb-4 text-xs font-bold leading-relaxed text-slate-500" aria-label="Breadcrumb">
               <Link href="/frames" className="hover:text-retail">Frames</Link> /{" "}
               <Link href={`/frames/category/${product.categories[0]}`} className="hover:text-retail">
                 {product.primaryCategory}
@@ -262,7 +262,7 @@ export default async function ProductPage({
               / {product.name}
             </nav>
             <p className="vv-kicker text-retail">{product.brand}</p>
-            <h1 className="text-4xl font-extrabold leading-tight text-slate-900">{product.name}</h1>
+            <h1 className="text-3xl font-extrabold leading-tight tracking-tight text-slate-900 sm:text-4xl">{product.name}</h1>
             <p className="mt-2 text-slate-500 text-xs font-bold">SKU {product.sku}</p>
 
             {/* Savings Callout Display */}

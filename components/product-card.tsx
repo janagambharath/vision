@@ -58,7 +58,7 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
   return (
     <article className="vv-card group relative min-w-0 overflow-hidden transition hover:shadow-strong">
       <Link href={`/frames/${product.slug}`} className="relative block bg-slate-50">
-        <div className="relative aspect-[16/9] overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden sm:aspect-[16/9]">
           {frontImage ? (
             <>
               <Image
@@ -66,7 +66,7 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
                 alt={frontImage.alt}
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
-                className={`object-contain p-6 transition duration-500 ${angleImage ? "group-hover:opacity-0" : ""}`}
+                className={`object-contain p-3 transition duration-500 sm:p-6 ${angleImage ? "group-hover:opacity-0" : ""}`}
               />
               {angleImage ? (
                 <Image
@@ -74,7 +74,7 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
                   alt={angleImage.alt}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-contain p-6 opacity-0 transition duration-500 group-hover:opacity-100"
+                  className="object-contain p-3 opacity-0 transition duration-500 group-hover:opacity-100 sm:p-6"
                 />
               ) : null}
             </>

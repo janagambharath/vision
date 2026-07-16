@@ -9,6 +9,7 @@ import {
   ArrowLeftRight,
   Camera,
   Check,
+  ChevronDown,
   Download,
   Loader2,
   MessageCircle,
@@ -58,6 +59,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [isFramePickerOpen, setIsFramePickerOpen] = useState(false);
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const selfieFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -341,6 +343,34 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
 
   const formatPrice = (pricePaise: number | null) => pricePaise === null ? "Price on request" : `₹${(pricePaise / 100).toLocaleString("en-IN")}`;
 
+  const selectFrame = (index: number) => {
+    setSelectedIndex(index);
+    setStep("idle");
+    setCapturedPhoto(null);
+    setResultPhoto(null);
+    setError(null);
+    setIsFramePickerOpen(false);
+  };
+
+  const renderFrameOptions = () => tryOnFrames.map((frame, index) => (
+    <button
+      key={frame.slug}
+      type="button"
+      onClick={() => selectFrame(index)}
+      className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition ${selectedIndex === index ? "border-teal-500 bg-teal-50 ring-2 ring-teal-200" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
+    >
+      <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+        <Image src={frame.img} alt={frame.name} fill className="object-contain p-1" sizes="56px" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <span className="text-[10px] font-bold uppercase text-slate-400">{frame.brand}</span>
+        <p className="truncate text-sm font-extrabold text-slate-800">{frame.name}</p>
+        <span className="text-xs font-bold text-slate-500">{formatPrice(frame.pricePaise)}</span>
+      </div>
+      {selectedIndex === index ? <Check className="h-4 w-4 shrink-0 text-teal-600" /> : null}
+    </button>
+  ));
+
   if (!selectedFrame) {
     return (
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center">
@@ -357,25 +387,31 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
       <aside className="order-2 self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-soft lg:order-1 lg:sticky lg:top-28 lg:p-6">
         <h2 className="text-lg font-extrabold text-slate-800">Select Frame</h2>
         <p className="mt-1 text-xs text-slate-500">The selected product image is used automatically. No frame upload or positioning is needed.</p>
-        <div className="mt-4 grid max-h-80 gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] lg:max-h-none lg:overflow-visible lg:pr-0">
-          {tryOnFrames.map((frame, index) => (
-            <button
-              key={frame.slug}
-              type="button"
-              onClick={() => { setSelectedIndex(index); setStep("idle"); setCapturedPhoto(null); setResultPhoto(null); setError(null); }}
-              className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition ${selectedIndex === index ? "border-teal-500 bg-teal-50 ring-2 ring-teal-200" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
-            >
-              <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                <Image src={frame.img} alt={frame.name} fill className="object-contain p-1" sizes="56px" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[10px] font-bold uppercase text-slate-400">{frame.brand}</span>
-                <p className="truncate text-sm font-extrabold text-slate-800">{frame.name}</p>
-                <span className="text-xs font-bold text-slate-500">{formatPrice(frame.pricePaise)}</span>
-              </div>
-              {selectedIndex === index ? <Check className="h-4 w-4 shrink-0 text-teal-600" /> : null}
-            </button>
-          ))}
+        <div className="mt-4 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setIsFramePickerOpen((open) => !open)}
+            aria-expanded={isFramePickerOpen}
+            aria-controls="mobile-frame-picker"
+            className="flex min-h-[58px] w-full items-center gap-3 rounded-xl border border-teal-200 bg-teal-50 px-3 text-left transition hover:border-teal-400"
+          >
+            <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-white">
+              <Image src={selectedFrame.img} alt="" fill className="object-contain p-1" sizes="56px" />
+            </div>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-bold uppercase text-teal-700">Selected frame</span>
+              <span className="block truncate text-sm font-extrabold text-slate-800">{selectedFrame.brand} {selectedFrame.name}</span>
+            </span>
+            <ChevronDown className={`h-5 w-5 shrink-0 text-teal-700 transition-transform ${isFramePickerOpen ? "rotate-180" : ""}`} />
+          </button>
+          {isFramePickerOpen ? (
+            <div id="mobile-frame-picker" className="mt-3 grid max-h-80 gap-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
+              {renderFrameOptions()}
+            </div>
+          ) : null}
+        </div>
+        <div className="mt-4 hidden max-h-[calc(100vh-20rem)] gap-2 overflow-y-auto pr-1 [scrollbar-width:thin] lg:grid">
+          {renderFrameOptions()}
         </div>
         <div className="mt-5 rounded-xl border border-teal-100 bg-teal-50 p-3 text-xs leading-relaxed text-teal-900">
           <strong className="block">AI preview, not a fit guarantee</strong>
