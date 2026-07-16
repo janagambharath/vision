@@ -4,6 +4,7 @@ import { createOrderAccessToken, verifyOrderAccessToken } from "../lib/order-acc
 import { uploadedFileMatchesType } from "../lib/uploads";
 import { verifyRazorpayWebhookSignature } from "../lib/integrations/razorpay";
 import { serializeJsonLd } from "../lib/json-ld";
+import { rateLimit } from "../lib/rate-limit";
 
 test("order-access tokens are scoped, signed, and short-lived", () => {
   process.env.AUTH_SECRET = "test-auth-secret";
@@ -47,4 +48,28 @@ test("JSON-LD serialization cannot terminate its inline script element", () => {
   assert.equal(serialized.includes(paragraphSeparator), false);
   assert.deepEqual(JSON.parse(serialized), schema);
   assert.throws(() => serializeJsonLd(undefined), TypeError);
+});
+
+test("rate limiting remains bounded and functional without Redis in local development", async () => {
+  const previousRedisUrl = process.env.REDIS_URL;
+  const previousRequireRedis = process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
+  delete process.env.REDIS_URL;
+  delete process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
+
+  try {
+    const key = `local-rate-limit-test-${Date.now()}`;
+    const first = await rateLimit(key, 1, 60);
+    const second = await rateLimit(key, 1, 60);
+
+    assert.deepEqual(
+      { allowed: first.allowed, source: first.source, degraded: first.degraded },
+      { allowed: true, source: "memory", degraded: false }
+    );
+    assert.equal(second.allowed, false);
+  } finally {
+    if (previousRedisUrl === undefined) delete process.env.REDIS_URL;
+    else process.env.REDIS_URL = previousRedisUrl;
+    if (previousRequireRedis === undefined) delete process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
+    else process.env.REQUIRE_REDIS_FOR_RATE_LIMITS = previousRequireRedis;
+  }
 });

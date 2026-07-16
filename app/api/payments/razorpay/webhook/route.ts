@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyRazorpayWebhookSignature } from "@/lib/integrations/razorpay";
 import { captureRazorpayPayment, PaymentIntegrityError } from "@/lib/payment-fulfillment";
-import { isRateLimited } from "@/lib/rate-limit";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -48,10 +47,6 @@ async function recordUnmatchedEvent(eventId: string, eventType: string, detail: 
 }
 
 export async function POST(request: Request) {
-  if (await isRateLimited(request, { keyPrefix: "razorpay-webhook", limit: 120, windowSeconds: 60 })) {
-    return NextResponse.json({ error: "Too many webhook attempts" }, { status: 429 });
-  }
-
   const rawBody = await request.text();
   if (!verifyRazorpayWebhookSignature(rawBody, request.headers.get("x-razorpay-signature"))) {
     return NextResponse.json({ error: "Invalid webhook signature" }, { status: 401 });
@@ -133,6 +128,26 @@ export async function POST(request: Request) {
       await recordUnmatchedEvent(webhookEvent.id, eventType, { providerEventId, providerPaymentId, providerOrderId });
       await prisma.paymentWebhookEvent.update({ where: { id: webhookEvent.id }, data: { processed: true } });
       return NextResponse.json({ ok: true, matched: false });
+    }
+
+    // One Razorpay order can have multiple payment attempts. Once a successful
+    // attempt is recorded, a late failure/authorization for another attempt
+    // must be quarantined rather than overwriting the audited payment ID.
+    const paymentIdMismatch = Boolean(
+      providerPaymentId &&
+      payment.providerPaymentId &&
+      providerPaymentId !== payment.providerPaymentId
+    );
+    if (paymentIdMismatch && ["PAID", "REFUNDED"].includes(payment.status)) {
+      await recordUnmatchedEvent(webhookEvent.id, eventType, {
+        providerEventId,
+        providerPaymentId,
+        providerOrderId,
+        expectedProviderPaymentId: payment.providerPaymentId,
+        reason: "late_event_for_different_payment_attempt"
+      });
+      await prisma.paymentWebhookEvent.update({ where: { id: webhookEvent.id }, data: { processed: true, paymentId: payment.id, orderId: payment.orderId } });
+      return NextResponse.json({ ok: true, matched: false, quarantined: true });
     }
 
     const isRefundEvent = eventType.startsWith("refund.");

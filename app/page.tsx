@@ -31,7 +31,7 @@ import { CLINIC_NAME, CLINIC_PHONE, CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/l
 import { prisma } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { headers } from "next/headers";
-import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { leadSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +59,7 @@ export default function ClinicHomePage() {
     "use server";
 
     const headersList = await headers();
-    const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const ip = getClientIp(headersList);
     const { allowed } = await rateLimit(`appointment:${ip}`, 5, 3600);
     
     if (!allowed) {

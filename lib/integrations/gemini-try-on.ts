@@ -164,7 +164,15 @@ function assertCloudinaryImageUrl(value: string) {
   } catch {
     throw new TryOnError("The selected product image URL is invalid.", false);
   }
-  if (url.protocol !== "https:" || url.hostname !== "res.cloudinary.com") {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const [assetCloudName, resourceType] = url.pathname.split("/").filter(Boolean);
+  if (
+    !cloudName ||
+    url.protocol !== "https:" ||
+    url.hostname !== "res.cloudinary.com" ||
+    assetCloudName !== cloudName ||
+    resourceType !== "image"
+  ) {
     throw new TryOnError("The selected product image must be served from this store's Cloudinary account.", false);
   }
   return url;
@@ -293,8 +301,21 @@ export async function uploadTryOnDataImage(input: {
   return { url: signedAuthenticatedImageUrl(result.public_id), publicId: result.public_id, bytes: result.bytes };
 }
 
-export async function deleteTryOnAsset(publicId: string) {
-  if (!cloudinaryConfigured()) return;
+export async function deleteTryOnAsset(publicId: string): Promise<"deleted" | "not_found"> {
+  if (!cloudinaryConfigured()) {
+    throw new Error("Cloudinary credentials are not configured; preview asset deletion cannot be confirmed.");
+  }
   const cloudinary = configureCloudinary();
-  await cloudinary.uploader.destroy(publicId, { resource_type: "image", type: "authenticated", invalidate: true }).catch(() => undefined);
+  const result = await cloudinary.uploader.destroy(publicId, {
+    resource_type: "image",
+    type: "authenticated",
+    invalidate: true
+  }) as { result?: unknown };
+
+  // Cloudinary's deletion is idempotent: a prior successful deletion may report
+  // "not found" on a retry. Anything else is unconfirmed and must leave the
+  // database reference intact for the retention worker to retry and alert staff.
+  if (result.result === "ok") return "deleted";
+  if (result.result === "not found") return "not_found";
+  throw new Error("Cloudinary did not confirm preview asset deletion.");
 }

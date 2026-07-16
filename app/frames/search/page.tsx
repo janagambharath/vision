@@ -2,8 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowLeft, Search, SlidersHorizontal } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getCategories } from "@/lib/store-data";
+import { getStoreProducts, getStoreProductsCount, getFilterOptions, normalizeCatalogPage, normalizeStoreProductSort, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
+import { toPublicStoreProduct } from "@/lib/inventory";
 
 export const metadata: Metadata = {
   title: "Search Frames",
@@ -11,42 +12,57 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/frames/search` }
 };
 
+const MAX_SEARCH_PRICE_RUPEES = 1_000_000;
+
+function parsePricePaise(value: string | undefined) {
+  const raw = value?.trim() ?? "";
+  if (!/^\d+$/.test(raw)) return undefined;
+  const rupees = Number(raw);
+  if (!Number.isSafeInteger(rupees) || rupees > MAX_SEARCH_PRICE_RUPEES) return undefined;
+  return rupees * 100;
+}
+
 export default async function SearchPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; category?: string; material?: string; shape?: string; sort?: string; minPrice?: string; maxPrice?: string }>;
+  searchParams?: Promise<{ q?: string; category?: string; material?: string; shape?: string; sort?: string; minPrice?: string; maxPrice?: string; page?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const hasQuery = !!(params.q || params.category || params.material || params.shape);
+  const sort = normalizeStoreProductSort(params.sort);
+  const requestedPage = normalizeCatalogPage(params.page);
+  const priceMin = parsePricePaise(params.minPrice);
+  const priceMax = parsePricePaise(params.maxPrice);
+  const hasQuery = !!(params.q || params.category || params.material || params.shape || params.minPrice || params.maxPrice || sort !== "featured");
+  const catalogOptions = {
+    query: params.q,
+    category: params.category,
+    material: params.material,
+    shape: params.shape,
+    priceMin,
+    priceMax,
+    sort
+  };
 
-  const [rawProducts, categories] = await Promise.all([
-    getStoreProducts({ query: params.q, category: params.category }),
-    getCategories()
+  const [totalCount, filterOptions] = await Promise.all([
+    getStoreProductsCount(catalogOptions),
+    getFilterOptions()
   ]);
-  let products = rawProducts;
-
-  // Additional filters
-  if (params.material) {
-    products = products.filter((p) => p.material.toLowerCase().includes(params.material!.toLowerCase()));
-  }
-  if (params.shape) {
-    products = products.filter((p) => p.shape.toLowerCase().includes(params.shape!.toLowerCase()));
-  }
-  if (params.minPrice) {
-    const min = parseInt(params.minPrice) * 100;
-    products = products.filter((p) => (p.pricePaise ?? 0) >= min);
-  }
-  if (params.maxPrice) {
-    const max = parseInt(params.maxPrice) * 100;
-    products = products.filter((p) => (p.pricePaise ?? 0) <= max);
-  }
-
-  // Sort
-  if (params.sort === "price-asc") products.sort((a, b) => (a.pricePaise ?? 0) - (b.pricePaise ?? 0));
-  else if (params.sort === "price-desc") products.sort((a, b) => (b.pricePaise ?? 0) - (a.pricePaise ?? 0));
-
-  const materials = ["Acetate", "Metal Alloy", "Titanium", "Beta-Titanium", "TR-90 Nylon", "Stainless Steel", "ULTEM"];
-  const shapes = ["Round", "Square", "Rectangle", "Aviator", "Cat Eye"];
+  const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_CATALOG_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const products = await getStoreProducts({ ...catalogOptions, page: currentPage, limit: PUBLIC_CATALOG_PAGE_SIZE });
+  const pageHref = (page: number) => {
+    const query = new URLSearchParams();
+    if (params.q) query.set("q", params.q);
+    if (params.category) query.set("category", params.category);
+    if (params.material) query.set("material", params.material);
+    if (params.shape) query.set("shape", params.shape);
+    if (params.minPrice) query.set("minPrice", params.minPrice);
+    if (params.maxPrice) query.set("maxPrice", params.maxPrice);
+    if (sort !== "featured") query.set("sort", sort);
+    if (page > 1) query.set("page", String(page));
+    const search = query.toString();
+    return search ? `/frames/search?${search}` : "/frames/search";
+  };
 
   return (
     <main className="vv-section bg-paper">
@@ -79,8 +95,8 @@ export default async function SearchPage({
                 Category
                 <select className="store-input" name="category" defaultValue={params.category ?? ""}>
                   <option value="">All</option>
-                  {categories.map((cat) => (
-                    <option key={cat.slug} value={cat.slug}>{cat.name}</option>
+                  {filterOptions.categories.map((cat: { value: string; label: string }) => (
+                    <option key={cat.value} value={cat.value}>{cat.label}</option>
                   ))}
                 </select>
               </label>
@@ -89,8 +105,8 @@ export default async function SearchPage({
                 Material
                 <select className="store-input" name="material" defaultValue={params.material ?? ""}>
                   <option value="">All</option>
-                  {materials.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                  {filterOptions.materials.map((material: { value: string; label: string }) => (
+                    <option key={material.value} value={material.value}>{material.label}</option>
                   ))}
                 </select>
               </label>
@@ -99,8 +115,8 @@ export default async function SearchPage({
                 Shape
                 <select className="store-input" name="shape" defaultValue={params.shape ?? ""}>
                   <option value="">All</option>
-                  {shapes.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                  {filterOptions.shapes.map((shape: { value: string; label: string }) => (
+                    <option key={shape.value} value={shape.value}>{shape.label}</option>
                   ))}
                 </select>
               </label>
@@ -108,18 +124,19 @@ export default async function SearchPage({
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                   Min ₹
-                  <input className="store-input" type="number" name="minPrice" defaultValue={params.minPrice ?? ""} placeholder="0" />
+                  <input className="store-input" type="number" name="minPrice" min="0" max={MAX_SEARCH_PRICE_RUPEES} step="1" defaultValue={params.minPrice ?? ""} placeholder="0" />
                 </label>
                 <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                   Max ₹
-                  <input className="store-input" type="number" name="maxPrice" defaultValue={params.maxPrice ?? ""} placeholder="10000" />
+                  <input className="store-input" type="number" name="maxPrice" min="0" max={MAX_SEARCH_PRICE_RUPEES} step="1" defaultValue={params.maxPrice ?? ""} placeholder="10000" />
                 </label>
               </div>
 
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Sort by
-                <select className="store-input" name="sort" defaultValue={params.sort ?? ""}>
-                  <option value="">Relevance</option>
+                <select className="store-input" name="sort" defaultValue={sort}>
+                  <option value="featured">Featured</option>
+                  <option value="new">New arrivals</option>
                   <option value="price-asc">Price: low to high</option>
                   <option value="price-desc">Price: high to low</option>
                 </select>
@@ -142,14 +159,14 @@ export default async function SearchPage({
           <div>
             <div className="mb-6 flex items-center justify-between">
               <p className="text-sm font-bold text-slate-600">
-                {hasQuery ? `${products.length} result${products.length !== 1 ? "s" : ""} found` : `${products.length} frames in collection`}
+                {hasQuery ? `${totalCount} result${totalCount !== 1 ? "s" : ""} found` : `${totalCount} frames in collection`}
               </p>
             </div>
 
             {products.length ? (
               <div className="grid gap-5 md:grid-cols-2">
                 {products.map((product) => (
-                  <ProductCard key={product.slug} product={product} />
+                  <ProductCard key={product.slug} product={toPublicStoreProduct(product)} />
                 ))}
               </div>
             ) : (
@@ -160,6 +177,22 @@ export default async function SearchPage({
                 <Link className="vv-button-retail mt-5" href="/frames/search">Clear filters</Link>
               </div>
             )}
+
+            {totalPages > 1 ? (
+              <nav className="mt-8 flex flex-wrap items-center justify-center gap-3" aria-label="Search result pages">
+                {currentPage > 1 ? (
+                  <Link href={pageHref(currentPage - 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-800">
+                    Previous
+                  </Link>
+                ) : null}
+                <span className="text-sm font-bold text-slate-600">Page {currentPage} of {totalPages}</span>
+                {currentPage < totalPages ? (
+                  <Link href={pageHref(currentPage + 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-800">
+                    Next
+                  </Link>
+                ) : null}
+              </nav>
+            ) : null}
           </div>
         </div>
       </div>

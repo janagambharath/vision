@@ -73,7 +73,9 @@ export default async function AdminDashboardPage() {
   const awaitingPrescriptionCount = orderStatusGroups.find((g: GroupStatus) => g.status === "AWAITING_PRESCRIPTION")?._count || 0;
 
   const tryAtHomeCount = tryAtHomeGroups.reduce((acc: number, group: GroupStatus) => acc + group._count, 0);
-  const pendingTryAtHomeCount = tryAtHomeGroups.find((g: GroupStatus) => g.status === "TRY_AT_HOME_BOOKED")?._count || 0;
+  const pendingTryAtHomeCount = tryAtHomeGroups
+    .filter((g: GroupStatus) => ["PENDING", "TRY_AT_HOME_BOOKED"].includes(g.status))
+    .reduce((count: number, group: GroupStatus) => count + group._count, 0);
 
   // Process 30-day Chart Data
   const revenueByDate: Record<string, number> = {};

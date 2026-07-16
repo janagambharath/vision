@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.length < 10) return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
 
     const limit = await rateLimit(`otp_verify:${cleanPhone}`, MAX_OTP_ATTEMPTS, 10 * 60);
     if (!limit.allowed) {

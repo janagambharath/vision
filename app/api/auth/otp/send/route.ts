@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
-import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -24,13 +24,17 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.length < 10) {
+    if (cleanPhone.length < 10 || cleanPhone.length > 15) {
       return NextResponse.json({ error: "Invalid phone number length" }, { status: 400 });
     }
 
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
-    const allowed = await rateLimit(`otp_send:${ip}_${cleanPhone}`, 3, 60 * 60);
-    if (!allowed.allowed) {
+    const ip = getClientIp(request.headers);
+    const [ipLimit, phoneLimit, pairLimit] = await Promise.all([
+      rateLimit(`otp-send-ip:${ip}`, 12, 60 * 60),
+      rateLimit(`otp-send-phone:${cleanPhone}`, 3, 60 * 60),
+      rateLimit(`otp-send-pair:${ip}:${cleanPhone}`, 3, 60 * 60)
+    ]);
+    if (!ipLimit.allowed || !phoneLimit.allowed || !pairLimit.allowed) {
       return NextResponse.json({ error: "Too many requests. Please try again in an hour." }, { status: 429 });
     }
 

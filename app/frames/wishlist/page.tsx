@@ -3,6 +3,7 @@ import { getWishlistSlugs, removeFromWishlist } from "@/lib/wishlist";
 import { getStoreProducts } from "@/lib/store-data";
 import { ProductCard } from "@/components/product-card";
 import { ArrowLeft, Trash2, HeartCrack } from "lucide-react";
+import { toPublicStoreProduct } from "@/lib/inventory";
 
 export const metadata = {
   title: "My Wishlist | Vision Vistara",
@@ -51,7 +52,7 @@ export default async function WishlistPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <div key={product.slug} className="relative group bg-white rounded-vv border border-slate-100 overflow-hidden shadow-sm hover:shadow-md transition">
-                <ProductCard product={product} />
+                <ProductCard product={toPublicStoreProduct(product)} />
                 
                 <form action={handleRemove} className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition duration-200">
                   <input type="hidden" name="slug" value={product.slug} />

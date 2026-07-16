@@ -12,12 +12,12 @@ type Props = {
 };
 
 const eyeFields = [
-  ["Sphere (SPH)", "Sphere", -20, 20, "0.25"],
-  ["Cylinder (CYL)", "Cylinder", -8, 0, "0.25"],
-  ["Axis", "Axis", 0, 180, "1"],
-  ["ADD", "Add", 0, 4, "0.25"],
-  ["PD", "Pd", 20, 45, "0.5"],
-  ["Prism", "Prism", 0, 15, "0.25"]
+  { label: "Sphere (SPH)", field: "Sphere", min: -20, max: 20, step: "0.25", placeholder: "e.g. -2.50", hint: "0.25D steps" },
+  { label: "Cylinder (CYL)", field: "Cylinder", min: -8, max: 0, step: "0.25", placeholder: "e.g. -1.00", hint: "Axis required" },
+  { label: "Axis", field: "Axis", min: 0, max: 180, step: "1", placeholder: "0–180", hint: "with CYL" },
+  { label: "ADD", field: "Add", min: 0, max: 4, step: "0.25", placeholder: "e.g. +1.50", hint: "0.25D steps" },
+  { label: "PD", field: "Pd", min: 20, max: 45, step: "0.5", placeholder: "e.g. 31.5", hint: "per eye, 0.5 mm" },
+  { label: "Prism", field: "Prism", min: 0, max: 15, step: "0.25", placeholder: "e.g. 1.25", hint: "Base required" }
 ] as const;
 
 function EyeFields({ side, label }: { side: "right" | "left"; label: string }) {
@@ -25,16 +25,16 @@ function EyeFields({ side, label }: { side: "right" | "left"; label: string }) {
     <fieldset className="rounded-xl border border-slate-200 p-4">
       <legend className="px-1 text-sm font-extrabold text-slate-800">{label}</legend>
       <div className="grid gap-3 sm:grid-cols-2">
-        {eyeFields.map(([fieldLabel, field, min, max, step]) => (
+        {eyeFields.map(({ label: fieldLabel, field, min, max, step, placeholder, hint }) => (
           <label key={field} className="grid gap-1 text-xs font-bold text-slate-600">
-            {fieldLabel}
-            <input className="store-input py-2" type="number" name={`${side}${field}`} min={min} max={max} step={step} inputMode="decimal" placeholder={field === "Axis" ? "0-180" : `${min} to ${max}`} />
+            <span>{fieldLabel} <span className="font-normal text-slate-500">({hint})</span></span>
+            <input className="store-input py-2" type="number" name={`${side}${field}`} min={min} max={max} step={step} inputMode="decimal" placeholder={placeholder} />
           </label>
         ))}
         <label className="grid gap-1 text-xs font-bold text-slate-600">
-          Base
+          <span>Base <span className="font-normal text-slate-500">(with Prism)</span></span>
           <select className="store-input py-2" name={`${side}Base`} defaultValue="">
-            <option value="">Not applicable</option><option value="IN">IN</option><option value="OUT">OUT</option><option value="UP">UP</option><option value="DOWN">DOWN</option>
+            <option value="">Select when Prism is entered</option><option value="IN">IN</option><option value="OUT">OUT</option><option value="UP">UP</option><option value="DOWN">DOWN</option>
           </select>
         </label>
       </div>
@@ -92,7 +92,7 @@ function ExistingPrescriptionForm() {
         </label>
       ) : (
         <div className="grid gap-4">
-          <p className="text-xs font-semibold text-slate-600">Enter values exactly as written by your optometrist. Cylinder requires Axis; Prism requires Base.</p>
+          <p className="text-xs font-semibold text-slate-600">Enter values exactly as written by your optometrist. Cylinder and Axis must be entered together; Prism and Base must be entered together. SPH, CYL, ADD, and Prism use 0.25D steps; PD uses 0.5 mm steps.</p>
           <div className="grid gap-4 xl:grid-cols-2"><EyeFields side="right" label="Right eye (OD)" /><EyeFields side="left" label="Left eye (OS)" /></div>
           <div className="grid gap-3 md:grid-cols-3">
             <label className="grid gap-1 text-xs font-bold text-slate-600">Prescription date<input className="store-input py-2" type="date" name="prescriptionDate" max={new Date().toISOString().slice(0, 10)} /></label>

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getCategories } from "@/lib/store-data";
+import { getStoreProducts, getStoreProductsCount, getCategories, normalizeCatalogPage, normalizeStoreProductSort, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 import { serializeJsonLd } from "@/lib/json-ld";
+import { toPublicStoreProduct } from "@/lib/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,34 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   };
 }
 
-export default async function CategoryPage({ params }: { params: Promise<{ category: string }> }) {
+export default async function CategoryPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ category: string }>;
+  searchParams?: Promise<{ page?: string; sort?: string }>;
+}) {
   const { category } = await params;
-  const [products, categories] = await Promise.all([
-    getStoreProducts({ category }),
+  const query = (await searchParams) ?? {};
+  const sort = normalizeStoreProductSort(query.sort);
+  const requestedPage = normalizeCatalogPage(query.page);
+  const catalogOptions = { category, sort };
+  const [totalCount, categories] = await Promise.all([
+    getStoreProductsCount(catalogOptions),
     getCategories()
   ]);
+  const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_CATALOG_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const products = await getStoreProducts({ ...catalogOptions, page: currentPage, limit: PUBLIC_CATALOG_PAGE_SIZE });
   const currentCat = categories.find(c => c.slug === category);
   const label = currentCat?.name ?? category.replace(/-/g, " ");
+  const pageHref = (page: number) => {
+    const params = new URLSearchParams();
+    if (sort !== "featured") params.set("sort", sort);
+    if (page > 1) params.set("page", String(page));
+    const search = params.toString();
+    return search ? `/frames/category/${category}?${search}` : `/frames/category/${category}`;
+  };
 
   const breadcrumbSchema = {
     "@context": "https://schema.org",
@@ -70,7 +91,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
         <div className="mb-8">
           <p className="vv-kicker text-retail">{label}</p>
           <h1 className="text-4xl font-extrabold">{label} Frames</h1>
-          <p className="mt-2 text-slate-600">{products.length} frame{products.length !== 1 ? "s" : ""} available in this category.</p>
+          <p className="mt-2 text-slate-600">{totalCount} frame{totalCount !== 1 ? "s" : ""} available in this category.</p>
           {currentCat?.description && (
             <p className="mt-1 text-sm text-slate-500">{currentCat.description}</p>
           )}
@@ -93,10 +114,23 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
           ))}
         </div>
 
+        <form action={`/frames/category/${category}`} className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+          <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+            Sort frames
+            <select className="store-input min-w-52" name="sort" defaultValue={sort}>
+              <option value="featured">Featured</option>
+              <option value="new">New arrivals</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+            </select>
+          </label>
+          <button className="vv-button-retail" type="submit">Apply</button>
+        </form>
+
         {products.length ? (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
-              <ProductCard key={product.slug} product={product} />
+              <ProductCard key={product.slug} product={toPublicStoreProduct(product)} />
             ))}
           </div>
         ) : (
@@ -106,6 +140,22 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
             <Link className="vv-button-retail mt-5" href="/frames">Browse all frames</Link>
           </div>
         )}
+
+        {totalPages > 1 ? (
+          <nav className="mt-8 flex flex-wrap items-center justify-center gap-3" aria-label={`${label} frame pages`}>
+            {currentPage > 1 ? (
+              <Link href={pageHref(currentPage - 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-800">
+                Previous
+              </Link>
+            ) : null}
+            <span className="text-sm font-bold text-slate-600">Page {currentPage} of {totalPages}</span>
+            {currentPage < totalPages ? (
+              <Link href={pageHref(currentPage + 1)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-teal-300 hover:text-teal-800">
+                Next
+              </Link>
+            ) : null}
+          </nav>
+        ) : null}
       </div>
     </main>
   );

@@ -7,16 +7,22 @@ import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
 import { uploadFormFile } from "@/lib/uploads";
 import { deletePrescriptionAsset } from "@/lib/prescriptions";
+import { rateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
-import { Package, FileText, LogOut, ArrowRight, ClipboardList } from "lucide-react";
+import { Package, FileText, LogOut, ArrowRight, ClipboardList, ShieldCheck } from "lucide-react";
 
 export const metadata = { title: "My Account | Vision Vistara" };
 
-export default async function CustomerDashboardPage() {
+export default async function CustomerDashboardPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ privacyRequest?: string }>;
+}) {
   const user = await getCustomerUser();
   if (!user) {
     redirect("/account/login");
   }
+  const params = (await searchParams) ?? {};
 
   // Fetch recent orders
   const orders = await prisma.order.findMany({
@@ -60,12 +66,19 @@ export default async function CustomerDashboardPage() {
     });
     if (!prescription) redirect("/account?prescriptionError=not-found");
 
+    let uploaded: Awaited<ReturnType<typeof uploadFormFile>> = null;
     try {
-      const uploaded = await uploadFormFile(formData.get("prescription"), "vision-vistara/prescriptions", {
+      uploaded = await uploadFormFile(formData.get("prescription"), "vision-vistara/prescriptions", {
         maxBytes: 10 * 1024 * 1024,
         authenticated: true
       });
-      if (!uploaded) redirect("/account?prescriptionError=file-required");
+    } catch (error) {
+      console.error("Customer prescription upload failed", error);
+      redirect("/account?prescriptionError=upload-failed");
+    }
+    if (!uploaded) redirect("/account?prescriptionError=file-required");
+
+    try {
       await prisma.prescription.update({
         where: { id: prescription.id },
         data: {
@@ -80,12 +93,78 @@ export default async function CustomerDashboardPage() {
           fileName: uploaded.originalFilename
         }
       });
-      await deletePrescriptionAsset(prescription).catch((error) => console.error("Could not remove replaced prescription asset", error));
-      revalidatePath("/account");
     } catch (error) {
-      console.error("Customer prescription upload failed", error);
+      await deletePrescriptionAsset({
+        filePublicId: uploaded.publicId,
+        fileResourceType: uploaded.resourceType
+      }).catch((cleanupError) => console.error("Could not remove an unpersisted replacement prescription asset", cleanupError));
+      console.error("Customer prescription update failed", error);
       redirect("/account?prescriptionError=upload-failed");
     }
+
+    try {
+      await deletePrescriptionAsset(prescription);
+    } catch (error) {
+      console.error("Could not remove replaced prescription asset", error);
+      await prisma.activityLog.create({
+        data: {
+          action: "PRESCRIPTION_REPLACEMENT_CLEANUP_FAILED",
+          entityType: "Prescription",
+          entityId: prescription.id,
+          metadata: { resourceType: prescription.fileResourceType ?? "image" }
+        }
+      }).catch(() => undefined);
+    }
+    try {
+      revalidatePath("/account");
+    } catch {
+      // Revalidation failure must not make a successfully stored prescription
+      // look like an upload failure.
+    }
+  }
+
+  async function requestPrivacyAction(formData: FormData) {
+    "use server";
+    const currentUser = await getCustomerUser();
+    if (!currentUser) redirect("/account/login");
+
+    const requestType = String(formData.get("requestType") ?? "");
+    if (!['EXPORT', 'ERASURE'].includes(requestType)) redirect("/account?privacyRequest=invalid");
+
+    const limit = await rateLimit(`privacy-request:${currentUser.id}`, 4, 24 * 60 * 60);
+    if (!limit.allowed) redirect("/account?privacyRequest=rate-limited");
+
+    const entityId = `${currentUser.id}:${requestType}`;
+    const existing = await prisma.notification.findFirst({
+      where: {
+        channel: "INTERNAL",
+        recipient: "privacy",
+        entityType: "PrivacyRequest",
+        entityId,
+        status: { in: ["PENDING", "IN_PROGRESS"] }
+      },
+      select: { id: true }
+    });
+    if (!existing) {
+      await prisma.notification.create({
+        data: {
+          channel: "INTERNAL",
+          recipient: "privacy",
+          subject: requestType === "EXPORT" ? "Customer data export request" : "Customer data deletion request",
+          body: `${currentUser.name || "Customer"} requested a ${requestType === "EXPORT" ? "copy" : "deletion review"} of their account data. Verify identity and legal retention requirements before completing it.`,
+          status: "PENDING",
+          entityType: "PrivacyRequest",
+          entityId,
+          metadata: {
+            requestType,
+            userId: currentUser.id,
+            phone: currentUser.phone,
+            email: currentUser.email
+          }
+        }
+      });
+    }
+    redirect(`/account?privacyRequest=${requestType.toLowerCase()}`);
   }
 
   return (
@@ -187,6 +266,22 @@ export default async function CustomerDashboardPage() {
             )}
           </section>
         </div>
+
+        <section className="vv-card mt-6 border border-slate-100 bg-white p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-retail" /><h2 className="text-xl font-extrabold text-slate-900">Privacy controls</h2></div>
+              <p className="mt-2 max-w-2xl text-sm text-slate-600">Request a copy of your account data or ask us to review deletion. We will verify your identity and preserve records that must be retained for legal, payment, or safety reasons.</p>
+              {params.privacyRequest === "export" || params.privacyRequest === "erasure" ? <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">Your request has been received. Our privacy team will contact you using your verified account details.</p> : null}
+              {params.privacyRequest === "invalid" ? <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm font-bold text-rose-800">Choose a valid privacy request.</p> : null}
+              {params.privacyRequest === "rate-limited" ? <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-800">Too many privacy requests were submitted today. Please contact us if you need urgent help.</p> : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <form action={requestPrivacyAction}><input type="hidden" name="requestType" value="EXPORT" /><button className="vv-button-light text-xs font-bold" type="submit">Request my data</button></form>
+              <form action={requestPrivacyAction}><input type="hidden" name="requestType" value="ERASURE" /><button className="vv-button-light border-rose-200 text-xs font-bold text-rose-700 hover:bg-rose-50" type="submit">Request deletion</button></form>
+            </div>
+          </div>
+        </section>
 
       </div>
     </main>

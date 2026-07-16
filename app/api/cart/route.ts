@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateCartTotals, getCartOrNull } from "@/lib/cart";
+import { calculateCartTotals, getCartOrNull, toPublicCart } from "@/lib/cart";
 import { isRateLimited } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
@@ -9,7 +9,7 @@ export async function GET(request: Request) {
 
   const cart = await getCartOrNull();
   return NextResponse.json({
-    cart,
+    cart: toPublicCart(cart),
     totals: calculateCartTotals(cart)
   });
 }

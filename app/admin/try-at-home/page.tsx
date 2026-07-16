@@ -7,6 +7,14 @@ import type { OrderStatus } from "@prisma/client";
 
 export const metadata = { title: "Try-at-Home Scheduling | Admin" };
 
+const homeTrialStatuses = ["PENDING", "TRY_AT_HOME_BOOKED", "CONFIRMED", "PACKED", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
+
+function homeTrialStatusLabel(status: OrderStatus) {
+  if (status === "PENDING") return "Availability request";
+  if (status === "TRY_AT_HOME_BOOKED") return "Legacy booked — verify";
+  return status.replaceAll("_", " ");
+}
+
 export default async function AdminTryAtHomePage() {
   await requireAdmin();
 
@@ -17,12 +25,18 @@ export default async function AdminTryAtHomePage() {
 
   async function updateRequestStatus(formData: FormData) {
     "use server";
-    await requireManager();
+    const manager = await requireManager();
 
     const id = String(formData.get("id") ?? "");
-    const newStatus = String(formData.get("status") ?? "") as OrderStatus;
+    const submittedStatus = String(formData.get("status") ?? "");
 
-    if (!id || !newStatus) return;
+    if (!id || !homeTrialStatuses.includes(submittedStatus as typeof homeTrialStatuses[number])) return;
+    const newStatus = submittedStatus as OrderStatus;
+    const existing = await prisma.tryAtHomeRequest.findUnique({
+      where: { id },
+      select: { status: true }
+    });
+    if (!existing) return;
 
     const req = await prisma.tryAtHomeRequest.update({
       where: { id },
@@ -31,6 +45,7 @@ export default async function AdminTryAtHomePage() {
 
     await prisma.activityLog.create({
       data: {
+        adminUserId: manager.user?.id,
         action: "TRY_AT_HOME_STATUS_UPDATED",
         entityType: "try_at_home",
         entityId: id,
@@ -39,7 +54,7 @@ export default async function AdminTryAtHomePage() {
     });
 
     // Notify customer if status matches CONFIRMED or COMPLETED
-    if (newStatus === "CONFIRMED" && req.phone) {
+    if (newStatus === "CONFIRMED" && existing.status !== "CONFIRMED" && req.phone) {
       await sendWhatsAppTemplate(req.phone, "home_trial_confirmed", [
         req.name,
         new Date(req.preferredDate).toLocaleDateString(),
@@ -86,8 +101,8 @@ export default async function AdminTryAtHomePage() {
         {/* Header */}
         <div className="mb-8">
           <p className="vv-kicker text-retail">Operations</p>
-          <h1 className="text-4xl font-extrabold text-slate-900">Try-at-Home Visits</h1>
-          <p className="mt-2 text-slate-600">Track, schedule, and confirm frame trial bookings.</p>
+          <h1 className="text-4xl font-extrabold text-slate-900">Try-at-Home Requests</h1>
+          <p className="mt-2 text-slate-600">Review availability requests, then schedule and confirm eligible frame trials.</p>
         </div>
 
         {/* Group lists */}
@@ -114,7 +129,7 @@ export default async function AdminTryAtHomePage() {
                               ? "bg-red-50 text-red-700 border border-red-200"
                               : "bg-amber-50 text-amber-700 border border-amber-200"
                           }`}>
-                            {req.status}
+                            {homeTrialStatusLabel(req.status)}
                           </span>
                         </div>
 
@@ -167,7 +182,8 @@ export default async function AdminTryAtHomePage() {
                           <label className="text-xs font-bold text-slate-500 flex flex-col">
                             Update trial status
                             <select className="store-input mt-1 py-1 px-2 text-xs" name="status" defaultValue={req.status}>
-                              <option value="TRY_AT_HOME_BOOKED">Booked</option>
+                              <option value="PENDING">Availability request (unconfirmed)</option>
+                              <option value="TRY_AT_HOME_BOOKED">Legacy booked — verify</option>
                               <option value="CONFIRMED">Confirm Visit</option>
                               <option value="PACKED">Items Packed</option>
                               <option value="SHIPPED">Out for Visit</option>

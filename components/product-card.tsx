@@ -7,12 +7,12 @@ import { Camera, Eye, Home, MessageCircle, ShoppingBag, Star, Heart } from "luci
 import { addToCart } from "@/lib/cart-actions";
 import { CLINIC_WHATSAPP_NUMBER } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
-import { productIsSellable, type StoreProduct } from "@/lib/inventory";
+import type { PublicStoreProduct } from "@/lib/inventory";
 import { useCompare } from "@/components/compare-context";
 import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 
-export function ProductCard({ product }: { product: StoreProduct }) {
-  const sellable = productIsSellable(product);
+export function ProductCard({ product }: { product: PublicStoreProduct }) {
+  const sellable = product.sellable;
   const frontImage = product.images.find((image) => image.role === "front") ?? product.images[0];
   const angleImage = product.images.find((image) => image.role === "angle" || image.role === "gallery");
   const whatsappText = encodeURIComponent(`Hello Vision Vistara, I want details for ${product.brand} ${product.name} SKU ${product.sku}.`);
@@ -58,7 +58,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   return (
     <article className="vv-card group relative min-w-0 overflow-hidden transition hover:shadow-strong">
       <Link href={`/frames/${product.slug}`} className="relative block bg-slate-50">
-        <div className="relative aspect-[16/9] overflow-hidden">
+        <div className="relative aspect-[4/3] overflow-hidden sm:aspect-[16/9]">
           {frontImage ? (
             <>
               <Image
@@ -66,7 +66,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                 alt={frontImage.alt}
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
-                className={`object-contain p-6 transition duration-500 ${angleImage ? "group-hover:opacity-0" : ""}`}
+                className={`object-contain p-3 transition duration-500 sm:p-6 ${angleImage ? "group-hover:opacity-0" : ""}`}
               />
               {angleImage ? (
                 <Image
@@ -74,7 +74,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
                   alt={angleImage.alt}
                   fill
                   sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-contain p-6 opacity-0 transition duration-500 group-hover:opacity-100"
+                  className="object-contain p-3 opacity-0 transition duration-500 group-hover:opacity-100 sm:p-6"
                 />
               ) : null}
             </>
@@ -94,9 +94,9 @@ export function ProductCard({ product }: { product: StoreProduct }) {
               {discountPct}% OFF
             </span>
           ) : null}
-          {product.inventoryStatus === "LOW_STOCK" || (product.inventoryQuantity <= 3 && product.inventoryQuantity > 0) ? (
+          {product.lowStock ? (
             <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white animate-pulse">
-              Only {product.inventoryQuantity} left!
+              Low stock
             </span>
           ) : null}
           {product.tryAtHomeEligible ? (

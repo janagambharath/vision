@@ -17,9 +17,7 @@ interface ProductCheckoutPanelProps {
     sku: string;
     name: string;
     brand: string;
-    pricePaise: number | null;
     tryAtHomeEligible: boolean;
-    inventoryStatus: string;
     measurements: string | null;
   };
   sellable: boolean;

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
@@ -8,7 +9,8 @@ import { prisma } from "@/lib/db";
 import { checkoutSchema, normalizePhone, tryAtHomeSchema } from "@/lib/validations";
 import { uploadFormFile } from "@/lib/uploads";
 import { getCustomerSession } from "@/lib/customer-auth";
-import { parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { deletePrescriptionAsset, parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
 import { grantOrderAccess } from "@/lib/order-access";
 import { sendOrderReceivedNotifications } from "@/lib/payment-fulfillment";
 import {
@@ -150,8 +152,9 @@ export async function checkoutAction(formData: FormData) {
   // A prescription record (manual, upload, eye-test, or upload-later) must be
   // persisted with the order. Medical files are stored as authenticated assets.
   if (prescriptionSubmission) {
+    let uploadResult: Awaited<ReturnType<typeof uploadFormFile>> = null;
     try {
-      const uploadResult = prescriptionSubmission.upload
+      uploadResult = prescriptionSubmission.upload
         ? await uploadFormFile(prescriptionSubmission.upload, "vision-vistara/prescriptions", {
             maxBytes: 10 * 1024 * 1024,
             authenticated: true
@@ -177,6 +180,14 @@ export async function checkoutAction(formData: FormData) {
       });
     } catch (uploadError) {
       console.error("Prescription persistence failed:", uploadError);
+      if (uploadResult) {
+        await deletePrescriptionAsset({
+          filePublicId: uploadResult.publicId,
+          fileResourceType: uploadResult.resourceType
+        }).catch((cleanupError) => {
+          console.error("Could not remove an unpersisted prescription asset", cleanupError);
+        });
+      }
       await prisma.$transaction(async (tx) => {
         await releaseOrderInventoryReservations(tx, order!.id);
         await tx.order.delete({ where: { id: order!.id } });
@@ -261,6 +272,11 @@ export async function checkoutAction(formData: FormData) {
 
 
 export async function tryAtHomeAction(formData: FormData) {
+  // This field is visually hidden from people but catches basic form-filling
+  // bots before they can create leads or operational notifications.
+  if (String(formData.get("website") ?? "").trim()) {
+    redirect("/frames/try-at-home?error=invalid-details");
+  }
   const productIds = formData.getAll("productIds").map(String);
   const parsed = tryAtHomeSchema.safeParse({
     ...Object.fromEntries(formData),
@@ -291,6 +307,16 @@ export async function tryAtHomeAction(formData: FormData) {
   }
 
   const phone = normalizePhone(parsed.data.phone);
+  // A home-trial request creates operational work and stores a service address.
+  // Limit repeat requests by the normalized phone number before any records are
+  // created. The limiter HMACs its keys, so the number is never used verbatim
+  // in Redis or the local fallback store.
+  const requestLimit = await rateLimit(`home-trial:${phone}`, 3, 24 * 60 * 60);
+  const ip = getClientIp(await headers());
+  const ipLimit = await rateLimit(`home-trial-ip:${ip}`, 12, 60 * 60);
+  if (!requestLimit.allowed || !ipLimit.allowed) {
+    redirect("/frames/try-at-home?error=rate-limited");
+  }
   const request = await prisma.$transaction(async (tx) => {
     const created = await tx.tryAtHomeRequest.create({
       data: {
@@ -313,7 +339,7 @@ export async function tryAtHomeAction(formData: FormData) {
         name: parsed.data.name,
         phone,
         source: "frames_try_at_home",
-        status: "HOME_TRIAL_BOOKED",
+        status: "NEW",
         intent: "Try at home",
         payload: {
           requestId: created.id,

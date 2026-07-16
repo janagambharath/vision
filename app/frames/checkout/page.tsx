@@ -1,6 +1,6 @@
 import Link from "next/link";
 import CheckoutForm from "@/components/checkout-form";
-import { calculateCartTotals, getCartOrNull } from "@/lib/cart";
+import { calculateCartTotals, getCartOrNull, toPublicCart } from "@/lib/cart";
 
 export const metadata = {
   title: "Checkout | Vision Vistara",
@@ -26,42 +26,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
     );
   }
 
-  const mappedCart = {
-    id: cart.id,
-    items: cart.items.map((item) => ({
-      id: item.id,
-      quantity: item.quantity,
-      lensOption: item.lensOption,
-      product: {
-        ...item.product,
-        currency: "INR" as const,
-        primaryCategory: "Frames",
-        categories: [],
-        inventoryQuantity: item.product.inventory?.quantity ?? 0,
-        inventoryStatus: item.product.inventory?.status ?? "PRICE_REQUIRED",
-        material: item.product.material ?? "Confirm in clinic",
-        colour: item.product.colour ?? "As photographed",
-        shape: item.product.shape ?? "Fit check required",
-        rimType: item.product.rimType ?? "Frame",
-        size: item.product.size ?? item.product.measurements ?? "Fit check required",
-        measurements: item.product.measurements ?? "Fit check required",
-        images: item.product.images.map((img) => ({
-          url: img.url,
-          alt: img.alt,
-          role: img.role as any,
-          sortOrder: img.sortOrder
-        })),
-        highlights: item.product.highlights ?? [],
-        lensCompatibility: item.product.lensCompatibility ?? [],
-        faceShapes: item.product.faceShapes ?? [],
-        careInstructions: item.product.careInstructions ?? "",
-        warranty: item.product.warranty ?? "",
-        returnPolicy: item.product.returnPolicy ?? "",
-        deliveryEstimate: item.product.deliveryEstimate ?? "",
-        seoKeywords: item.product.seoKeywords ?? []
-      }
-    }))
-  };
+  const mappedCart = toPublicCart(cart);
   const error = (await searchParams)?.error;
   return (
     <main className="vv-section bg-paper">
@@ -72,7 +37,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
           <p className="mt-2 text-slate-600">Provide shipping details, prescription attachments, and payment preferences.</p>
         </div>
 
-        <CheckoutForm cart={mappedCart} totals={totals} error={error} />
+        <CheckoutForm cart={mappedCart!} totals={totals} error={error} />
       </div>
     </main>
   );
