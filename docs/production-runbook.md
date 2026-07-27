@@ -24,10 +24,9 @@ In Railway, run `npm run ops:preflight -- --live --strict` from a one-off
 service/shell after setting `NODE_ENV=production`. Never put `.env` or any
 secret value in source control or CI output.
 
-Before this can pass, set `REQUIRE_REDIS_FOR_RATE_LIMITS=true` in Railway.
-When Redis is unavailable, public rate-limited mutations then fail closed
-instead of relying on per-instance memory limits. Local development may keep
-the variable `false` or unset.
+Production code requires Redis for rate limits and fails public mutations closed
+when Redis is unavailable, rather than relying on per-instance memory limits.
+Local development may keep `REQUIRE_REDIS_FOR_RATE_LIMITS=false` or unset.
 
 The three timestamp variables are deliberate operational attestations, not
 automatic proof:

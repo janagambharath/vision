@@ -36,8 +36,14 @@ function redisConfigured() {
   return Boolean(process.env.REDIS_URL?.trim());
 }
 
-function redisRequired() {
-  return process.env.REQUIRE_REDIS_FOR_RATE_LIMITS?.trim().toLowerCase() === "true";
+export function isRedisRequiredForRateLimits() {
+  // Public checkout, OTP, AI, and admin mutations must not silently fall back
+  // to per-instance memory limits in production. Redis is already a required
+  // production dependency, so fail closed even when an environment toggle was
+  // omitted or incorrectly set to false. Local development may opt in with
+  // REQUIRE_REDIS_FOR_RATE_LIMITS=true when testing the same behaviour.
+  return process.env.NODE_ENV === "production" ||
+    process.env.REQUIRE_REDIS_FOR_RATE_LIMITS?.trim().toLowerCase() === "true";
 }
 
 function rateLimitStorageKey(key: string) {
@@ -91,7 +97,7 @@ function logRateLimitDegradation(event: "redis_unavailable" | "redis_command_fai
     level: "error",
     event: `rate_limit_${event}`,
     redisConfigured: redisConfigured(),
-    redisRequired: redisRequired()
+    redisRequired: isRedisRequiredForRateLimits()
   }));
 }
 
@@ -133,7 +139,7 @@ export async function rateLimit(
     if (!redisConfigured()) return fallbackRateLimit(storageKey, limit, windowSeconds, "memory");
 
     logRateLimitDegradation("redis_unavailable");
-    if (redisRequired()) {
+    if (isRedisRequiredForRateLimits()) {
       return { allowed: false, remaining: 0, source: "fail-closed", degraded: true };
     }
     return fallbackRateLimit(storageKey, limit, windowSeconds, "degraded-memory");
@@ -160,7 +166,7 @@ export async function rateLimit(
     };
   } catch {
     logRateLimitDegradation("redis_command_failed");
-    if (redisRequired()) {
+    if (isRedisRequiredForRateLimits()) {
       return { allowed: false, remaining: 0, source: "fail-closed", degraded: true };
     }
     return fallbackRateLimit(storageKey, limit, windowSeconds, "degraded-memory");
@@ -169,12 +175,12 @@ export async function rateLimit(
 
 /**
  * Used by the readiness endpoint and production preflight. Redis is optional
- * in local development, but production can opt into fail-closed public
- * mutation protection with REQUIRE_REDIS_FOR_RATE_LIMITS=true.
+ * in local development, while production always fails public mutations closed
+ * during a Redis outage.
  */
 export async function getRateLimitReadiness(): Promise<RateLimitReadiness> {
   const configured = redisConfigured();
-  const required = redisRequired();
+  const required = isRedisRequiredForRateLimits();
 
   if (!configured) {
     return { ready: !required, source: "memory", redisConfigured: false, redisRequired: required };

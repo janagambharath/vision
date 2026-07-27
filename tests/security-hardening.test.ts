@@ -4,7 +4,7 @@ import { createOrderAccessToken, verifyOrderAccessToken } from "../lib/order-acc
 import { uploadedFileMatchesType } from "../lib/uploads";
 import { verifyRazorpayWebhookSignature } from "../lib/integrations/razorpay";
 import { serializeJsonLd } from "../lib/json-ld";
-import { rateLimit } from "../lib/rate-limit";
+import { isRedisRequiredForRateLimits, rateLimit } from "../lib/rate-limit";
 import { assertSameOrigin } from "../lib/request-security";
 
 test("order-access tokens are scoped, signed, and short-lived", () => {
@@ -86,5 +86,21 @@ test("rate limiting remains bounded and functional without Redis in local develo
     else process.env.REDIS_URL = previousRedisUrl;
     if (previousRequireRedis === undefined) delete process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
     else process.env.REQUIRE_REDIS_FOR_RATE_LIMITS = previousRequireRedis;
+  }
+});
+
+test("production rate limiting always requires Redis, even if an old toggle says false", () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousRequirement = process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
+
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.REQUIRE_REDIS_FOR_RATE_LIMITS = "false";
+    assert.equal(isRedisRequiredForRateLimits(), true);
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousRequirement === undefined) delete process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
+    else process.env.REQUIRE_REDIS_FOR_RATE_LIMITS = previousRequirement;
   }
 });

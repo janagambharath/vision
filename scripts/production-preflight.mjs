@@ -217,11 +217,7 @@ async function main() {
   requireVariables("fulfillment", ["SHIPROCKET_EMAIL", "SHIPROCKET_PASSWORD", "SHIPROCKET_PICKUP_LOCATION"]);
   requireVariables("notifications", ["RESEND_API_KEY", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN", "CLINIC_PHONE"]);
 
-  if (process.env.REQUIRE_REDIS_FOR_RATE_LIMITS?.trim().toLowerCase() !== "true") {
-    fail("REQUIRE_REDIS_FOR_RATE_LIMITS: must be true in production so public mutations fail closed during a Redis outage");
-  } else {
-    pass("rate limiting: Redis is required");
-  }
+  pass("rate limiting: production requires Redis and public mutations fail closed during an outage");
 
   const authSecret = process.env.AUTH_SECRET?.trim();
   if (authSecret && authSecret.length < 32) fail("AUTH_SECRET: must be at least 32 characters");
