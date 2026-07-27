@@ -81,11 +81,11 @@ test("calculateCartTotals rejects expired and exhausted coupons", () => {
   assert.equal(exhausted.discountPaise, 0);
 });
 
-test("checkout validation accepts COD only", () => {
+test("checkout validation accepts complete COD delivery details only", () => {
   const checkout = {
     name: "Vision Customer",
     phone: "9876543210",
-    email: "",
+    email: "customer@example.com",
     line1: "12 Vision Street",
     line2: "",
     city: "Hyderabad",
@@ -103,4 +103,6 @@ test("checkout validation accepts COD only", () => {
   assert.equal(checkoutSchema.safeParse({ ...checkout, paymentMethod: "WHATSAPP_ASSISTED" }).success, false);
   assert.equal(checkoutSchema.safeParse({ ...checkout, deliveryMethod: "TRY_AT_HOME" }).success, false);
   assert.equal(checkoutSchema.safeParse({ ...checkout, deliveryMethod: "STORE_PICKUP" }).success, false);
+  assert.equal(checkoutSchema.safeParse({ ...checkout, email: "" }).success, false);
+  assert.equal(checkoutSchema.safeParse({ ...checkout, state: "" }).success, false);
 });

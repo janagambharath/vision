@@ -42,7 +42,7 @@ export default function TermsPage() {
 
             <section>
               <h2>5. AI Virtual Try-On</h2>
-              <p>Our AI try-on feature generates an appearance preview only. It does not guarantee exact fit, lens thickness, prescription suitability, or the final manufactured frame alignment. Customer photos are processed temporarily and automatically deleted within 30 days. AI try-on should not be used as a substitute for a professional fitting or medical assessment.</p>
+              <p>Our AI try-on feature generates an appearance preview only. It does not guarantee exact fit, lens thickness, prescription suitability, or the final manufactured frame alignment. Customer photos are processed temporarily, scheduled for deletion after 30 days, and ordinarily removed by our daily retention job within the following day. AI try-on should not be used as a substitute for a professional fitting or medical assessment.</p>
             </section>
 
             <section>

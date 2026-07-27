@@ -704,7 +704,7 @@ export default function ClinicHomePage() {
           <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row justify-between gap-3 text-xs">
             <p>© 2026 Vision Vistara Optics &amp; Lasers Eye Care. All rights reserved.</p>
             <div className="flex gap-4">
-              <Link href="/privacy-policy" className="hover:text-white transition">Privacy Policy</Link>
+              <Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link>
               <Link href="/return-policy" className="hover:text-white transition">Returns</Link>
               <Link href="/terms" className="hover:text-white transition">Terms</Link>
             </div>

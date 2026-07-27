@@ -4,6 +4,7 @@ export const CLINIC_WHATSAPP_NUMBER = "917842938316";
 export const STORE_NAME = "Vision Vistara Frames";
 export const CLINIC_NAME = "Vision Vistara Optics & Lasers Eye Care";
 export const CART_COOKIE = "vv_cart_session";
+export const DIRECT_CHECKOUT_ITEM_COOKIE = "vv_direct_checkout_item";
 export const WISHLIST_COOKIE = "vv_wishlist_session";
 export const MAX_HOME_TRIAL_FRAMES = 5;
 

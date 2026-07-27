@@ -14,9 +14,11 @@ interface CheckoutFormProps {
   cart: CheckoutCart;
   totals: CheckoutTotals;
   error?: string;
+  checkoutScope: "CART" | "DIRECT";
+  directCheckout: boolean;
 }
 
-export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps) {
+export default function CheckoutForm({ cart, totals, error, checkoutScope, directCheckout }: CheckoutFormProps) {
   const [pincode, setPincode] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -99,9 +101,19 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
     >
       <input type="hidden" name="paymentMethod" value="COD" />
       <input type="hidden" name="deliveryMethod" value="DELIVERY" />
+      <input type="hidden" name="checkoutScope" value={checkoutScope} />
+      <div className="absolute -left-[10000px] h-px w-px overflow-hidden" aria-hidden="true">
+        <label htmlFor="checkout-website">Website</label>
+        <input id="checkout-website" type="text" name="website" tabIndex={-1} autoComplete="off" />
+      </div>
 
       <section className="vv-card grid gap-5 p-6">
         {error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">{error}</div> : null}
+        {directCheckout ? (
+          <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900">
+            Buy now checkout: only this selected frame is included. Your other cart items remain saved.
+          </div>
+        ) : null}
         <h2 className="text-2xl font-extrabold">Customer and delivery</h2>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
@@ -115,8 +127,8 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
             {errors.phone && <span className="text-xs text-red-500 font-normal">{errors.phone}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-            Email optional
-            <input className={inputClass("email")} type="email" name="email" />
+            Email
+            <input className={inputClass("email")} type="email" name="email" required />
             {errors.email && <span className="text-xs text-red-500 font-normal">{errors.email}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600 relative">
@@ -162,13 +174,14 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
             {errors.city && <span className="text-xs text-red-500 font-normal">{errors.city}</span>}
           </label>
           <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-            State optional
+            State
             <input
               className={inputClass("state")}
               type="text"
               name="state"
               value={state}
               onChange={(e) => setState(e.target.value)}
+              required
             />
             {errors.state && <span className="text-xs text-red-500 font-normal">{errors.state}</span>}
           </label>

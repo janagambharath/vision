@@ -5,6 +5,7 @@ import { uploadedFileMatchesType } from "../lib/uploads";
 import { verifyRazorpayWebhookSignature } from "../lib/integrations/razorpay";
 import { serializeJsonLd } from "../lib/json-ld";
 import { rateLimit } from "../lib/rate-limit";
+import { assertSameOrigin } from "../lib/request-security";
 
 test("order-access tokens are scoped, signed, and short-lived", () => {
   process.env.AUTH_SECRET = "test-auth-secret";
@@ -48,6 +49,20 @@ test("JSON-LD serialization cannot terminate its inline script element", () => {
   assert.equal(serialized.includes(paragraphSeparator), false);
   assert.deepEqual(JSON.parse(serialized), schema);
   assert.throws(() => serializeJsonLd(undefined), TypeError);
+});
+
+test("same-origin checks trust the configured public origin, not a supplied Host header", () => {
+  const canonical = new Request("https://visionvistara.online/api/leads", {
+    method: "POST",
+    headers: { origin: "https://visionvistara.online" }
+  });
+  const forgedHost = new Request("https://visionvistara.online/api/leads", {
+    method: "POST",
+    headers: { origin: "https://attacker.example", host: "attacker.example" }
+  });
+
+  assert.equal(assertSameOrigin(canonical), null);
+  assert.equal(assertSameOrigin(forgedHost)?.status, 403);
 });
 
 test("rate limiting remains bounded and functional without Redis in local development", async () => {

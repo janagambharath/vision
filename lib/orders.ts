@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
+import { clearDirectCheckoutItem, getCheckoutCartOrNull, calculateCartTotals } from "@/lib/cart";
 import { prisma, isSerializationFailure } from "@/lib/db";
 import { checkoutSchema, normalizePhone, tryAtHomeSchema } from "@/lib/validations";
 import { uploadFormFile } from "@/lib/uploads";
@@ -26,10 +26,17 @@ function makePublicOrderId() {
 }
 
 export async function checkoutAction(formData: FormData) {
+  // This field is visually hidden from people but catches basic form-filling
+  // bots before they can reserve inventory or create COD orders.
+  if (String(formData.get("website") ?? "").trim()) {
+    redirect("/frames/checkout?error=invalid-details");
+  }
+
   const parsed = checkoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/frames/checkout?error=invalid-details");
 
-  const cart = await getCartOrNull();
+  const checkoutScope = formData.get("checkoutScope") === "CART" ? "CART" : "DIRECT";
+  const cart = await getCheckoutCartOrNull(checkoutScope === "CART");
   if (!cart || cart.items.length === 0) redirect("/frames/cart?error=empty-cart");
 
   const hasUnpriced = cart.items.some(
@@ -45,6 +52,19 @@ export async function checkoutAction(formData: FormData) {
   // so a crafted form submission cannot create an unfulfillable order.
   if (cart.items.some((item) => !item.product.codAvailable)) {
     redirect("/frames/cart?error=cod-unavailable");
+  }
+
+  // COD orders reserve real stock and create fulfilment work. Limit repeated
+  // attempts by both normalized phone number and source IP before either can
+  // create an order or hold inventory. The limiter HMACs both keys.
+  const phone = normalizePhone(parsed.data.phone);
+  const ip = getClientIp(await headers());
+  const [phoneLimit, ipLimit] = await Promise.all([
+    rateLimit(`checkout-phone:${phone}`, 3, 60 * 60),
+    rateLimit(`checkout-ip:${ip}`, 8, 60 * 60)
+  ]);
+  if (!phoneLimit.allowed || !ipLimit.allowed) {
+    redirect("/frames/checkout?error=order-rate-limited");
   }
 
   const totals = calculateCartTotals(cart);
@@ -85,8 +105,8 @@ export async function checkoutAction(formData: FormData) {
             publicId,
             userId: customerId,
             customerName: parsed.data.name,
-            phone: parsed.data.phone,
-            email: parsed.data.email || null,
+            phone,
+            email: parsed.data.email,
             deliveryMethod: parsed.data.deliveryMethod,
             paymentMethod: parsed.data.paymentMethod,
             status: orderStatus,
@@ -100,11 +120,11 @@ export async function checkoutAction(formData: FormData) {
             shippingAddress: {
               create: {
                 name: parsed.data.name,
-                phone: parsed.data.phone,
+                phone,
                 line1: parsed.data.line1,
                 line2: parsed.data.line2 || null,
                 city: parsed.data.city,
-                state: parsed.data.state || null,
+                state: parsed.data.state,
                 pincode: parsed.data.pincode
               }
             },
@@ -196,7 +216,10 @@ export async function checkoutAction(formData: FormData) {
     }
   }
 
-  await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+  await prisma.cartItem.deleteMany({
+    where: { cartId: cart.id, id: { in: cart.items.map((item) => item.id) } }
+  });
+  await clearDirectCheckoutItem();
 
   // Increment coupon usage counter
   if (cart.coupon && totals.discountPaise > 0) {

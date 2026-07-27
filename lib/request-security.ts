@@ -11,7 +11,6 @@ function hostFromUrl(value: string | null) {
 }
 
 export function assertSameOrigin(request: Request) {
-  const requestHost = request.headers.get("host");
   const originHost = hostFromUrl(request.headers.get("origin"));
   const refererHost = hostFromUrl(request.headers.get("referer"));
   const configuredHost = hostFromUrl(SITE_URL);
@@ -21,7 +20,16 @@ export function assertSameOrigin(request: Request) {
     return NextResponse.json({ error: "Cross-site mutation blocked" }, { status: 403 });
   }
 
-  const trustedHosts = new Set([requestHost, configuredHost].filter(Boolean));
+  // Never make a caller-controlled Host header trusted. In production the
+  // canonical public origin is the only permitted origin; local loopback is
+  // allowed solely for developer workflows.
+  const trustedHosts = new Set([configuredHost].filter(Boolean));
+  if (process.env.NODE_ENV !== "production") {
+    const requestHost = request.headers.get("host")?.toLowerCase();
+    if (requestHost && /^(localhost|127\.0\.0\.1)(?::\d+)?$/.test(requestHost)) {
+      trustedHosts.add(requestHost);
+    }
+  }
   const presentedHost = originHost ?? refererHost;
 
   if (!presentedHost || !trustedHosts.has(presentedHost)) {

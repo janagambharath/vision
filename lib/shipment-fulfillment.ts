@@ -6,6 +6,7 @@ import {
   ShiprocketRequestError,
   type ShiprocketOrder
 } from "@/lib/integrations/shiprocket";
+import { isOrderReadyForFulfillment } from "@/lib/order-status";
 
 const FULFILLMENT_READY_STATUSES = ["CONFIRMED", "PACKED"] as const;
 const SHIPMENT_META_KEY = "_visionVistaraShipment";
@@ -107,6 +108,21 @@ function shipmentFailureStatus(error: unknown) {
   return "FAILED";
 }
 
+function hasUnreviewedPrescription(order: {
+  prescriptions: Array<{ status: string }>;
+  items: Array<{ lensOption: { requiresPrescription: boolean } | null }>;
+}) {
+  const hasPrescription =
+    order.prescriptions.length > 0 ||
+    order.items.some((item) => item.lensOption?.requiresPrescription === true);
+  const allPrescriptionsVerified =
+    hasPrescription &&
+    order.prescriptions.length > 0 &&
+    order.prescriptions.every((prescription) => prescription.status === "VERIFIED");
+
+  return !isOrderReadyForFulfillment({ hasPrescription, allPrescriptionsVerified });
+}
+
 async function writeShipmentActivity(
   action: string,
   orderId: string,
@@ -122,13 +138,17 @@ async function claimShipmentAttempt(orderId: string, source: ShipmentAttemptSour
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: {
-        items: true,
+        items: { include: { lensOption: { select: { requiresPrescription: true } } } },
+        prescriptions: { select: { status: true } },
         shippingAddress: true,
         paymentReconciliations: { where: { status: { not: "REFUNDED" } }, select: { id: true } }
       }
     });
     if (!order || !isShipmentReadyForCreation(order.status)) {
       return { kind: "NOT_READY", reason: "Only confirmed or packed orders can be sent to Shiprocket." } as const;
+    }
+    if (hasUnreviewedPrescription(order)) {
+      return { kind: "NOT_READY", reason: "Prescription review must be completed before shipment creation." } as const;
     }
     if (order.paymentReconciliations.length) {
       return { kind: "NOT_READY", reason: "A captured payment reconciliation must finish before shipment creation." } as const;
@@ -212,7 +232,14 @@ function toShiprocketOrder(order: {
     state: string | null;
     pincode: string;
   } | null;
-  items: Array<{ unitPricePaise: number; quantity: number; productSnapshot: Prisma.JsonValue }>;
+  items: Array<{
+    unitPricePaise: number;
+    lensPricePaise: number;
+    quantity: number;
+    productSnapshot: Prisma.JsonValue;
+  }>;
+  shippingPaise: number;
+  discountPaise: number;
   grandTotalPaise: number;
   paymentMethod: string;
 }): ShiprocketOrder {
@@ -223,6 +250,8 @@ function toShiprocketOrder(order: {
     email: order.email,
     shippingAddress: order.shippingAddress,
     items: order.items,
+    shippingPaise: order.shippingPaise,
+    discountPaise: order.discountPaise,
     grandTotalPaise: order.grandTotalPaise,
     paymentMethod: order.paymentMethod
   };
@@ -242,14 +271,17 @@ export async function attemptShiprocketShipment(orderId: string, source: Shipmen
   const currentOrder = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      items: true,
+      items: { include: { lensOption: { select: { requiresPrescription: true } } } },
+      prescriptions: { select: { status: true } },
       shippingAddress: true,
       paymentReconciliations: { where: { status: { not: "REFUNDED" } }, select: { id: true } }
     }
   });
-  if (!currentOrder || !isShipmentReadyForCreation(currentOrder.status) || currentOrder.paymentReconciliations.length) {
+  if (!currentOrder || !isShipmentReadyForCreation(currentOrder.status) || currentOrder.paymentReconciliations.length || hasUnreviewedPrescription(currentOrder)) {
     const reason = currentOrder?.paymentReconciliations.length
       ? "A captured payment reconciliation is open for this order."
+      : currentOrder && hasUnreviewedPrescription(currentOrder)
+        ? "Prescription review must be completed before shipment creation."
       : "Order is no longer eligible for shipment creation.";
     await prisma.shipment.updateMany({
       where: { orderId, status: "CREATING" },

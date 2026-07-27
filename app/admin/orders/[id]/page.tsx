@@ -19,6 +19,8 @@ import { Prisma, type OrderStatus } from "@prisma/client";
 import {
   OrderInventoryAllocationError,
   OrderStatusTransitionError,
+  getAllowedOrderStatusTransitions,
+  isOrderReadyForFulfillment,
   updateOrderStatusWithInventory
 } from "@/lib/order-status";
 import { releaseOrderInventoryReservations } from "@/lib/inventory-reservations";
@@ -34,7 +36,7 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   const order = await prisma.order.findUnique({
     where: { publicId: id },
     include: {
-      items: true,
+      items: { include: { lensOption: { select: { requiresPrescription: true } } } },
       payments: { orderBy: { createdAt: "desc" } },
       shippingAddress: true,
       tryAtHomeRequest: true,
@@ -404,8 +406,23 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
   const activePaymentReconciliation = order.paymentReconciliations.find((entry) => entry.status !== "REFUNDED");
   const shipment = order.shipments[0] ?? null;
   const canManageFulfillment = ["OWNER", "MANAGER"].includes(role);
-  const shipmentCanBeCreated = ["CONFIRMED", "PACKED"].includes(order.status) && !activePaymentReconciliation;
   const shiprocketOrderReference = getShiprocketOrderReference(order.publicId);
+  const hasPrescription =
+    order.prescriptions.length > 0 ||
+    order.items.some((item) => item.lensOption?.requiresPrescription === true);
+  const allPrescriptionsVerified =
+    hasPrescription &&
+    order.prescriptions.length > 0 &&
+    order.prescriptions.every((prescription) => prescription.status === "VERIFIED");
+  const prescriptionReviewComplete = isOrderReadyForFulfillment({ hasPrescription, allPrescriptionsVerified });
+  const allowedStatusTransitions = getAllowedOrderStatusTransitions(order.status, {
+    hasPrescription,
+    allPrescriptionsVerified
+  });
+  const shipmentCanBeCreated =
+    ["CONFIRMED", "PACKED"].includes(order.status) &&
+    !activePaymentReconciliation &&
+    prescriptionReviewComplete;
 
   return (
     <main className="vv-section bg-paper">
@@ -444,8 +461,8 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
                     <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                       Order status
                       <select className="store-input" name="status" defaultValue={order.status}>
-                        {Object.entries(ORDER_STATUS_LABELS).filter(([val]) => val !== "REFUNDED").map(([val, label]) => (
-                          <option key={val} value={val}>{label}</option>
+                        {allowedStatusTransitions.map((status) => (
+                          <option key={status} value={status}>{ORDER_STATUS_LABELS[status] ?? status}</option>
                         ))}
                       </select>
                     </label>

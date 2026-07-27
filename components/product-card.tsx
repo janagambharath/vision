@@ -179,9 +179,11 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
             <Link href={`/frames/${product.slug}`} className="rounded-vv border border-slate-200 p-2 text-slate-500 transition hover:border-retail hover:text-retail" title="Quick view">
               <Eye className="h-4 w-4" />
             </Link>
-            <Link href={`/frames/try-at-home?productIds=${product.slug}`} className="rounded-vv border border-slate-200 p-2 text-slate-500 transition hover:border-retail hover:text-retail" title="Try at home">
-              <Home className="h-4 w-4" />
-            </Link>
+            {product.tryAtHomeEligible ? (
+              <Link href={`/frames/try-at-home?productIds=${product.slug}`} className="rounded-vv border border-slate-200 p-2 text-slate-500 transition hover:border-retail hover:text-retail" title="Try at home">
+                <Home className="h-4 w-4" />
+              </Link>
+            ) : null}
             <a href={`https://wa.me/${CLINIC_WHATSAPP_NUMBER}?text=${whatsappText}`} target="_blank" rel="noopener" className="rounded-vv border border-slate-200 p-2 text-slate-500 transition hover:border-emerald-500 hover:text-emerald-600" title="WhatsApp enquiry">
               <MessageCircle className="h-4 w-4" />
             </a>

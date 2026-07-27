@@ -99,6 +99,7 @@ export interface ShiprocketAddress {
 export interface ShiprocketOrderItem {
   quantity: number;
   unitPricePaise: number;
+  lensPricePaise: number;
   productSnapshot: unknown;
 }
 
@@ -109,6 +110,8 @@ export interface ShiprocketOrder {
   email: string | null;
   shippingAddress: ShiprocketAddress | null;
   items: ShiprocketOrderItem[];
+  shippingPaise: number;
+  discountPaise: number;
   grandTotalPaise: number;
   paymentMethod: string;
 }
@@ -122,19 +125,36 @@ export function buildShiprocketShipmentPayload(order: ShiprocketOrder) {
   }
 
   const address = order.shippingAddress;
+  const customerState = address.state?.trim();
+  if (!customerState) {
+    throw new ShiprocketRequestError("A customer state is required for Shiprocket shipment creation.", "REJECTED");
+  }
   const items = order.items.map((item) => {
     const snapshot = (item.productSnapshot as Record<string, unknown>) || {};
     return {
       name: String(snapshot.name ?? "Optical Frame"),
       sku: String(snapshot.sku ?? "VV-FRAME"),
       units: item.quantity,
-      selling_price: item.unitPricePaise / 100
+      selling_price: (item.unitPricePaise + item.lensPricePaise) / 100
     };
   });
+  const merchandisePaise = order.items.reduce(
+    (total, item) => total + (item.unitPricePaise + item.lensPricePaise) * item.quantity,
+    0
+  );
+  const shippingPaise = Math.max(0, order.shippingPaise);
+  const discountPaise = Math.max(0, order.discountPaise);
+  // Any amount not represented by a frame/lens line is a checkout-level
+  // charge (currently prescription-power surcharge; historic tax can also be
+  // represented here). This keeps Shiprocket's COD collection total exactly
+  // aligned with the paid-at-delivery total shown to the shopper.
+  const transactionChargesPaise = Math.max(
+    0,
+    order.grandTotalPaise - shippingPaise + discountPaise - merchandisePaise
+  );
 
   const customerName = address.name || order.customerName;
   const customerPhone = address.phone || order.phone;
-  const customerState = address.state || "Telangana";
   const customerCountry = "India";
   const providerOrderReference = getShiprocketOrderReference(order.publicId);
 
@@ -168,10 +188,10 @@ export function buildShiprocketShipmentPayload(order: ShiprocketOrder) {
     shipping_phone: customerPhone,
     order_items: items,
     payment_method: order.paymentMethod === "COD" ? "COD" : "Prepaid",
-    shipping_charges: 0,
+    shipping_charges: shippingPaise / 100,
     giftwrap_charges: 0,
-    transaction_charges: 0,
-    total_discount: 0,
+    transaction_charges: transactionChargesPaise / 100,
+    total_discount: discountPaise / 100,
     sub_total: order.grandTotalPaise / 100,
     length: 15,
     breadth: 10,

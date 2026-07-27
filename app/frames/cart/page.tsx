@@ -242,7 +242,7 @@ export default async function CartPage({
               <Link
                 className={`vv-button-retail mt-5 w-full ${checkoutBlocked ? "opacity-60 pointer-events-none" : ""}`}
                 aria-disabled={checkoutBlocked}
-                href={checkoutBlocked ? (hasCodUnavailableItem ? "/frames/cart?error=cod-unavailable" : "/frames/cart?error=pricing-required") : "/frames/checkout"}
+                href={checkoutBlocked ? (hasCodUnavailableItem ? "/frames/cart?error=cod-unavailable" : "/frames/cart?error=pricing-required") : "/frames/checkout?mode=cart"}
               >
                 Checkout
                 <ArrowRight className="h-4 w-4" />

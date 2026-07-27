@@ -1,14 +1,15 @@
 import Link from "next/link";
 import CheckoutForm from "@/components/checkout-form";
-import { calculateCartTotals, getCartOrNull, toPublicCart } from "@/lib/cart";
+import { calculateCartTotals, getCheckoutCartOrNull, getDirectCheckoutItemId, toPublicCart } from "@/lib/cart";
 
 export const metadata = {
   title: "Checkout | Vision Vistara",
   description: "Place your Vision Vistara eyewear order with cash on delivery."
 };
 
-export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
-  const cart = await getCartOrNull();
+export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ error?: string; mode?: string }> }) {
+  const checkoutMode = (await searchParams)?.mode === "cart" ? "CART" : "DIRECT";
+  const cart = await getCheckoutCartOrNull(checkoutMode === "CART");
   const items = cart?.items ?? [];
   const totals = calculateCartTotals(cart);
 
@@ -27,7 +28,17 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   }
 
   const mappedCart = toPublicCart(cart);
-  const error = (await searchParams)?.error;
+  const rawError = (await searchParams)?.error;
+  const directCheckout = checkoutMode === "DIRECT" && Boolean(
+    cart?.items.length === 1 && (await getDirectCheckoutItemId()) === cart.items[0]?.id
+  );
+  const error = rawError === "invalid-details"
+    ? "Please complete every required delivery field and try again."
+    : rawError === "order-rate-limited"
+      ? "Too many order attempts. Please wait a little while before trying again."
+      : rawError === "prescription-upload-failed"
+        ? "We could not save your prescription. Please try again."
+        : rawError;
   return (
     <main className="vv-section bg-paper">
       <div className="vv-container">
@@ -37,7 +48,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
           <p className="mt-2 text-slate-600">Provide shipping details and prescription information. Payment is collected by cash on delivery.</p>
         </div>
 
-        <CheckoutForm cart={mappedCart!} totals={totals} error={error} />
+        <CheckoutForm
+          cart={mappedCart!}
+          totals={totals}
+          error={error}
+          checkoutScope={checkoutMode}
+          directCheckout={directCheckout}
+        />
       </div>
     </main>
   );

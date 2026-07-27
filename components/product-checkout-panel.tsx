@@ -18,6 +18,7 @@ interface ProductCheckoutPanelProps {
     name: string;
     brand: string;
     tryAtHomeEligible: boolean;
+    prescriptionCompatible: boolean;
     measurements: string | null;
   };
   sellable: boolean;
@@ -83,7 +84,11 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
         <input type="hidden" name="slug" value={product.slug} />
         <input type="hidden" name="deliveryMethod" value="DELIVERY" />
 
-        <LensSelector packages={lensPackages} />
+        <LensSelector
+          packages={product.prescriptionCompatible
+            ? lensPackages
+            : lensPackages.filter((lens) => !lens.requiresPrescription)}
+        />
 
         <div className="mt-2">
           <label className="grid gap-1.5 text-sm font-extrabold text-slate-600">
@@ -118,10 +123,12 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
                 Buy now
               </button>
             </div>
-            <Link className="vv-button-light text-xs py-2.5 font-bold justify-center" href={`/frames/try-at-home?productIds=${product.slug}`}>
-              <Home className="h-4 w-4" />
-              Try at home
-            </Link>
+            {product.tryAtHomeEligible ? (
+              <Link className="vv-button-light text-xs py-2.5 font-bold justify-center" href={`/frames/try-at-home?productIds=${product.slug}`}>
+                <Home className="h-4 w-4" />
+                Try at home
+              </Link>
+            ) : null}
           </div>
 
           {/* Quick Wishlist toggle */}

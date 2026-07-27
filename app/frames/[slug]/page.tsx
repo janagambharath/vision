@@ -18,6 +18,7 @@ import { getRecentlyViewed } from "@/lib/recently-viewed";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { getCustomerUser } from "@/lib/customer-auth";
 import { toPublicStoreProduct } from "@/lib/inventory";
+import { geminiTryOnConfigured } from "@/lib/integrations/gemini-try-on";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,7 @@ export default async function ProductPage({
     product.images.some((image) => image.role !== "ar" && image.url.startsWith("https://res.cloudinary.com/")) ||
     Boolean(product.arImageUrl?.startsWith("https://res.cloudinary.com/"))
   );
+  const aiTryOnAvailable = hasTryOnReference && geminiTryOnConfigured();
   const related = await getRelatedProducts(product);
   const lensPackages = await getLensOptions();
 
@@ -330,7 +332,7 @@ export default async function ProductPage({
             </div>
 
             {/* Virtual Try-On CTA */}
-            {hasTryOnReference ? (
+            {aiTryOnAvailable ? (
               <Link
                 href={`/frames/try-on?slug=${product.slug}`}
                 className="mt-6 flex items-center gap-3 rounded-2xl border-2 border-dashed border-teal-200 bg-teal-50/50 p-4 transition-all hover:border-teal-400 hover:bg-teal-50 group"
@@ -341,7 +343,7 @@ export default async function ProductPage({
                   <p className="text-xs text-teal-600 mt-0.5">Take a selfie and generate a realistic AI preview using this product's own frame image.</p>
                 </div>
               </Link>
-            ) : (
+            ) : !hasTryOnReference ? (
               <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <Camera className="h-8 w-8 text-slate-400 shrink-0" />
                 <div>
@@ -349,7 +351,7 @@ export default async function ProductPage({
                   <p className="text-xs text-slate-500 mt-0.5">AI uses the uploaded catalog image automatically. A transparent asset is optional.</p>
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Client Interactive Selector and Add-To-Cart actions */}
             <ProductCheckoutPanel
@@ -359,6 +361,7 @@ export default async function ProductPage({
                 name: product.name,
                 brand: product.brand,
                 tryAtHomeEligible: product.tryAtHomeEligible,
+                prescriptionCompatible: product.prescriptionCompatible,
                 measurements: product.measurements
               }}
               sellable={sellable}

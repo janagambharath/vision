@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getOrCreateCart } from "@/lib/cart";
+import { clearDirectCheckoutItem, getOrCreateCart, setDirectCheckoutItem } from "@/lib/cart";
 
 type CartDestination = "/frames/cart" | "/frames/checkout";
 
@@ -11,8 +11,8 @@ type CartDestination = "/frames/cart" | "/frames/checkout";
  *
  * Keeping this mutation in one place makes the normal cart journey and
  * Buy Now journey enforce the exact same price, stock, lens, and quantity
- * checks. Buy Now deliberately preserves other cart selections; it only
- * changes where the shopper lands afterwards.
+ * checks. Buy Now creates a short-lived direct checkout selection, so it
+ * checks out the selected configuration without deleting the existing cart.
  */
 async function addProductSelection(formData: FormData, destination: CartDestination) {
   const slug = String(formData.get("slug") ?? "");
@@ -53,8 +53,36 @@ async function addProductSelection(formData: FormData, destination: CartDestinat
   if (lensCode && (!lensOption || !lensOption.active || typeof lensOption.pricePaise !== "number")) {
     redirect(`/frames/${slug}?blocked=lens-price-required`);
   }
+  if (lensOption?.requiresPrescription && !product.prescriptionCompatible) {
+    redirect(`/frames/${slug}?blocked=lens-unavailable`);
+  }
 
   const cart = await getOrCreateCart();
+
+  if (destination === "/frames/checkout") {
+    if (requestedQty > availableStock) {
+      redirect(`/frames/${slug}?blocked=insufficient-stock`);
+    }
+
+    // Keep Buy Now independent from any identical item already in the cart;
+    // otherwise incrementing the normal cart row would change the direct-buy
+    // quantity and make the checkout surprising.
+    const directItem = await prisma.cartItem.create({
+      data: {
+        cartId: cart.id,
+        productId: product.id,
+        lensOptionId: lensOption?.id,
+        quantity: requestedQty,
+        deliveryMethod,
+        tryAtHome: false
+      }
+    });
+    await setDirectCheckoutItem(directItem.id);
+
+    redirect(destination);
+  }
+
+  await clearDirectCheckoutItem();
 
   // Check if same product+lens already in cart
   const existingItem = cart.items.find(
@@ -110,6 +138,7 @@ export async function removeCartItem(formData: FormData) {
     // alone must never authorize modifying another visitor's cart.
     await prisma.cartItem.deleteMany({ where: { id, cartId: cart.id } });
   }
+  await clearDirectCheckoutItem();
   redirect("/frames/cart");
 }
 
@@ -136,12 +165,14 @@ export async function updateCartItemQuantity(formData: FormData) {
       });
     }
   }
+  await clearDirectCheckoutItem();
   redirect("/frames/cart");
 }
 
 export async function applyCouponAction(formData: FormData) {
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const cart = await getOrCreateCart();
+  await clearDirectCheckoutItem();
 
   if (!code) {
     redirect("/frames/cart?couponError=enter-code");
@@ -171,6 +202,7 @@ export async function applyCouponAction(formData: FormData) {
 
 export async function removeCouponAction() {
   const cart = await getOrCreateCart();
+  await clearDirectCheckoutItem();
   await prisma.cart.update({
     where: { id: cart.id },
     data: { couponId: null }
@@ -193,5 +225,6 @@ export async function updateCartItemPrescription(formData: FormData) {
       }
     }).catch(() => null);
   }
+  await clearDirectCheckoutItem();
   redirect("/frames/cart");
 }

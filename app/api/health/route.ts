@@ -11,7 +11,11 @@ export async function GET() {
     getRateLimitReadiness()
   ]);
 
-  const databaseReady = database === "connected" || database === "not_configured";
+  // A database-less local preview can still report its process health, but a
+  // production deployment without DATABASE_URL cannot serve carts or orders.
+  const databaseReady = database === "connected" || (
+    database === "not_configured" && process.env.NODE_ENV !== "production"
+  );
   const ok = databaseReady && rateLimit.ready;
 
   return NextResponse.json(
@@ -24,8 +28,10 @@ export async function GET() {
         redisRequired: rateLimit.redisRequired
       },
       ...(ok ? {} : {
-        message: database === "unavailable"
-          ? "Database connection failed"
+        message: database === "unavailable" || database === "not_configured"
+          ? database === "not_configured"
+            ? "Database is not configured"
+            : "Database connection failed"
           : "Distributed rate limiting is unavailable"
       })
     },

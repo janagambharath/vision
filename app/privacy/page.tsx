@@ -56,7 +56,7 @@ export default function PrivacyPolicyPage() {
               <ul className="list-disc pl-5 mt-2 space-y-2">
                 <li>Your selfie is securely uploaded and processed to align the selected frame.</li>
                 <li>We use third-party AI services (Google Gemini) for generating the preview.</li>
-                <li><strong>Both your original selfie and the generated preview are temporary. They are automatically deleted from our servers within 30 days.</strong></li>
+                <li><strong>Both your original selfie and the generated preview are temporary. They are scheduled for deletion after 30 days and are ordinarily removed by our daily retention job within the following day.</strong></li>
                 <li>We do not use your photos to train our AI models or for any purpose other than providing you with the try-on preview.</li>
               </ul>
             </section>

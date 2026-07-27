@@ -32,10 +32,10 @@ test("invalid cart quantities cannot produce a stock allocation", () => {
   );
 });
 
-test("online checkouts have a short reservation while offline orders receive an operations window", () => {
+test("online checkouts have a short reservation while COD orders receive a same-day operations window", () => {
   const now = new Date("2026-07-14T12:00:00.000Z");
   assert.equal(isOnlinePaymentMethod("RAZORPAY"), true);
   assert.equal(isOnlinePaymentMethod("COD"), false);
   assert.equal(getCheckoutReservationExpiry("UPI", now).toISOString(), "2026-07-14T12:30:00.000Z");
-  assert.equal(getCheckoutReservationExpiry("COD", now).toISOString(), "2026-07-16T12:00:00.000Z");
+  assert.equal(getCheckoutReservationExpiry("COD", now).toISOString(), "2026-07-15T00:00:00.000Z");
 });

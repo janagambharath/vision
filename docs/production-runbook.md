@@ -131,8 +131,9 @@ a database containing customer, order, prescription, or payment data.
 
 - The public checkout is cash on delivery only. The Razorpay customer routes
   return `410 Gone`; do not configure a payment webhook for this launch.
-- New COD stock allocations are held for 48 hours. The
-  `worker:reconcile-payments` job releases an unconfirmed, expired allocation.
+- New COD stock allocations are held for 12 hours. The
+  `worker:reconcile-payments` job releases an unconfirmed, expired allocation;
+  confirm local orders during the same business window.
 - Before moving an order to `CONFIRMED`, call the customer, confirm the address,
   pincode, order total, prescription state, and delivery availability. This
   consumes the reserved stock safely.

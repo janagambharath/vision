@@ -31,11 +31,13 @@ export const leadSchema = z.object({
 export const checkoutSchema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: phoneSchema,
-  email: z.string().email().optional().or(z.literal("")),
+  // Shiprocket requires an email address for every shipment. Keep this
+  // required at the server boundary as well as in the checkout UI.
+  email: z.string().trim().email(),
   line1: z.string().trim().min(6).max(160),
   line2: z.string().trim().max(160).optional(),
   city: z.string().trim().min(2).max(80),
-  state: z.string().trim().max(80).optional(),
+  state: z.string().trim().min(2).max(80),
   pincode: z.string().trim().regex(/^\d{6}$/),
   // Local launch orders are delivered only. Try-at-home is a separate request
   // workflow and store pickup is not yet operationally supported.

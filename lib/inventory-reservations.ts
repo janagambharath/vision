@@ -2,7 +2,10 @@ import type { Prisma } from "@prisma/client";
 
 const ONLINE_PAYMENT_METHODS = new Set(["RAZORPAY", "UPI", "CARD", "NETBANKING"]);
 const ONLINE_RESERVATION_MINUTES = 30;
-const OFFLINE_RESERVATION_HOURS = 48;
+// COD orders need time for a real confirmation call, but a multi-day hold lets
+// abandoned or malicious submissions lock a small local catalog for too long.
+// Twelve hours covers an overnight order and requires same-day operations.
+const OFFLINE_RESERVATION_HOURS = 12;
 
 type Transaction = Prisma.TransactionClient;
 

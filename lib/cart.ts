@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { CART_COOKIE } from "@/lib/constants";
+import { CART_COOKIE, DIRECT_CHECKOUT_ITEM_COOKIE } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 
 async function getCookieStore() {
@@ -68,6 +68,46 @@ export async function getCartOrNull() {
       coupon: true
     }
   });
+}
+
+/**
+ * Buy Now is a direct checkout for one selected cart row, while a normal cart
+ * checkout includes every row. The short-lived item cookie avoids deleting a
+ * shopper's other saved selections just to honour a direct-buy click.
+ */
+export async function getCheckoutCartOrNull(useFullCart = false) {
+  const cart = await getCartOrNull();
+  if (!cart || useFullCart) return cart;
+
+  const cookieStore = await getCookieStore();
+  const directItemId = cookieStore.get(DIRECT_CHECKOUT_ITEM_COOKIE)?.value;
+  if (!directItemId) return cart;
+
+  const selectedItems = cart.items.filter((item) => item.id === directItemId);
+  return selectedItems.length ? { ...cart, items: selectedItems } : cart;
+}
+
+export async function getDirectCheckoutItemId() {
+  const cookieStore = await getCookieStore();
+  return cookieStore.get(DIRECT_CHECKOUT_ITEM_COOKIE)?.value ?? null;
+}
+
+export async function setDirectCheckoutItem(itemId: string) {
+  const cookieStore = await getCookieStore();
+  cookieStore.set(DIRECT_CHECKOUT_ITEM_COOKIE, itemId, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    // A direct checkout is intentional but should never silently affect a
+    // shopper's normal cart days later.
+    maxAge: 15 * 60
+  });
+}
+
+export async function clearDirectCheckoutItem() {
+  const cookieStore = await getCookieStore();
+  cookieStore.delete(DIRECT_CHECKOUT_ITEM_COOKIE);
 }
 
 export async function getCartItemCount() {
