@@ -45,7 +45,7 @@ export default function ReturnPolicyPage() {
 
             <section>
               <h2>5. Cancellations</h2>
-              <p>You can cancel your order before it has been processed or shipped for a full refund. Once prescription lens processing has started, the order cannot be fully cancelled. Please contact us immediately if you need to cancel an order.</p>
+              <p>You can cancel a cash-on-delivery order before it has been processed or shipped. Once prescription lens processing has started, the order cannot be fully cancelled. Please contact us immediately if you need to cancel an order.</p>
             </section>
 
             <section>

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CreditCard, Lock, ShieldCheck, RefreshCw, Smartphone, CheckCircle2 } from "lucide-react";
+import { Banknote, Lock, ShieldCheck, RefreshCw, Smartphone } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { checkoutAction } from "@/lib/orders";
 import type { CheckoutCart, CheckoutTotals, CheckoutCartItem } from "@/types/checkout";
@@ -21,7 +21,6 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [loadingPincode, setLoadingPincode] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("RAZORPAY");
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [prescriptionChoice, setPrescriptionChoice] = useState<PrescriptionChoice>("");
@@ -82,12 +81,6 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
     });
   };
 
-  const paymentOptions = [
-    { id: "RAZORPAY", label: "Razorpay (All-in-one)", desc: "Cards, Netbanking, UPI" },
-    { id: "COD", label: "Cash On Delivery", desc: "Pay cash at your doorstep" },
-    { id: "WHATSAPP_ASSISTED", label: "WhatsApp Assisted", desc: "Complete order with support" }
-  ];
-
   const items = cart?.items ?? [];
   const requiresPrescription = items.some((item: any) => item.lensOption?.requiresPrescription);
   const prescriptionSummary = prescriptionChoice === "HAVE" ? "Provided for review"
@@ -104,7 +97,8 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
       encType="multipart/form-data"
       className="grid gap-6 lg:grid-cols-[1fr_380px]"
     >
-      <input type="hidden" name="paymentMethod" value={paymentMethod} />
+      <input type="hidden" name="paymentMethod" value="COD" />
+      <input type="hidden" name="deliveryMethod" value="DELIVERY" />
 
       <section className="vv-card grid gap-5 p-6">
         {error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">{error}</div> : null}
@@ -180,45 +174,23 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
           </label>
         </div>
 
-        <div className="grid gap-4">
-          <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-            Delivery method
-            <select className={inputClass("deliveryMethod")} name="deliveryMethod" required>
-              <option value="DELIVERY">Delivery</option>
-              <option value="TRY_AT_HOME">Try at home</option>
-              <option value="STORE_PICKUP">Store pickup</option>
-            </select>
-            {errors.deliveryMethod && <span className="text-xs text-red-500 font-normal">{errors.deliveryMethod}</span>}
-          </label>
+        <div className="grid gap-2">
+          <span className="text-sm font-extrabold text-slate-600">Delivery method</span>
+          <div className="rounded-vv border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+            Home delivery
+          </div>
         </div>
 
-        {/* Custom Interactive Payment Method Selector */}
+        {/* COD-only launch. The server validates this independently. */}
         <div className="grid gap-2 mt-2">
           <span className="text-sm font-extrabold text-slate-600">Payment method</span>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {paymentOptions.map((opt) => {
-              const active = paymentMethod === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setPaymentMethod(opt.id)}
-                  className={`flex flex-col text-left p-4 rounded-vv border-2 transition-all ${
-                    active
-                      ? "border-retail bg-teal-50/20"
-                      : "border-slate-200 hover:border-slate-300 bg-white"
-                  }`}
-                >
-                  <span className="font-extrabold text-sm text-slate-800 flex items-center gap-1.5">
-                    {opt.label}
-                    {active && <CheckCircle2 className="h-4 w-4 text-retail" />}
-                  </span>
-                  <span className="text-xs text-slate-500 mt-1">{opt.desc}</span>
-                </button>
-              );
-            })}
+          <div className="rounded-vv border-2 border-retail bg-teal-50/20 p-4">
+            <span className="flex items-center gap-2 text-sm font-extrabold text-slate-800">
+              <Banknote className="h-4 w-4 text-retail" />
+              Cash on delivery
+            </span>
+            <span className="mt-1 block text-xs text-slate-500">Pay in cash when your order is delivered. We will confirm your order before dispatch.</span>
           </div>
-          {errors.paymentMethod && <span className="text-xs text-red-500 font-normal">{errors.paymentMethod}</span>}
         </div>
 
 {/*
@@ -315,7 +287,7 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
           {isPending ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
           ) : (
-            <CreditCard className="h-4 w-4" />
+            <Banknote className="h-4 w-4" />
           )}
           {isPending ? "Processing..." : "Place order"}
         </button>
@@ -324,15 +296,15 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
         <div className="grid gap-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <Lock className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span><strong>256-bit SSL secured</strong> - SSL encryption safeguards card details.</span>
+            <span><strong>Secure checkout</strong> - Your order details are sent over an encrypted connection.</span>
           </div>
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span><strong>Razorpay secured payments</strong> - Safe instant online payment.</span>
+            <span><strong>Cash on delivery</strong> - Pay when your order is delivered.</span>
           </div>
           <div className="flex items-center gap-2">
             <Smartphone className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span><strong>7-day returns & free exchange</strong> - Risk-free trial assurance.</span>
+            <span><strong>Order confirmation</strong> - We will confirm your COD order before dispatch.</span>
           </div>
         </div>
       </aside>

@@ -37,8 +37,11 @@ export const checkoutSchema = z.object({
   city: z.string().trim().min(2).max(80),
   state: z.string().trim().max(80).optional(),
   pincode: z.string().trim().regex(/^\d{6}$/),
-  deliveryMethod: z.enum(["DELIVERY", "TRY_AT_HOME", "STORE_PICKUP"]),
-  paymentMethod: z.enum(["RAZORPAY", "COD", "WHATSAPP_ASSISTED"]),
+  // Local launch orders are delivered only. Try-at-home is a separate request
+  // workflow and store pickup is not yet operationally supported.
+  deliveryMethod: z.literal("DELIVERY"),
+  // Enforce the local COD-only launch on the server, not only in the UI.
+  paymentMethod: z.literal("COD"),
   notes: z.string().trim().max(600).optional(),
   acceptedTerms: z.literal("on"),
   acceptedReturns: z.literal("on")

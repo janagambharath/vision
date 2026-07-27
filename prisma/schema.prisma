@@ -470,7 +470,9 @@ model Order {
   email                  String?
   status                 OrderStatus             @default(PENDING)
   deliveryMethod         DeliveryMethod          @default(DELIVERY)
-  paymentMethod          PaymentMethod           @default(RAZORPAY)
+  // The public checkout accepts cash on delivery only. Other enum values are
+  // retained so historical online-payment records and refunds remain valid.
+  paymentMethod          PaymentMethod           @default(COD)
   subtotalPaise          Int
   lensTotalPaise         Int                     @default(0)
   shippingPaise          Int                     @default(0)

@@ -33,7 +33,7 @@ export default function PrivacyPolicyPage() {
                 <li><strong>Photos for AI Try-On:</strong> Selfies or facial images you upload for the virtual try-on feature.</li>
                 <li><strong>Try-at-Home Request Details:</strong> Selected frames, preferred date and time, service address, contact details, and any notes you submit.</li>
                 <li><strong>Usage Data:</strong> IP address, browser type, pages visited, and interaction data via cookies and analytics.</li>
-                <li><strong>Order Information:</strong> Purchase history, cart contents, and payment status (note: actual payment processing is handled securely by Razorpay; we do not store full card numbers).</li>
+                <li><strong>Order Information:</strong> Purchase history, cart contents, cash-on-delivery status, and delivery details.</li>
               </ul>
             </section>
 
@@ -65,7 +65,6 @@ export default function PrivacyPolicyPage() {
               <h2>5. Third-Party Services</h2>
               <p>We may share data with trusted third parties to facilitate our services:</p>
               <ul className="list-disc pl-5 mt-2 space-y-2">
-                <li><strong>Razorpay:</strong> For secure payment processing.</li>
                 <li><strong>Cloudinary:</strong> For image hosting and processing (including temporary try-on images).</li>
                 <li><strong>Google/OpenRouter:</strong> For AI try-on generation and product data enrichment.</li>
                 <li><strong>WhatsApp/Resend:</strong> For sending appointment and order confirmations.</li>

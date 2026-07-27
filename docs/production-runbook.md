@@ -39,7 +39,7 @@ automatic proof:
   is restored into a disposable staging database. It must be refreshed every
   90 days.
 - `PRODUCTION_PROVIDER_CANARY_VERIFIED_AT`: update only after controlled test
-  canaries verify the signed Razorpay webhook, delivery email, approved
+  canaries verify a COD order confirmation, delivery email, approved
   WhatsApp template, Shiprocket sandbox/test path, and a consented Gemini
   preview followed by deletion. It must be refreshed every 14 days and after a
   provider credential/configuration change.
@@ -127,16 +127,18 @@ database from the Railway PostgreSQL service, redeploy `main`, then run
 `npm run db:seed` once in a Railway shell. Never use an empty-database reset on
 a database containing customer, order, prescription, or payment data.
 
-## Payment Recovery
+## COD Order Recovery
 
-- Check `PaymentWebhookEvent` for unprocessed or unmatched webhook events.
-- Check `Notification` rows with `entityType = "PaymentWebhookEvent"`.
-- Reconcile Razorpay order/payment IDs against local `Payment.providerOrderId` and `Payment.providerPaymentId`.
-- Never manually mark an order paid without confirming the Razorpay signature or dashboard payment state.
-- Online checkout stock is reserved for 30 minutes; COD/manual checkout stock is reserved for 48 hours. The `worker:reconcile-payments` job releases unpaid expired checkouts.
-- A captured payment that cannot consume its allocation creates a `PaymentReconciliation`. The worker makes one guarded refund attempt. Do not retry an `REFUNDING` or `REQUIRES_REVIEW` record until an owner has checked Razorpay, because a timed-out provider response can be ambiguous.
-- `REFUND_PENDING` is not a completed refund. Keep payment and fulfillment closed until the signed `refund.processed` webhook moves it to `REFUNDED`; Razorpay can return a pending normal refund before the final provider result.
-- Do not create a shipment while an order has an open payment reconciliation.
+- The public checkout is cash on delivery only. The Razorpay customer routes
+  return `410 Gone`; do not configure a payment webhook for this launch.
+- New COD stock allocations are held for 48 hours. The
+  `worker:reconcile-payments` job releases an unconfirmed, expired allocation.
+- Before moving an order to `CONFIRMED`, call the customer, confirm the address,
+  pincode, order total, prescription state, and delivery availability. This
+  consumes the reserved stock safely.
+- Do not create a shipment for a cancelled, expired, or unconfirmed order.
+- Historic online payments may remain in the database for audit/refund history;
+  do not create new online-payment orders.
 
 ## Product Launch Gate
 

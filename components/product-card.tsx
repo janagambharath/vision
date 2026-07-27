@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Camera, Eye, Home, MessageCircle, ShoppingBag, Star, Heart } from "lucide-react";
-import { addToCart } from "@/lib/cart-actions";
+import { Camera, Eye, Home, MessageCircle, ShoppingBag, Star, Heart, Zap } from "lucide-react";
+import { addToCart, buyNow } from "@/lib/cart-actions";
 import { CLINIC_WHATSAPP_NUMBER } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
 import type { PublicStoreProduct } from "@/lib/inventory";
@@ -187,12 +187,21 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
             </a>
           </div>
 
-          <form action={addToCart} className="min-w-0">
+          <form action={addToCart} className="grid min-w-0 grid-cols-2 gap-2">
             <input type="hidden" name="slug" value={product.slug} />
             <input type="hidden" name="quantity" value="1" />
-            <button className="vv-button-retail w-full justify-center whitespace-nowrap text-sm" type="submit" disabled={!sellable}>
+            <button className="vv-button-light w-full justify-center whitespace-nowrap text-sm" type="submit" disabled={!sellable}>
               <ShoppingBag className="h-4 w-4" />
-              Add to cart
+              Add
+            </button>
+            <button
+              className="vv-button-retail w-full justify-center whitespace-nowrap text-sm"
+              formAction={buyNow}
+              type="submit"
+              disabled={!sellable}
+            >
+              <Zap className="h-4 w-4" />
+              Buy now
             </button>
           </form>
         </div>

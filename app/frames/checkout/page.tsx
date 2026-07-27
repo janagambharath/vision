@@ -4,7 +4,7 @@ import { calculateCartTotals, getCartOrNull, toPublicCart } from "@/lib/cart";
 
 export const metadata = {
   title: "Checkout | Vision Vistara",
-  description: "Checkout eyewear orders safely online with Razorpay or WhatsApp integration."
+  description: "Place your Vision Vistara eyewear order with cash on delivery."
 };
 
 export default async function CheckoutPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
@@ -34,7 +34,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
         <div className="mb-8">
           <p className="vv-kicker text-retail">Checkout</p>
           <h1 className="text-4xl font-extrabold">Complete your order</h1>
-          <p className="mt-2 text-slate-600">Provide shipping details, prescription attachments, and payment preferences.</p>
+          <p className="mt-2 text-slate-600">Provide shipping details and prescription information. Payment is collected by cash on delivery.</p>
         </div>
 
         <CheckoutForm cart={mappedCart!} totals={totals} error={error} />

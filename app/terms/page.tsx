@@ -32,7 +32,7 @@ export default function TermsPage() {
 
             <section>
               <h2>3. Orders and Payments</h2>
-              <p>All prices are displayed in Indian Rupees (INR). The checkout total shows every amount charged for the order; no separate tax line is added. Where you select online payment, you authorise us to charge the selected payment method and the order is confirmed only after successful verification via our payment partner, Razorpay. For an offline payment option, we confirm the next steps before shipment. We reserve the right to cancel orders if pricing errors, stock issues, or payment verification failures occur.</p>
+              <p>All prices are displayed in Indian Rupees (INR). The checkout total shows the amount due for the order; no separate tax line is added. For this launch, orders are cash on delivery only. We confirm the order before shipment and reserve the right to cancel an order for pricing errors, stock issues, unavailable delivery coverage, or an unconfirmed delivery request.</p>
             </section>
 
             <section>

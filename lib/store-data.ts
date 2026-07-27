@@ -252,7 +252,31 @@ function storeProductWhere(options: NormalizedStoreProductOptions) {
     where.categories = { some: { category: { slug: options.category } } };
   }
   if (options.query) {
-    where.searchText = { contains: options.query.toLowerCase(), mode: "insensitive" };
+    const searchTerms = options.query.split(/\s+/).filter(Boolean).slice(0, 10);
+    const searchableFields = [
+      "sku",
+      "barcode",
+      "name",
+      "brand",
+      "shortDescription",
+      "description",
+      "gender",
+      "material",
+      "colour",
+      "finish",
+      "shape",
+      "rimType",
+      "size",
+      "measurements"
+    ];
+
+    // Category labels are intentionally excluded: catalog search covers only
+    // the product's own general information.
+    where.AND = searchTerms.map((term) => ({
+      OR: searchableFields.map((field) => ({
+        [field]: { contains: term, mode: "insensitive" }
+      }))
+    }));
   }
   return where;
 }

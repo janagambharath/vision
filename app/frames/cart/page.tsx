@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2, Minus, PackageCheck, Plus, ShoppingBag, Tag, Trash2, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Minus, PackageCheck, Plus, ShoppingBag, Tag, Trash2, X } from "lucide-react";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
-import { removeCartItem, updateCartItemQuantity, applyCouponAction, removeCouponAction, updateCartItemPrescription } from "@/lib/cart-actions";
+import { removeCartItem, updateCartItemQuantity, applyCouponAction, removeCouponAction } from "@/lib/cart-actions";
 import { formatMoney } from "@/lib/money";
 import CartItemDetails from "@/components/cart-item-details";
 
@@ -22,10 +22,8 @@ export default async function CartPage({
   const items = cart?.items ?? [];
   const hasBlockedItem = items.some((item) => item.product.status !== "ACTIVE" || typeof item.product.pricePaise !== "number");
 
-  // Check if any item is missing prescription info
-  const hasMissingPrescription = items.some(
-    (item) => item.rxLeftSph === null && item.rxRightSph === null
-  );
+  const hasCodUnavailableItem = items.some((item) => !item.product.codAvailable);
+  const checkoutBlocked = !items.length || hasBlockedItem || hasCodUnavailableItem;
 
   return (
     <main className="vv-section bg-paper">
@@ -50,6 +48,8 @@ export default async function CartPage({
               ? "That coupon is inactive, expired, or does not meet the order minimum."
               : params.error === "empty-cart"
                 ? "Your cart is empty."
+                : params.error === "cod-unavailable"
+                  ? "Cash on delivery is not available for one or more items in your cart. Please contact us for help."
                 : "Checkout is blocked until all product and lens prices, stock, and terms are verified."}
           </div>
         ) : null}
@@ -69,8 +69,6 @@ export default async function CartPage({
             ) : (
               items.map((item) => {
                 const image = item.product.images?.[0];
-                const hasPrescription = item.rxLeftSph !== null || item.rxRightSph !== null;
-                const needsSurcharge = (item.rxLeftSph ?? 0) < -3 || (item.rxRightSph ?? 0) < -3;
 
                 return (
                   <article key={item.id} className="vv-card overflow-hidden">
@@ -111,22 +109,8 @@ export default async function CartPage({
                           {item.lensOption?.pricePaise ? ` (+${formatMoney(item.lensOption.pricePaise)})` : ""}
                         </p>
 
-                        {/* Prescription status badge */}
-                        {hasPrescription ? (
-                          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                            <CheckCircle2 className="h-3 w-3" />
-                            RX: L {item.rxLeftSph?.toFixed(2) ?? "0.00"} | R {item.rxRightSph?.toFixed(2) ?? "0.00"}
-                            {needsSurcharge && <span className="text-amber-600 ml-1">(+₹500 surcharge)</span>}
-                          </p>
-                        ) : (
-                          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                            <AlertTriangle className="h-3 w-3" />
-                            Prescription required
-                          </p>
-                        )}
-
                         <p className="mt-1 text-xs font-bold text-slate-500">
-                          {item.deliveryMethod.replace(/_/g, " ")}
+                          Home delivery
                         </p>
 
                         {/* Quantity Controls */}
@@ -193,53 +177,6 @@ export default async function CartPage({
                         </div>
                       </div>
                     </div>
-
-                    {/* Prescription Entry Section */}
-                    <div className="border-t border-slate-100 bg-slate-50/80 px-5 py-4">
-                      <form action={updateCartItemPrescription} className="grid gap-3">
-                        <input type="hidden" name="id" value={item.id} />
-                        <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
-                          Enter Prescription Power
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                          <label className="grid gap-1 text-xs font-bold text-slate-600">
-                            Left Eye (SPH)
-                            <input
-                              className="store-input text-sm"
-                              type="number"
-                              name="rxLeftSph"
-                              step="0.25"
-                              min="-20"
-                              max="20"
-                              defaultValue={item.rxLeftSph?.toString() ?? ""}
-                              placeholder="e.g. -2.50"
-                            />
-                          </label>
-                          <label className="grid gap-1 text-xs font-bold text-slate-600">
-                            Right Eye (SPH)
-                            <input
-                              className="store-input text-sm"
-                              type="number"
-                              name="rxRightSph"
-                              step="0.25"
-                              min="-20"
-                              max="20"
-                              defaultValue={item.rxRightSph?.toString() ?? ""}
-                              placeholder="e.g. -1.75"
-                            />
-                          </label>
-                          <button
-                            type="submit"
-                            className="self-end vv-button-retail text-xs py-2.5 min-h-[42px]"
-                          >
-                            Save RX
-                          </button>
-                        </div>
-                        <p className="text-[10px] text-slate-400">
-                          Power below −3.00 in either eye incurs a ₹500 high-index lens surcharge.
-                        </p>
-                      </form>
-                    </div>
                   </article>
                 );
               })
@@ -302,18 +239,10 @@ export default async function CartPage({
                 )}
               </div>
 
-              {/* Prescription warning */}
-              {hasMissingPrescription && (
-                <div className="mt-4 rounded-vv border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <span>Please enter prescription power for all items before checkout.</span>
-                </div>
-              )}
-
               <Link
-                className={`vv-button-retail mt-5 w-full ${hasMissingPrescription ? "opacity-60 pointer-events-none" : ""}`}
-                aria-disabled={!items.length || hasBlockedItem || hasMissingPrescription}
-                href={!items.length || hasBlockedItem || hasMissingPrescription ? "/frames/cart?error=pricing-required" : "/frames/checkout"}
+                className={`vv-button-retail mt-5 w-full ${checkoutBlocked ? "opacity-60 pointer-events-none" : ""}`}
+                aria-disabled={checkoutBlocked}
+                href={checkoutBlocked ? (hasCodUnavailableItem ? "/frames/cart?error=cod-unavailable" : "/frames/cart?error=pricing-required") : "/frames/checkout"}
               >
                 Checkout
                 <ArrowRight className="h-4 w-4" />

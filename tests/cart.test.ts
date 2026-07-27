@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { calculateCartTotals } from "../lib/cart";
+import { checkoutSchema } from "../lib/validations";
 
 function makeCart(overrides: Record<string, unknown> = {}) {
   return {
@@ -78,4 +79,28 @@ test("calculateCartTotals rejects expired and exhausted coupons", () => {
 
   assert.equal(expired.discountPaise, 0);
   assert.equal(exhausted.discountPaise, 0);
+});
+
+test("checkout validation accepts COD only", () => {
+  const checkout = {
+    name: "Vision Customer",
+    phone: "9876543210",
+    email: "",
+    line1: "12 Vision Street",
+    line2: "",
+    city: "Hyderabad",
+    state: "Telangana",
+    pincode: "500001",
+    deliveryMethod: "DELIVERY",
+    paymentMethod: "COD",
+    notes: "",
+    acceptedTerms: "on",
+    acceptedReturns: "on"
+  };
+
+  assert.equal(checkoutSchema.safeParse(checkout).success, true);
+  assert.equal(checkoutSchema.safeParse({ ...checkout, paymentMethod: "RAZORPAY" }).success, false);
+  assert.equal(checkoutSchema.safeParse({ ...checkout, paymentMethod: "WHATSAPP_ASSISTED" }).success, false);
+  assert.equal(checkoutSchema.safeParse({ ...checkout, deliveryMethod: "TRY_AT_HOME" }).success, false);
+  assert.equal(checkoutSchema.safeParse({ ...checkout, deliveryMethod: "STORE_PICKUP" }).success, false);
 });

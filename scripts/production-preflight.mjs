@@ -212,7 +212,7 @@ async function main() {
     "REDIS_URL"
   ]);
   requireVariables("object storage", ["CLOUDINARY_CLOUD_NAME", "CLOUDINARY_API_KEY", "CLOUDINARY_API_SECRET"]);
-  requireVariables("payments", ["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"]);
+  pass("payments: COD-only checkout enabled; no online-payment credentials required");
   requireVariables("customer AI try-on", ["GEMINI_API_KEY", "GEMINI_TRY_ON_MODEL"]);
   requireVariables("fulfillment", ["SHIPROCKET_EMAIL", "SHIPROCKET_PASSWORD", "SHIPROCKET_PICKUP_LOCATION"]);
   requireVariables("notifications", ["RESEND_API_KEY", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN", "CLINIC_PHONE"]);

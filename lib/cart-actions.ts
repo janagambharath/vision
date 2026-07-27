@@ -4,11 +4,28 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getOrCreateCart } from "@/lib/cart";
 
-export async function addToCart(formData: FormData) {
+type CartDestination = "/frames/cart" | "/frames/checkout";
+
+/**
+ * Adds a validated product selection to the shopper's existing cart.
+ *
+ * Keeping this mutation in one place makes the normal cart journey and
+ * Buy Now journey enforce the exact same price, stock, lens, and quantity
+ * checks. Buy Now deliberately preserves other cart selections; it only
+ * changes where the shopper lands afterwards.
+ */
+async function addProductSelection(formData: FormData, destination: CartDestination) {
   const slug = String(formData.get("slug") ?? "");
   const lensCode = String(formData.get("lensCode") ?? "");
-  const quantity = Number(formData.get("quantity") ?? 1);
-  const deliveryMethod = String(formData.get("deliveryMethod") ?? "DELIVERY") as "DELIVERY" | "TRY_AT_HOME" | "STORE_PICKUP";
+  const rawQuantity = Number(formData.get("quantity") ?? 1);
+  const requestedQty = Number.isFinite(rawQuantity)
+    ? Math.max(1, Math.min(5, Math.trunc(rawQuantity)))
+    : 1;
+  const rawDeliveryMethod = String(formData.get("deliveryMethod") ?? "DELIVERY");
+  if (rawDeliveryMethod !== "DELIVERY") {
+    redirect(`/frames/${slug}?blocked=delivery-unavailable`);
+  }
+  const deliveryMethod = "DELIVERY" as const;
 
   const product = await prisma.product.findUnique({
     where: { slug },
@@ -17,6 +34,9 @@ export async function addToCart(formData: FormData) {
 
   if (!product || product.status !== "ACTIVE" || typeof product.pricePaise !== "number") {
     redirect(`/frames/${slug}?blocked=price-required`);
+  }
+  if (!product.codAvailable) {
+    redirect(`/frames/${slug}?blocked=cod-unavailable`);
   }
 
   const availableStock = Math.max(0, (product.inventory?.quantity ?? 0) - (product.inventory?.reservedStock ?? 0));
@@ -42,7 +62,6 @@ export async function addToCart(formData: FormData) {
   );
 
   const currentQtyInCart = existingItem?.quantity ?? 0;
-  const requestedQty = Math.max(1, Math.min(5, quantity));
   const newQty = currentQtyInCart + requestedQty;
 
   if (newQty > availableStock) {
@@ -62,12 +81,25 @@ export async function addToCart(formData: FormData) {
         lensOptionId: lensOption?.id,
         quantity: requestedQty,
         deliveryMethod,
-        tryAtHome: deliveryMethod === "TRY_AT_HOME"
+        tryAtHome: false
       }
     });
   }
 
-  redirect("/frames/cart");
+  redirect(destination);
+}
+
+export async function addToCart(formData: FormData) {
+  await addProductSelection(formData, "/frames/cart");
+}
+
+/**
+ * Add the currently selected frame/lens configuration, then continue to the
+ * checkout. This is intentionally a server action rather than a client-side
+ * redirect so stock and pricing are verified before checkout is shown.
+ */
+export async function buyNow(formData: FormData) {
+  await addProductSelection(formData, "/frames/checkout");
 }
 
 export async function removeCartItem(formData: FormData) {
@@ -83,7 +115,8 @@ export async function removeCartItem(formData: FormData) {
 
 export async function updateCartItemQuantity(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  const quantity = Number(formData.get("quantity") ?? 1);
+  const rawQuantity = Number(formData.get("quantity") ?? 1);
+  const quantity = Number.isSafeInteger(rawQuantity) ? rawQuantity : 0;
 
   if (id && quantity >= 1 && quantity <= 5) {
     const cart = await getOrCreateCart();
@@ -151,8 +184,9 @@ export async function updateCartItemPrescription(formData: FormData) {
   const rxRightSph = formData.get("rxRightSph") ? Number(formData.get("rxRightSph")) : null;
 
   if (id) {
-    await prisma.cartItem.update({
-      where: { id },
+    const cart = await getOrCreateCart();
+    await prisma.cartItem.updateMany({
+      where: { id, cartId: cart.id },
       data: {
         rxLeftSph: rxLeftSph !== null && !isNaN(rxLeftSph) ? rxLeftSph : null,
         rxRightSph: rxRightSph !== null && !isNaN(rxRightSph) ? rxRightSph : null

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-// Retired to prevent two fulfillment authorities. Configure Razorpay to call
-// /api/payments/razorpay/webhook and remove this legacy endpoint from its dashboard.
+// Online payments are retired for the COD-only launch.
 export async function POST() {
-  return NextResponse.json({ error: "This webhook endpoint is retired. Use /api/payments/razorpay/webhook." }, { status: 410 });
+  return NextResponse.json({ error: "Online payments are unavailable. Vision Vistara currently accepts cash on delivery only." }, { status: 410 });
 }

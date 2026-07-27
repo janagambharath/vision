@@ -17,7 +17,6 @@ import {
   getCheckoutReservationExpiry,
   InventoryReservationConflictError,
   InventoryUnavailableError,
-  isOnlinePaymentMethod,
   releaseOrderInventoryReservations,
   reserveOrderInventory
 } from "@/lib/inventory-reservations";
@@ -42,9 +41,14 @@ export async function checkoutAction(formData: FormData) {
 
   if (hasUnpriced) redirect("/frames/cart?error=pricing-required");
 
+  // The public launch is COD-only. Respect each product's COD setting too,
+  // so a crafted form submission cannot create an unfulfillable order.
+  if (cart.items.some((item) => !item.product.codAvailable)) {
+    redirect("/frames/cart?error=cod-unavailable");
+  }
+
   const totals = calculateCartTotals(cart);
   const publicId = makePublicOrderId();
-  const isOnlinePayment = isOnlinePaymentMethod(parsed.data.paymentMethod);
 
   const requiresPrescription = cart.items.some((item) => item.lensOption?.requiresPrescription);
   let prescriptionSubmission;
@@ -219,51 +223,46 @@ export async function checkoutAction(formData: FormData) {
 
   await grantOrderAccess(order.publicId, "tracking", 30 * 60);
   await grantOrderAccess(order.publicId, "checkout", 60 * 60);
-  
-  if (isOnlinePayment) {
-    redirect(`/frames/checkout/pay/${publicId}`);
-  } else {
-    const offlineOrder = await prisma.order.findUnique({
-      where: { id: order.id },
-      select: {
-        id: true,
-        publicId: true,
-        customerName: true,
-        phone: true,
-        email: true,
-        subtotalPaise: true,
-        lensTotalPaise: true,
-        shippingPaise: true,
-        discountPaise: true,
-        grandTotalPaise: true,
-        paymentMethod: true,
-        items: { select: { quantity: true, unitPricePaise: true, productSnapshot: true, lensSnapshot: true } }
+  const offlineOrder = await prisma.order.findUnique({
+    where: { id: order.id },
+    select: {
+      id: true,
+      publicId: true,
+      customerName: true,
+      phone: true,
+      email: true,
+      subtotalPaise: true,
+      lensTotalPaise: true,
+      shippingPaise: true,
+      discountPaise: true,
+      grandTotalPaise: true,
+      paymentMethod: true,
+      items: { select: { quantity: true, unitPricePaise: true, productSnapshot: true, lensSnapshot: true } }
+    }
+  });
+  if (offlineOrder) {
+    await prisma.notification.create({
+      data: {
+        orderId: offlineOrder.id,
+        channel: "SYSTEM",
+        status: "PENDING",
+        recipient: "fulfillment",
+        subject: "COD order requires confirmation",
+        body: `COD order ${offlineOrder.publicId} needs customer confirmation before shipment.`,
+        entityType: "Order",
+        entityId: offlineOrder.id
       }
     });
-    if (offlineOrder) {
-      await prisma.notification.create({
-        data: {
-          orderId: offlineOrder.id,
-          channel: "SYSTEM",
-          status: "PENDING",
-          recipient: "fulfillment",
-          subject: "Offline order requires confirmation",
-          body: `${offlineOrder.paymentMethod} order ${offlineOrder.publicId} needs customer/payment confirmation before shipment.`,
-          entityType: "Order",
-          entityId: offlineOrder.id
-        }
-      });
-      await sendOrderReceivedNotifications({
-        ...offlineOrder,
-        items: offlineOrder.items.map((item) => ({
-          ...item,
-          productSnapshot: item.productSnapshot as { brand?: string; name?: string; sku?: string },
-          lensSnapshot: item.lensSnapshot as { name?: string } | null
-        }))
-      });
-    }
-    redirect(`/frames/orders/${publicId}`);
+    await sendOrderReceivedNotifications({
+      ...offlineOrder,
+      items: offlineOrder.items.map((item) => ({
+        ...item,
+        productSnapshot: item.productSnapshot as { brand?: string; name?: string; sku?: string },
+        lensSnapshot: item.lensSnapshot as { name?: string } | null
+      }))
+    });
   }
+  redirect(`/frames/orders/${publicId}`);
 }
 
 

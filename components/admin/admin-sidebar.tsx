@@ -13,7 +13,6 @@ import {
   Home,
   Layers,
   LogOut,
-  Settings,
   ShoppingBag,
   Sparkles,
   Star,
@@ -33,13 +32,13 @@ const adminMenuItems = [
   { href: "/admin/orders", label: "Orders", icon: ClipboardList },
   { href: "/admin/prescriptions", label: "Prescriptions", icon: FileText },
   { href: "/admin/previews", label: "AI monitoring", icon: Sparkles },
-  { href: "/admin/leads", label: "Customers", icon: Users },
+  { href: "/admin/leads", label: "Leads", icon: Users },
+  { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/privacy-requests", label: "Privacy requests", icon: ShieldCheck },
   { href: "/admin/reviews", label: "Reviews", icon: Star },
   { href: "/admin/coupons", label: "Coupons", icon: Ticket },
   { href: "/admin/try-at-home", label: "Try At Home", icon: Truck },
-  { href: "/admin/promotions", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/promotions", label: "Promotions", icon: BarChart3 },
 ];
 
 export function AdminSidebar() {

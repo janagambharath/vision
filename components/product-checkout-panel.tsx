@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ShoppingBag, Home, MessageCircle, Heart, Ruler } from "lucide-react";
-import { addToCart } from "@/lib/cart-actions";
+import { ShoppingBag, Home, MessageCircle, Heart, Ruler, Zap } from "lucide-react";
+import { addToCart, buyNow } from "@/lib/cart-actions";
 import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
 import LensSelector from "@/components/lens-selector";
@@ -81,10 +81,11 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
 
       <form action={addToCart} className="grid gap-5 rounded-vv border border-slate-200 bg-slate-50 p-5">
         <input type="hidden" name="slug" value={product.slug} />
+        <input type="hidden" name="deliveryMethod" value="DELIVERY" />
 
         <LensSelector packages={lensPackages} />
 
-        <div className="grid gap-3 md:grid-cols-2 mt-2">
+        <div className="mt-2">
           <label className="grid gap-1.5 text-sm font-extrabold text-slate-600">
             Quantity
             <input
@@ -97,23 +98,26 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
               disabled={!sellable}
             />
           </label>
-          <label className="grid gap-1.5 text-sm font-extrabold text-slate-600">
-            Fulfillment method
-            <select className="store-input" name="deliveryMethod" disabled={!sellable}>
-              <option value="DELIVERY">Delivery</option>
-              {product.tryAtHomeEligible && <option value="TRY_AT_HOME">Try at home</option>}
-              <option value="STORE_PICKUP">Store pickup</option>
-            </select>
-          </label>
         </div>
 
         {/* Actions grid */}
         <div className="grid gap-3 mt-3 sm:grid-cols-[1fr_50px]">
-          <div className="grid gap-2 grid-cols-2">
-            <button className="vv-button-retail text-xs py-2.5 font-bold justify-center" type="submit" disabled={!sellable}>
-              <ShoppingBag className="h-4 w-4" />
-              Add to cart
-            </button>
+          <div className="grid gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <button className="vv-button-light text-xs py-2.5 font-bold justify-center" type="submit" disabled={!sellable}>
+                <ShoppingBag className="h-4 w-4" />
+                Add to cart
+              </button>
+              <button
+                className="vv-button-retail text-xs py-2.5 font-bold justify-center"
+                formAction={buyNow}
+                type="submit"
+                disabled={!sellable}
+              >
+                <Zap className="h-4 w-4" />
+                Buy now
+              </button>
+            </div>
             <Link className="vv-button-light text-xs py-2.5 font-bold justify-center" href={`/frames/try-at-home?productIds=${product.slug}`}>
               <Home className="h-4 w-4" />
               Try at home

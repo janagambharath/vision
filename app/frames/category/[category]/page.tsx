@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getStoreProductsCount, getCategories, normalizeCatalogPage, normalizeStoreProductSort, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
+import { getStoreProducts, getStoreProductsCount, getCategories, normalizeCatalogPage, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { toPublicStoreProduct } from "@/lib/inventory";
@@ -26,13 +26,12 @@ export default async function CategoryPage({
   searchParams
 }: {
   params: Promise<{ category: string }>;
-  searchParams?: Promise<{ page?: string; sort?: string }>;
+  searchParams?: Promise<{ page?: string }>;
 }) {
   const { category } = await params;
   const query = (await searchParams) ?? {};
-  const sort = normalizeStoreProductSort(query.sort);
   const requestedPage = normalizeCatalogPage(query.page);
-  const catalogOptions = { category, sort };
+  const catalogOptions = { category };
   const [totalCount, categories] = await Promise.all([
     getStoreProductsCount(catalogOptions),
     getCategories()
@@ -44,7 +43,6 @@ export default async function CategoryPage({
   const label = currentCat?.name ?? category.replace(/-/g, " ");
   const pageHref = (page: number) => {
     const params = new URLSearchParams();
-    if (sort !== "featured") params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
     const search = params.toString();
     return search ? `/frames/category/${category}?${search}` : `/frames/category/${category}`;
@@ -113,19 +111,6 @@ export default async function CategoryPage({
             </Link>
           ))}
         </div>
-
-        <form action={`/frames/category/${category}`} className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
-          <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-            Sort frames
-            <select className="store-input min-w-52" name="sort" defaultValue={sort}>
-              <option value="featured">Featured</option>
-              <option value="new">New arrivals</option>
-              <option value="price-asc">Price: low to high</option>
-              <option value="price-desc">Price: high to low</option>
-            </select>
-          </label>
-          <button className="vv-button-retail" type="submit">Apply</button>
-        </form>
 
         {products.length ? (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
