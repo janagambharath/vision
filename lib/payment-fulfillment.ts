@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { prisma, isSerializationFailure } from "@/lib/db";
 import { getOrderConfirmationTemplate, sendEmail } from "@/lib/integrations/resend";
 import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
 import {
@@ -47,9 +47,7 @@ export type OrderConfirmation = {
   }>;
 };
 
-function isSerializationFailure(error: unknown) {
-  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2034";
-}
+
 
 export async function sendOrderReceivedNotifications(confirmedOrder: OrderConfirmation) {
   const notificationTasks: Array<Promise<unknown>> = [];

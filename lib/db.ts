@@ -13,3 +13,9 @@ export const prisma =
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
+
+/** Prisma P2034 — serializable transaction conflict. Retry at the caller. */
+export function isSerializationFailure(error: unknown) {
+  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2034";
+}
+

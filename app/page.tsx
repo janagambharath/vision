@@ -467,49 +467,52 @@ export default function ClinicHomePage() {
         </section>
 
         {/* ───────────── FRAMES STORE CTA ───────────── */}
-        <section className="relative overflow-hidden border-y border-slate-200">
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-teal-50/30" />
-          <div className="vv-container relative py-16 sm:py-20 md:py-24">
-            <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-center">
-              <div>
-                <p className="vv-kicker text-retail flex items-center gap-2">
-                  <Store className="h-4 w-4" />
-                  Frames Store
-                </p>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">
-                  Your prescription is ready?<br className="hidden sm:block" />
-                  Browse our curated frame collection.
-                </h2>
-                <p className="mt-4 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed">
-                  The Vision Vistara frames store is a separate, product-first experience.
-                  Browse 50+ verified frames, choose lenses, try at home, and checkout — all
-                  inside the dedicated store.
-                </p>
-                <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                  <Link className="vv-button-retail" href="/frames">
-                    <Glasses className="h-5 w-5" />
-                    Visit Frames Store
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                  <Link className="vv-button-light" href="/frames/try-at-home">
-                    Try at Home
-                  </Link>
+        <section className="vv-section bg-paper">
+          <div className="vv-container">
+            <SectionHeading
+              kicker="Frames Store"
+              title="Your prescription is ready? Explore our curated collection."
+            >
+              <p>
+                The Vision Vistara frames store is a separate, product-first
+                experience with 50+ verified frames, try-at-home, and full checkout.
+              </p>
+            </SectionHeading>
+            <Link
+              href="/frames"
+              className="group relative block overflow-hidden rounded-3xl shadow-soft hover:shadow-strong transition-all duration-500"
+            >
+              <div className="relative aspect-[21/9] sm:aspect-[3/1]">
+                <Image
+                  src="/assets/frames-shop-cta.png"
+                  alt="Browse Vision Vistara frames collection"
+                  fill
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
+                  sizes="(max-width: 768px) 100vw, 1200px"
+                />
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-ink/80 via-ink/50 to-transparent" />
+                {/* Content */}
+                <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-10 md:px-14">
+                  <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-teal-300">
+                    50+ verified frames
+                  </p>
+                  <h3 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight max-w-lg">
+                    Shop Frames Collection
+                  </h3>
+                  <p className="mt-2 text-xs sm:text-sm text-slate-300 max-w-md hidden sm:block">
+                    Try at home · Virtual try-on · Full checkout · Order tracking
+                  </p>
+                  <div className="mt-4 sm:mt-6 inline-flex">
+                    <span className="vv-button-retail group-hover:shadow-[0_12px_24px_-6px_rgba(15,118,110,0.5)]">
+                      <Glasses className="h-5 w-5" />
+                      Shop Now
+                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="hidden md:grid grid-cols-2 gap-3">
-                {[
-                  ["50+ frames", "Verified and clinic-ready"],
-                  ["Try at home", "Up to 5 frames delivered"],
-                  ["Virtual try-on", "See frames on your face"],
-                  ["Full checkout", "Cart, payment, tracking"],
-                ].map(([title, desc]) => (
-                  <div key={title} className="rounded-2xl border border-teal-100 bg-white p-4 shadow-sm">
-                    <p className="text-sm font-extrabold text-teal-700">{title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+            </Link>
           </div>
         </section>
 

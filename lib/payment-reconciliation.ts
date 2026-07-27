@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { prisma, isSerializationFailure } from "@/lib/db";
 import {
   InventoryReservationConflictError,
   releaseOrderInventoryReservations
@@ -11,9 +11,7 @@ import { sendWhatsAppTemplate } from "@/lib/integrations/whatsapp";
 const EXPIRABLE_ORDER_STATUSES = ["PENDING", "AWAITING_PRESCRIPTION"] as const;
 const REFUND_STALL_MINUTES = 30;
 
-function isSerializationFailure(error: unknown) {
-  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2034";
-}
+
 
 async function expireOneCheckout(orderId: string, now: Date) {
   for (let attempt = 0; attempt < 3; attempt += 1) {

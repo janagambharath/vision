@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
-import { prisma } from "@/lib/db";
+import { prisma, isSerializationFailure } from "@/lib/db";
 import { checkoutSchema, normalizePhone, tryAtHomeSchema } from "@/lib/validations";
 import { uploadFormFile } from "@/lib/uploads";
 import { getCustomerSession } from "@/lib/customer-auth";
@@ -24,10 +24,6 @@ import {
 
 function makePublicOrderId() {
   return `VV-${randomBytes(16).toString("hex").toUpperCase()}`;
-}
-
-function isSerializationFailure(error: unknown) {
-  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2034";
 }
 
 export async function checkoutAction(formData: FormData) {
