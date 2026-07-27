@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Activity,
+  ArrowRight,
   BadgeCheck,
   CalendarCheck,
   ChevronDown,
@@ -9,6 +10,7 @@ import {
   Eye,
   FileCheck2,
   Glasses,
+  Heart,
   Mail,
   MapPin,
   MessageCircle,
@@ -119,30 +121,44 @@ export default function ClinicHomePage() {
 
         {/* ───────────── HERO ───────────── */}
         <section className="relative isolate overflow-hidden bg-ink text-white">
+          {/* Desktop hero background */}
           <Image
             src="/assets/vision-vistara-hero.png"
             alt=""
             fill
             priority
             sizes="100vw"
-            className="absolute inset-0 -z-20 object-cover"
+            className="absolute inset-0 -z-20 object-cover hidden md:block"
           />
-          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[rgba(4,11,22,0.97)] via-[rgba(4,11,22,0.88)] to-[rgba(15,35,60,0.35)]" />
-          <div className="vv-container min-h-[calc(100svh-80px)] py-24 md:py-32 flex flex-col justify-center relative">
-            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-hero-glow rounded-full blur-3xl opacity-30 -z-10 pointer-events-none" />
+          {/* Mobile hero background */}
+          <Image
+            src="/assets/vision-vistara-hero-mobile.png"
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="absolute inset-0 -z-20 object-cover object-center md:hidden"
+          />
+          {/* Desktop overlay: gradient from left */}
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[rgba(4,11,22,0.97)] via-[rgba(4,11,22,0.88)] to-[rgba(15,35,60,0.35)] hidden md:block" />
+          {/* Mobile overlay: strong bottom gradient for text readability */}
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-ink/60 via-ink/70 to-ink/95 md:hidden" />
+
+          <div className="vv-container min-h-[100svh] md:min-h-[calc(100svh-80px)] py-20 md:py-32 flex flex-col justify-center relative">
+            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-hero-glow rounded-full blur-3xl opacity-20 -z-10 pointer-events-none" />
             <FadeIn className="max-w-3xl">
-              <p className="mb-4 text-xs font-extrabold uppercase tracking-widest text-cyan-300">
+              <p className="mb-4 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">
                 Vision Vistara Optics &amp; Lasers Eye Care
               </p>
-              <h1 className="text-4xl font-extrabold leading-[1.08] md:text-6xl lg:text-7xl">
+              <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.08]">
                 Trusted eye care before every optical decision.
               </h1>
-              <p className="mt-6 max-w-2xl text-lg text-slate-300 leading-relaxed">
+              <p className="mt-5 sm:mt-6 max-w-2xl text-base sm:text-lg text-slate-300 leading-relaxed">
                 Consultation, prescription guidance, diagnostics, laser and
                 cataract advice, and practical follow-up — from a calm,
                 clinic-first experience.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-8 flex flex-col sm:flex-row flex-wrap gap-3">
                 <Link className="vv-button-primary" href="#appointment">
                   <CalendarCheck className="h-5 w-5" />
                   Book Appointment
@@ -164,14 +180,14 @@ export default function ClinicHomePage() {
             </FadeIn>
           </div>
           {/* Scroll indicator */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce opacity-40">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce opacity-40 hidden sm:block">
             <ChevronDown className="h-6 w-6 text-white" />
           </div>
         </section>
 
         {/* ───────────── TRUST STRIP ───────────── */}
         <section className="border-b border-slate-100 bg-white/70 backdrop-blur-lg relative z-10">
-          <StaggerContainer className="vv-container grid gap-3 py-6 md:grid-cols-4 -mt-10">
+          <StaggerContainer className="vv-container grid grid-cols-2 gap-3 py-6 md:grid-cols-4 -mt-8 sm:-mt-10">
             {(
               [
                 [BadgeCheck, "20+ years of eye care"],
@@ -182,10 +198,10 @@ export default function ClinicHomePage() {
             ).map(([Icon, label]) => (
               <StaggerItem
                 key={String(label)}
-                className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/90 backdrop-blur-md p-5 shadow-lg shadow-blue-900/5 font-extrabold text-slate-800 transition-transform hover:-translate-y-1"
+                className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/90 backdrop-blur-md p-4 sm:p-5 shadow-lg shadow-blue-900/5 text-sm sm:text-base font-extrabold text-slate-800 transition-transform hover:-translate-y-1"
               >
-                <Icon className="h-6 w-6 text-clinic shrink-0" />
-                {label as string}
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-clinic shrink-0" />
+                <span className="leading-tight">{label as string}</span>
               </StaggerItem>
             ))}
           </StaggerContainer>
@@ -206,22 +222,22 @@ export default function ClinicHomePage() {
                   personalised guidance.
                 </p>
               </SectionHeading>
-              <div className="vv-card grid grid-cols-[92px_1fr] items-center gap-4 p-4">
+              <div className="vv-card grid grid-cols-[80px_1fr] sm:grid-cols-[92px_1fr] items-center gap-4 p-4">
                 <Image
                   src="/assets/siddagoni-saidulu-doctor.jpeg"
                   width={92}
                   height={112}
                   alt="Optometrist Siddagoni Saidulu"
-                  className="h-28 rounded-vv object-cover object-[center_28%]"
+                  className="h-24 sm:h-28 rounded-vv object-cover object-[center_28%]"
                 />
                 <div>
-                  <strong className="block text-lg font-extrabold">
+                  <strong className="block text-base sm:text-lg font-extrabold">
                     Siddagoni Saidulu, DOA
                   </strong>
-                  <span className="font-extrabold text-clinic">
+                  <span className="font-extrabold text-clinic text-sm sm:text-base">
                     20 years experience
                   </span>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-xs sm:text-sm text-slate-600">
                     Expert in eye lasers and patient-first optical guidance.
                   </p>
                 </div>
@@ -252,12 +268,12 @@ export default function ClinicHomePage() {
                   ],
                 ] satisfies Array<[LucideIcon, string, string]>
               ).map(([Icon, title, body]) => (
-                <article key={String(title)} className="vv-card p-6">
+                <article key={String(title)} className="vv-card p-5 sm:p-6">
                   <Icon className="h-10 w-10 rounded-vv bg-blue-50 p-2 text-clinic" />
-                  <h3 className="mt-5 text-lg font-extrabold">
+                  <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-extrabold">
                     {title as string}
                   </h3>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
                     {body as string}
                   </p>
                 </article>
@@ -279,7 +295,7 @@ export default function ClinicHomePage() {
                 when needed.
               </p>
             </SectionHeading>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {(
                 [
                   [
@@ -308,44 +324,23 @@ export default function ClinicHomePage() {
                     "Lens recommendations are matched to the prescription, usage, comfort, and budget.",
                   ],
                   [
-                    Store,
-                    "Frames store handoff",
-                    "Shopping, try-at-home, cart, checkout, and order tracking live in the dedicated store.",
+                    Heart,
+                    "Personalised follow-up",
+                    "Post-visit support via call or WhatsApp for prescription questions and recovery guidance.",
                   ],
                 ] satisfies Array<[LucideIcon, string, string]>
               ).map(([Icon, title, body]) => (
-                <article key={String(title)} className="vv-card p-6">
+                <article key={String(title)} className="vv-card p-5 sm:p-6">
                   <Icon className="h-10 w-10 rounded-vv bg-blue-50 p-2 text-clinic" />
-                  <h3 className="mt-5 text-lg font-extrabold">
+                  <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-extrabold">
                     {title as string}
                   </h3>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
                     {body as string}
                   </p>
                 </article>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ───────────── FRAMES STORE CTA ───────────── */}
-        <section className="store-band">
-          <div className="vv-container grid items-center gap-6 py-12 md:grid-cols-[1fr_auto]">
-            <div>
-              <p className="vv-kicker">Frames are separate</p>
-              <h2 className="text-3xl font-extrabold">
-                Shop eyewear inside the dedicated Vision Vistara frames store.
-              </h2>
-              <p className="mt-3 max-w-2xl text-slate-600">
-                Browse frame details, lens options, checkout, try-at-home, and
-                tracking inside /frames. The main clinic page stays medically
-                credible and appointment-led.
-              </p>
-            </div>
-            <Link className="vv-button-retail" href="/frames">
-              <Store className="h-5 w-5" />
-              Visit Frames Store
-            </Link>
           </div>
         </section>
 
@@ -361,7 +356,7 @@ export default function ClinicHomePage() {
                 concern, eye condition, and treatment pathway.
               </p>
             </SectionHeading>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {(
                 [
                   [
@@ -396,12 +391,12 @@ export default function ClinicHomePage() {
                   ],
                 ] satisfies Array<[LucideIcon, string, string]>
               ).map(([Icon, title, body]) => (
-                <article key={String(title)} className="vv-card p-6">
+                <article key={String(title)} className="vv-card p-5 sm:p-6">
                   <Icon className="h-10 w-10 rounded-vv bg-blue-50 p-2 text-clinic" />
-                  <h3 className="mt-5 text-lg font-extrabold">
+                  <h3 className="mt-4 sm:mt-5 text-base sm:text-lg font-extrabold">
                     {title as string}
                   </h3>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-2 text-xs sm:text-sm text-slate-600 leading-relaxed">
                     {body as string}
                   </p>
                 </article>
@@ -417,7 +412,7 @@ export default function ClinicHomePage() {
               kicker="Patient experiences"
               title="Calm guidance, clear explanations, and useful follow-up."
             />
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {[
                 {
                   quote:
@@ -441,7 +436,7 @@ export default function ClinicHomePage() {
                   rating: 4,
                 },
               ].map(({ quote, name, role, rating }) => (
-                <article key={name} className="vv-card p-6">
+                <article key={name} className="vv-card p-5 sm:p-6">
                   <div className="flex gap-0.5 mb-3">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
@@ -454,7 +449,7 @@ export default function ClinicHomePage() {
                       />
                     ))}
                   </div>
-                  <p className="text-slate-700 italic leading-relaxed">
+                  <p className="text-sm sm:text-base text-slate-700 italic leading-relaxed">
                     &ldquo;{quote}&rdquo;
                   </p>
                   <div className="mt-5 border-t border-slate-100 pt-3">
@@ -471,6 +466,53 @@ export default function ClinicHomePage() {
           </div>
         </section>
 
+        {/* ───────────── FRAMES STORE CTA ───────────── */}
+        <section className="relative overflow-hidden border-y border-slate-200">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-teal-50/30" />
+          <div className="vv-container relative py-16 sm:py-20 md:py-24">
+            <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr] items-center">
+              <div>
+                <p className="vv-kicker text-retail flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  Frames Store
+                </p>
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 leading-tight">
+                  Your prescription is ready?<br className="hidden sm:block" />
+                  Browse our curated frame collection.
+                </h2>
+                <p className="mt-4 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed">
+                  The Vision Vistara frames store is a separate, product-first experience.
+                  Browse 50+ verified frames, choose lenses, try at home, and checkout — all
+                  inside the dedicated store.
+                </p>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <Link className="vv-button-retail" href="/frames">
+                    <Glasses className="h-5 w-5" />
+                    Visit Frames Store
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                  <Link className="vv-button-light" href="/frames/try-at-home">
+                    Try at Home
+                  </Link>
+                </div>
+              </div>
+              <div className="hidden md:grid grid-cols-2 gap-3">
+                {[
+                  ["50+ frames", "Verified and clinic-ready"],
+                  ["Try at home", "Up to 5 frames delivered"],
+                  ["Virtual try-on", "See frames on your face"],
+                  ["Full checkout", "Cart, payment, tracking"],
+                ].map(([title, desc]) => (
+                  <div key={title} className="rounded-2xl border border-teal-100 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-extrabold text-teal-700">{title}</p>
+                    <p className="mt-1 text-xs text-slate-500">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ───────────── APPOINTMENT BOOKING ───────────── */}
         <section className="vv-section bg-white" id="appointment">
           <div className="vv-container">
@@ -483,7 +525,7 @@ export default function ClinicHomePage() {
                 within 24 hours. Same-day slots available on request.
               </p>
             </SectionHeading>
-            <div className="vv-card p-8 max-w-3xl">
+            <div className="vv-card p-6 sm:p-8 max-w-3xl">
               <AppointmentForm action={bookAppointment} />
             </div>
           </div>
@@ -525,11 +567,11 @@ export default function ClinicHomePage() {
                 ],
               ].map(([question, answer]) => (
                 <details key={question} className="vv-card group">
-                  <summary className="cursor-pointer font-extrabold p-5 flex items-center justify-between gap-3 list-none [&::-webkit-details-marker]:hidden">
+                  <summary className="cursor-pointer font-extrabold p-4 sm:p-5 flex items-center justify-between gap-3 text-sm sm:text-base">
                     {question}
                     <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 group-open:rotate-180" />
                   </summary>
-                  <p className="px-5 pb-5 text-slate-600 leading-relaxed -mt-1">
+                  <p className="px-4 sm:px-5 pb-4 sm:pb-5 text-xs sm:text-sm text-slate-600 leading-relaxed -mt-1">
                     {answer}
                   </p>
                 </details>
@@ -547,10 +589,10 @@ export default function ClinicHomePage() {
                 WhatsApp. Walk-ins are welcome when slots are available.
               </p>
             </SectionHeading>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <a
                 href={`tel:+91${CLINIC_PHONE}`}
-                className="vv-card p-6 flex items-start gap-4 hover:border-clinic"
+                className="vv-card p-5 sm:p-6 flex items-start gap-4 hover:border-clinic"
               >
                 <Phone className="h-8 w-8 rounded-vv bg-blue-50 p-2 text-clinic shrink-0" />
                 <div>
@@ -566,7 +608,7 @@ export default function ClinicHomePage() {
                 href={`https://wa.me/${CLINIC_WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener"
-                className="vv-card p-6 flex items-start gap-4 hover:border-emerald-500"
+                className="vv-card p-5 sm:p-6 flex items-start gap-4 hover:border-emerald-500"
               >
                 <MessageCircle className="h-8 w-8 rounded-vv bg-emerald-50 p-2 text-emerald-600 shrink-0" />
                 <div>
@@ -580,7 +622,7 @@ export default function ClinicHomePage() {
               </a>
               <a
                 href="mailto:contact@visionvistara.online"
-                className="vv-card p-6 flex items-start gap-4 hover:border-clinic"
+                className="vv-card p-5 sm:p-6 flex items-start gap-4 hover:border-clinic"
               >
                 <Mail className="h-8 w-8 rounded-vv bg-blue-50 p-2 text-clinic shrink-0" />
                 <div>
@@ -598,12 +640,23 @@ export default function ClinicHomePage() {
       </main>
 
       {/* ───────────── FOOTER ───────────── */}
-      <footer className="bg-ink py-12 text-slate-400">
+      <footer className="bg-ink py-12 sm:py-16 text-slate-400">
         <div className="vv-container">
-          <div className="grid gap-8 md:grid-cols-4">
+          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
             <div>
-              <Link href="/" className="text-xl font-extrabold text-white">
-                Vision Vistara
+              <Link href="/" className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-white shrink-0 overflow-hidden">
+                  <Image
+                    src="/assets/vision-vistara-eye-logo.png"
+                    width={36}
+                    height={36}
+                    alt=""
+                    className="scale-125"
+                  />
+                </span>
+                <span className="text-lg font-extrabold text-white">
+                  Vision Vistara
+                </span>
               </Link>
               <p className="mt-3 text-sm leading-relaxed">
                 Trusted eye care and optical guidance from a clinic-first experience in Hyderabad.
@@ -629,25 +682,29 @@ export default function ClinicHomePage() {
             </div>
             <div>
               <h4 className="font-extrabold text-white text-sm mb-3">Contact</h4>
-              <div className="grid gap-2 text-sm">
+              <div className="grid gap-2.5 text-sm">
                 <a href={`tel:+91${CLINIC_PHONE}`} className="flex items-center gap-2 hover:text-white transition">
-                  <Phone className="h-3.5 w-3.5" /> +91 {CLINIC_PHONE}
+                  <Phone className="h-3.5 w-3.5 shrink-0" /> +91 {CLINIC_PHONE}
                 </a>
                 <a href={`https://wa.me/${CLINIC_WHATSAPP_NUMBER}`} target="_blank" rel="noopener" className="flex items-center gap-2 hover:text-white transition">
-                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0" /> WhatsApp
                 </a>
                 <a href="mailto:contact@visionvistara.online" className="flex items-center gap-2 hover:text-white transition">
-                  <Mail className="h-3.5 w-3.5" /> Email Us
+                  <Mail className="h-3.5 w-3.5 shrink-0" /> Email Us
                 </a>
                 <span className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5" /> Hyderabad, Telangana
+                  <MapPin className="h-3.5 w-3.5 shrink-0" /> Hyderabad, Telangana
                 </span>
               </div>
             </div>
           </div>
-          <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col md:flex-row justify-between gap-3 text-xs">
+          <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row justify-between gap-3 text-xs">
             <p>© 2026 Vision Vistara Optics &amp; Lasers Eye Care. All rights reserved.</p>
-            <p>Phone: {CLINIC_PHONE} · Hyderabad, Telangana</p>
+            <div className="flex gap-4">
+              <Link href="/privacy-policy" className="hover:text-white transition">Privacy Policy</Link>
+              <Link href="/return-policy" className="hover:text-white transition">Returns</Link>
+              <Link href="/terms" className="hover:text-white transition">Terms</Link>
+            </div>
           </div>
         </div>
       </footer>
