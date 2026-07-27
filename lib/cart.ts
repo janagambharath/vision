@@ -16,7 +16,7 @@ export async function getOrCreateCart() {
       include: {
         items: {
           where: { savedForLater: false },
-          include: { product: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 }, inventory: true } }, lensOption: true },
+          include: { product: { include: { images: { orderBy: { sortOrder: "asc" } }, inventory: true, categories: { include: { category: true } } } }, lensOption: true },
           orderBy: { createdAt: "asc" }
         },
         coupon: true
@@ -31,7 +31,7 @@ export async function getOrCreateCart() {
     include: {
       items: {
         where: { savedForLater: false },
-        include: { product: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 }, inventory: true } }, lensOption: true },
+        include: { product: { include: { images: { orderBy: { sortOrder: "asc" } }, inventory: true, categories: { include: { category: true } } } }, lensOption: true },
         orderBy: { createdAt: "asc" }
       },
       coupon: true
@@ -60,7 +60,7 @@ export async function getCartOrNull() {
       items: {
         where: { savedForLater: false },
         include: {
-          product: { include: { images: { orderBy: { sortOrder: "asc" }, take: 1 }, inventory: true } },
+          product: { include: { images: { orderBy: { sortOrder: "asc" } }, inventory: true, categories: { include: { category: true } } } },
           lensOption: true
         },
         orderBy: { createdAt: "asc" }
@@ -124,6 +124,15 @@ export function calculateCartTotals(cart: Awaited<ReturnType<typeof getCartOrNul
   const lensTotalPaise = items.reduce((sum, item) => sum + (item.lensOption?.pricePaise ?? 0) * item.quantity, 0);
   const shippingPaise = items.length ? 9900 : 0;
 
+  // RX surcharge: ₹500 per item if any eye has sphere < -3.00
+  const RX_SURCHARGE_PAISE = 50000; // ₹500
+  const rxSurchargePaise = items.reduce((sum, item) => {
+    const leftSph = item.rxLeftSph ?? 0;
+    const rightSph = item.rxRightSph ?? 0;
+    const needsSurcharge = leftSph < -3 || rightSph < -3;
+    return sum + (needsSurcharge ? RX_SURCHARGE_PAISE * item.quantity : 0);
+  }, 0);
+
   let discountPaise = 0;
   if (cart?.coupon) {
     const coupon = cart.coupon;
@@ -143,13 +152,14 @@ export function calculateCartTotals(cart: Awaited<ReturnType<typeof getCartOrNul
   // Prices are final customer-facing amounts. Keep the persisted tax field at
   // zero for backwards-compatible order records, but never add a tax charge
   // to a new checkout.
-  const merchandiseTotalPaise = subtotalPaise + lensTotalPaise - discountPaise;
+  const merchandiseTotalPaise = subtotalPaise + lensTotalPaise + rxSurchargePaise - discountPaise;
   const taxPaise = 0;
   const grandTotalPaise = Math.max(0, merchandiseTotalPaise + shippingPaise);
 
   return {
     subtotalPaise,
     lensTotalPaise,
+    rxSurchargePaise,
     shippingPaise,
     taxPaise,
     discountPaise,

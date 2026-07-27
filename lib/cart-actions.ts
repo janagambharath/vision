@@ -144,3 +144,20 @@ export async function removeCouponAction() {
   });
   redirect("/frames/cart");
 }
+
+export async function updateCartItemPrescription(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const rxLeftSph = formData.get("rxLeftSph") ? Number(formData.get("rxLeftSph")) : null;
+  const rxRightSph = formData.get("rxRightSph") ? Number(formData.get("rxRightSph")) : null;
+
+  if (id) {
+    await prisma.cartItem.update({
+      where: { id },
+      data: {
+        rxLeftSph: rxLeftSph !== null && !isNaN(rxLeftSph) ? rxLeftSph : null,
+        rxRightSph: rxRightSph !== null && !isNaN(rxRightSph) ? rxRightSph : null
+      }
+    }).catch(() => null);
+  }
+  redirect("/frames/cart");
+}

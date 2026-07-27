@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search, ShoppingBag, Truck, WandSparkles, Heart, User } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { SITE_URL, STORE_NAME } from "@/lib/constants";
 import { CompareProvider } from "@/components/compare-context";
@@ -23,35 +23,19 @@ export default function FramesLayout({ children }: { children: React.ReactNode }
   return (
     <CompareProvider>
       <SiteHeader mode="store" />
-      <div className="border-b border-slate-200 bg-white">
-        <div className="vv-container flex items-center gap-3 py-3 text-sm font-bold text-slate-600">
-          <nav className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin] sm:flex-wrap sm:overflow-visible" aria-label="Store links">
-            <Link className="inline-flex shrink-0 items-center gap-2 rounded-full bg-teal-50 px-3 py-2 text-retail" href="/frames">
-              <ShoppingBag className="h-4 w-4" />
-              Storefront
-            </Link>
-            <Link className="inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2" href="/frames/search">
-              <Search className="h-4 w-4" />
-              Search
-            </Link>
-            <Link className="inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2" href="/frames/try-at-home">
-              <WandSparkles className="h-4 w-4" />
-              Try at Home
-            </Link>
-            <Link className="inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2" href="/frames/wishlist">
-              <Heart className="h-4 w-4 text-red-500 fill-red-500" />
-              Wishlist
-            </Link>
-            <Link className="inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2" href="/frames/orders/lookup">
-              <Truck className="h-4 w-4" />
-              Track Order
-            </Link>
-            <Link className="inline-flex items-center gap-2 rounded-full px-3 py-2" href="/account">
-              <User className="h-4 w-4" />
-              My Account
-            </Link>
-          </nav>
-          <p className="hidden text-xs uppercase tracking-normal text-slate-500 lg:block">Retail section: product-first, checkout-ready, database-backed</p>
+      {/* Minimal brand strip — replaces the cluttered button row */}
+      <div className="border-b border-teal-900/10 bg-gradient-to-r from-ink via-slate-900 to-ink">
+        <div className="vv-container flex items-center justify-between py-2">
+          <Link
+            href="/frames"
+            className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-teal-300 hover:text-white transition"
+          >
+            <ShoppingBag className="h-3.5 w-3.5" />
+            Frames Store
+          </Link>
+          <p className="hidden sm:block text-[10px] font-bold text-slate-400 tracking-wide">
+            Free exchange · 7-day returns · Clinic-verified
+          </p>
         </div>
       </div>
       {children}

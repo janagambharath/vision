@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, CheckCircle2, Minus, PackageCheck, Plus, ShoppingBag, Tag, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Minus, PackageCheck, Plus, ShoppingBag, Tag, Trash2, X, AlertTriangle } from "lucide-react";
 import { getCartOrNull, calculateCartTotals } from "@/lib/cart";
-import { removeCartItem, updateCartItemQuantity, applyCouponAction, removeCouponAction } from "@/lib/cart-actions";
+import { removeCartItem, updateCartItemQuantity, applyCouponAction, removeCouponAction, updateCartItemPrescription } from "@/lib/cart-actions";
 import { formatMoney } from "@/lib/money";
+import CartItemDetails from "@/components/cart-item-details";
 
 export const metadata = {
   title: "Cart",
@@ -20,6 +21,11 @@ export default async function CartPage({
   const totals = calculateCartTotals(cart);
   const items = cart?.items ?? [];
   const hasBlockedItem = items.some((item) => item.product.status !== "ACTIVE" || typeof item.product.pricePaise !== "number");
+
+  // Check if any item is missing prescription info
+  const hasMissingPrescription = items.some(
+    (item) => item.rxLeftSph === null && item.rxRightSph === null
+  );
 
   return (
     <main className="vv-section bg-paper">
@@ -63,65 +69,175 @@ export default async function CartPage({
             ) : (
               items.map((item) => {
                 const image = item.product.images?.[0];
+                const hasPrescription = item.rxLeftSph !== null || item.rxRightSph !== null;
+                const needsSurcharge = (item.rxLeftSph ?? 0) < -3 || (item.rxRightSph ?? 0) < -3;
+
                 return (
-                  <article key={item.id} className="vv-card grid gap-4 p-5 sm:grid-cols-[100px_1fr_auto]">
-                    {/* Product Image */}
-                    <Link href={`/frames/${item.product.slug}`} className="relative aspect-square overflow-hidden rounded-vv bg-slate-50">
-                      {image ? (
-                        <Image src={image.url} alt={image.alt} fill className="object-contain p-2" sizes="100px" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-slate-300">
-                          <ShoppingBag className="h-8 w-8" />
+                  <article key={item.id} className="vv-card overflow-hidden">
+                    {/* Main Item Row */}
+                    <div className="grid gap-4 p-5 sm:grid-cols-[100px_1fr_auto]">
+                      {/* Product Image */}
+                      <Link href={`/frames/${item.product.slug}`} className="relative aspect-square overflow-hidden rounded-vv bg-slate-50">
+                        {image ? (
+                          <Image src={image.url} alt={image.alt} fill className="object-contain p-2" sizes="100px" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-slate-300">
+                            <ShoppingBag className="h-8 w-8" />
+                          </div>
+                        )}
+                      </Link>
+
+                      {/* Product Info */}
+                      <div>
+                        <p className="text-xs font-extrabold uppercase text-slate-500">{item.product.brand}</p>
+                        <h2 className="text-lg font-extrabold">
+                          <Link href={`/frames/${item.product.slug}`} className="hover:text-retail">{item.product.name}</Link>
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500">SKU {item.product.sku}</p>
+
+                        {/* Category chips */}
+                        {item.product.categories && (item.product as any).categories?.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {((item.product as any).categories ?? []).slice(0, 3).map((pc: any) => (
+                              <span key={pc.category?.slug ?? pc} className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">
+                                {pc.category?.name ?? pc}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="mt-2 text-sm text-slate-600">
+                          Lens: <span className="font-bold">{item.lensOption?.name ?? "Frame with standard power"}</span>
+                          {item.lensOption?.pricePaise ? ` (+${formatMoney(item.lensOption.pricePaise)})` : ""}
+                        </p>
+
+                        {/* Prescription status badge */}
+                        {hasPrescription ? (
+                          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                            <CheckCircle2 className="h-3 w-3" />
+                            RX: L {item.rxLeftSph?.toFixed(2) ?? "0.00"} | R {item.rxRightSph?.toFixed(2) ?? "0.00"}
+                            {needsSurcharge && <span className="text-amber-600 ml-1">(+₹500 surcharge)</span>}
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                            <AlertTriangle className="h-3 w-3" />
+                            Prescription required
+                          </p>
+                        )}
+
+                        <p className="mt-1 text-xs font-bold text-slate-500">
+                          {item.deliveryMethod.replace(/_/g, " ")}
+                        </p>
+
+                        {/* Quantity Controls */}
+                        <div className="mt-3 flex items-center gap-2">
+                          <form action={updateCartItemQuantity} className="inline">
+                            <input type="hidden" name="id" value={item.id} />
+                            <input type="hidden" name="quantity" value={Math.max(1, item.quantity - 1)} />
+                            <button className="grid h-8 w-8 place-items-center rounded-vv border border-slate-200 text-slate-500 hover:border-retail hover:text-retail disabled:opacity-50" type="submit" disabled={item.quantity <= 1}>
+                              <Minus className="h-3 w-3" />
+                            </button>
+                          </form>
+                          <span className="w-8 text-center font-extrabold">{item.quantity}</span>
+                          <form action={updateCartItemQuantity} className="inline">
+                            <input type="hidden" name="id" value={item.id} />
+                            <input type="hidden" name="quantity" value={Math.min(5, item.quantity + 1)} />
+                            <button className="grid h-8 w-8 place-items-center rounded-vv border border-slate-200 text-slate-500 hover:border-retail hover:text-retail disabled:opacity-50" type="submit" disabled={item.quantity >= 5}>
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </form>
                         </div>
-                      )}
-                    </Link>
+                      </div>
 
-                    {/* Product Info */}
-                    <div>
-                      <p className="text-xs font-extrabold uppercase text-slate-500">{item.product.brand}</p>
-                      <h2 className="text-lg font-extrabold">
-                        <Link href={`/frames/${item.product.slug}`} className="hover:text-retail">{item.product.name}</Link>
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-500">SKU {item.product.sku}</p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        Lens: <span className="font-bold">{item.lensOption?.name ?? "Frame only"}</span>
-                        {item.lensOption?.pricePaise ? ` (+${formatMoney(item.lensOption.pricePaise)})` : ""}
-                      </p>
-                      <p className="mt-1 text-xs font-bold text-slate-500">
-                        {item.deliveryMethod.replace(/_/g, " ")}
-                      </p>
-
-                      {/* Quantity Controls */}
-                      <div className="mt-3 flex items-center gap-2">
-                        <form action={updateCartItemQuantity} className="inline">
-                          <input type="hidden" name="id" value={item.id} />
-                          <input type="hidden" name="quantity" value={Math.max(1, item.quantity - 1)} />
-                          <button className="grid h-8 w-8 place-items-center rounded-vv border border-slate-200 text-slate-500 hover:border-retail hover:text-retail disabled:opacity-50" type="submit" disabled={item.quantity <= 1}>
-                            <Minus className="h-3 w-3" />
-                          </button>
-                        </form>
-                        <span className="w-8 text-center font-extrabold">{item.quantity}</span>
-                        <form action={updateCartItemQuantity} className="inline">
-                          <input type="hidden" name="id" value={item.id} />
-                          <input type="hidden" name="quantity" value={Math.min(5, item.quantity + 1)} />
-                          <button className="grid h-8 w-8 place-items-center rounded-vv border border-slate-200 text-slate-500 hover:border-retail hover:text-retail disabled:opacity-50" type="submit" disabled={item.quantity >= 5}>
-                            <Plus className="h-3 w-3" />
-                          </button>
-                        </form>
+                      {/* Price & Actions */}
+                      <div className="grid content-between gap-3 text-right">
+                        <strong className="text-lg text-retail">
+                          {formatMoney(((item.product.pricePaise ?? 0) + (item.lensOption?.pricePaise ?? 0)) * item.quantity)}
+                        </strong>
+                        <div className="flex flex-col gap-2 items-end">
+                          <CartItemDetails
+                            itemId={item.id}
+                            product={{
+                              slug: item.product.slug,
+                              sku: item.product.sku,
+                              name: item.product.name,
+                              brand: item.product.brand,
+                              pricePaise: item.product.pricePaise,
+                              material: item.product.material,
+                              colour: item.product.colour,
+                              shape: item.product.shape,
+                              size: item.product.size,
+                              measurements: item.product.measurements,
+                              rimType: item.product.rimType,
+                              description: item.product.description,
+                              lensCompatibility: item.product.lensCompatibility,
+                              tryOnEligible: item.product.tryOnEligible,
+                              tryAtHomeEligible: item.product.tryAtHomeEligible,
+                              images: item.product.images?.map((img) => ({
+                                url: img.url,
+                                alt: img.alt,
+                                role: img.role,
+                                sortOrder: img.sortOrder,
+                              })),
+                            }}
+                            lensName={item.lensOption?.name ?? null}
+                            quantity={item.quantity}
+                          />
+                          <form action={removeCartItem}>
+                            <input type="hidden" name="id" value={item.id} />
+                            <button className="inline-flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-700" type="submit">
+                              <Trash2 className="h-3.5 w-3.5" />
+                              Remove
+                            </button>
+                          </form>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Price & Remove */}
-                    <div className="grid content-between gap-3 text-right">
-                      <strong className="text-lg text-retail">
-                        {formatMoney(((item.product.pricePaise ?? 0) + (item.lensOption?.pricePaise ?? 0)) * item.quantity)}
-                      </strong>
-                      <form action={removeCartItem}>
+                    {/* Prescription Entry Section */}
+                    <div className="border-t border-slate-100 bg-slate-50/80 px-5 py-4">
+                      <form action={updateCartItemPrescription} className="grid gap-3">
                         <input type="hidden" name="id" value={item.id} />
-                        <button className="inline-flex items-center gap-1 text-sm font-bold text-red-500 hover:text-red-700" type="submit">
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Remove
-                        </button>
+                        <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                          Enter Prescription Power
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                          <label className="grid gap-1 text-xs font-bold text-slate-600">
+                            Left Eye (SPH)
+                            <input
+                              className="store-input text-sm"
+                              type="number"
+                              name="rxLeftSph"
+                              step="0.25"
+                              min="-20"
+                              max="20"
+                              defaultValue={item.rxLeftSph?.toString() ?? ""}
+                              placeholder="e.g. -2.50"
+                            />
+                          </label>
+                          <label className="grid gap-1 text-xs font-bold text-slate-600">
+                            Right Eye (SPH)
+                            <input
+                              className="store-input text-sm"
+                              type="number"
+                              name="rxRightSph"
+                              step="0.25"
+                              min="-20"
+                              max="20"
+                              defaultValue={item.rxRightSph?.toString() ?? ""}
+                              placeholder="e.g. -1.75"
+                            />
+                          </label>
+                          <button
+                            type="submit"
+                            className="self-end vv-button-retail text-xs py-2.5 min-h-[42px]"
+                          >
+                            Save RX
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Power below −3.00 in either eye incurs a ₹500 high-index lens surcharge.
+                        </p>
                       </form>
                     </div>
                   </article>
@@ -138,6 +254,9 @@ export default async function CartPage({
               <dl className="mt-5 grid gap-3 text-sm">
                 <SummaryRow label="Frame subtotal" value={formatMoney(totals.subtotalPaise)} />
                 <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
+                {totals.rxSurchargePaise > 0 ? (
+                  <SummaryRow label="RX power surcharge" value={formatMoney(totals.rxSurchargePaise)} className="text-amber-600" />
+                ) : null}
                 <SummaryRow label="Delivery" value={formatMoney(totals.shippingPaise)} />
                 {totals.discountPaise > 0 ? (
                   <SummaryRow label="Discount" value={`-${formatMoney(totals.discountPaise)}`} className="text-emerald-600" />
@@ -183,10 +302,18 @@ export default async function CartPage({
                 )}
               </div>
 
+              {/* Prescription warning */}
+              {hasMissingPrescription && (
+                <div className="mt-4 rounded-vv border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>Please enter prescription power for all items before checkout.</span>
+                </div>
+              )}
+
               <Link
-                className="vv-button-retail mt-5 w-full"
-                aria-disabled={!items.length || hasBlockedItem}
-                href={!items.length || hasBlockedItem ? "/frames/cart?error=pricing-required" : "/frames/checkout"}
+                className={`vv-button-retail mt-5 w-full ${hasMissingPrescription ? "opacity-60 pointer-events-none" : ""}`}
+                aria-disabled={!items.length || hasBlockedItem || hasMissingPrescription}
+                href={!items.length || hasBlockedItem || hasMissingPrescription ? "/frames/cart?error=pricing-required" : "/frames/checkout"}
               >
                 Checkout
                 <ArrowRight className="h-4 w-4" />

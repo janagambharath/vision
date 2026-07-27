@@ -449,6 +449,8 @@ model CartItem {
   deliveryMethod DeliveryMethod @default(DELIVERY)
   tryAtHome      Boolean        @default(false)
   savedForLater  Boolean        @default(false)
+  rxLeftSph      Float?
+  rxRightSph     Float?
   cart           Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id])
   lensOption     LensOption?    @relation(fields: [lensOptionId], references: [id])

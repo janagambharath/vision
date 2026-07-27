@@ -32,6 +32,7 @@ export type CheckoutCart = {
 export type CheckoutTotals = {
   subtotalPaise: number;
   lensTotalPaise: number;
+  rxSurchargePaise: number;
   shippingPaise: number;
   taxPaise: number;
   discountPaise: number;

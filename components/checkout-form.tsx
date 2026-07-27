@@ -276,7 +276,7 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
                   </div>
                   <div className="flex-1 min-w-0">
                     <strong className="block truncate text-slate-800">{item.product.name}</strong>
-                    <p className="text-slate-500 truncate">Qty {item.quantity} · {item.lensOption?.name ?? "Frame only"}</p>
+                    <p className="text-slate-500 truncate">Qty {item.quantity} · {item.lensOption?.name ?? "Frame with standard power"}</p>
                   </div>
                 </div>
               );
@@ -288,6 +288,12 @@ export default function CheckoutForm({ cart, totals, error }: CheckoutFormProps)
           <SummaryRow label="Frame subtotal" value={formatMoney(totals.subtotalPaise)} />
           <SummaryRow label="Lens add-ons" value={formatMoney(totals.lensTotalPaise)} />
           <SummaryRow label="Prescription" value={prescriptionSummary} />
+          {totals.rxSurchargePaise > 0 ? (
+            <div className="flex justify-between text-amber-600 font-bold text-sm">
+              <dt>RX power surcharge</dt>
+              <dd>{formatMoney(totals.rxSurchargePaise)}</dd>
+            </div>
+          ) : null}
           <SummaryRow label="Delivery" value={formatMoney(totals.shippingPaise)} />
           {totals.discountPaise > 0 ? (
             <div className="flex justify-between text-emerald-600 font-bold">

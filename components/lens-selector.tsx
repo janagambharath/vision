@@ -42,9 +42,9 @@ export default function LensSelector({ packages }: LensSelectorProps) {
               <Check className="h-3 w-3" />
             </span>
           )}
-          <span className="font-extrabold text-sm text-slate-800">Frame only</span>
-          <span className="text-xs text-slate-500 mt-1">Order the frame only without prescription lenses.</span>
-          <span className="text-sm font-extrabold text-retail mt-3">Free</span>
+          <span className="font-extrabold text-sm text-slate-800">Frame with standard power</span>
+          <span className="text-xs text-slate-500 mt-1">Complete frame ready for standard single vision lenses.</span>
+          <span className="text-sm font-extrabold text-retail mt-3">Included</span>
         </button>
 
         {/* Dynamic packages */}
