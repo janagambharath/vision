@@ -64,7 +64,7 @@ export default async function FramesPage({
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="vv-kicker mb-1 text-retail">Shop by age group</p>
-                <h1 className="text-2xl font-extrabold text-slate-950 sm:text-3xl">Frames for every stage.</h1>
+                <h1 className="bg-gradient-to-r from-blue-800 via-blue-600 to-cyan-500 bg-clip-text text-2xl font-extrabold text-transparent sm:text-3xl">Frames for every stage.</h1>
               </div>
               {hasFilters ? (
                 <Link href="/frames" className="text-sm font-extrabold text-teal-700 hover:text-teal-900">
@@ -80,7 +80,7 @@ export default async function FramesPage({
                     key={tile.value}
                     href={`/frames?ageGroup=${encodeURIComponent(tile.value)}`}
                     aria-current={active ? "page" : undefined}
-                    className={`group relative isolate aspect-[4/3] overflow-hidden rounded-2xl border transition sm:aspect-[16/9] ${
+                    className={`group relative isolate h-28 overflow-hidden rounded-2xl border transition sm:h-36 ${
                       active ? "border-teal-500 ring-2 ring-teal-400/50" : "border-slate-200 hover:border-teal-300"
                     }`}
                   >
@@ -92,9 +92,9 @@ export default async function FramesPage({
                       className={`-z-20 object-cover transition duration-500 group-hover:scale-105 ${tile.value === "Kids" ? "object-[center_35%]" : "object-center"}`}
                     />
                     <div className="absolute inset-0 -z-10 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
-                      <p className="text-xl font-extrabold sm:text-2xl">{tile.label}</p>
-                      <p className="mt-1 text-xs font-bold text-white/80 sm:text-sm">{tile.description}</p>
+                    <div className="absolute inset-x-0 bottom-0 p-4 text-white sm:p-5">
+                      <p className="text-lg font-extrabold sm:text-xl">{tile.label}</p>
+                      <p className="mt-0.5 text-[11px] font-bold text-white/80 sm:text-xs">{tile.description}</p>
                     </div>
                   </Link>
                 );

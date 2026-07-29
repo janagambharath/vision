@@ -62,7 +62,7 @@ export function SiteHeader({ mode = "clinic" }: { mode?: "clinic" | "store" }) {
             />
           </span>
           <span className="grid min-w-0 leading-tight">
-            <strong className="text-sm font-extrabold uppercase tracking-wide">
+            <strong className="bg-gradient-to-r from-blue-300 via-cyan-200 to-white bg-clip-text text-sm font-extrabold uppercase tracking-wide text-transparent">
               Vision Vistara
             </strong>
             <span className="text-[10px] font-bold text-slate-400">
