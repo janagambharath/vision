@@ -20,6 +20,7 @@ type SeedProduct = {
   size: string;
   measurements: string;
   gender: string;
+  ageGroup: string;
   description: string;
   lensCompatibility: string[];
   faceShapes: string[];
@@ -53,6 +54,7 @@ const seedProducts: SeedProduct[] = [
     size: "48-20-140",
     measurements: "48-20-140",
     gender: "Women",
+    ageGroup: "Adult",
     description: "Soft pink oval frame with rose-gold metal accents. Lightweight alloy build for comfortable all-day wear. Adjustable silicone nose pads ensure a secure fit.",
     lensCompatibility: ["Single vision prescription lenses", "Anti-reflective coating", "Photochromic lenses", "Blue-light blocking lenses"],
     faceShapes: ["Oval", "Square", "Heart"],
@@ -87,6 +89,7 @@ const seedProducts: SeedProduct[] = [
     size: "55-16-145",
     measurements: "55-16-145",
     gender: "Unisex",
+    ageGroup: "Adult",
     description: "Classic gunmetal aviator with a double bridge design. Durable metal alloy frame with adjustable nose pads. Perfect for everyday prescription or sun lens pairing.",
     lensCompatibility: ["Single vision prescription lenses", "Progressive lenses", "Photochromic lenses", "Polarised sunglasses lenses"],
     faceShapes: ["Oval", "Square", "Rectangle", "Heart"],
@@ -154,6 +157,7 @@ async function main() {
         size: product.size,
         measurements: product.measurements,
         gender: product.gender,
+        ageGroup: product.ageGroup,
         description: product.description,
         lensCompatibility: product.lensCompatibility,
         faceShapes: product.faceShapes,
@@ -182,6 +186,7 @@ async function main() {
         size: product.size,
         measurements: product.measurements,
         gender: product.gender,
+        ageGroup: product.ageGroup,
         description: product.description,
         lensCompatibility: product.lensCompatibility,
         faceShapes: product.faceShapes,
@@ -306,8 +311,8 @@ async function main() {
   console.log("✅ Seed complete!");
 }
 
-function buildSearchText(product: { sku: string; name: string; brand: string; material: string; colour: string; shape: string; rimType: string; categories: string[]; gender?: string }) {
-  return [product.sku, product.name, product.brand, product.material, product.colour, product.shape, product.rimType, product.gender, product.categories.join(" ")].filter(Boolean).join(" ");
+function buildSearchText(product: { sku: string; name: string; brand: string; material: string; colour: string; shape: string; rimType: string; categories: string[]; gender?: string; ageGroup?: string }) {
+  return [product.sku, product.name, product.brand, product.material, product.colour, product.shape, product.rimType, product.gender, product.ageGroup, product.categories.join(" ")].filter(Boolean).join(" ");
 }
 
 function getCategoryDescription(slug: string): string {

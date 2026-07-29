@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ArrowLeft, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { tryAtHomeAction } from "@/lib/orders";
@@ -98,8 +98,9 @@ export default async function TryAtHomePage({
                 const frontImage = product.images[0];
                 const isPreselected = preselectedIds.includes(product.slug);
                 return (
-                  <label key={product.slug} className="vv-card cursor-pointer overflow-hidden transition has-[:checked]:border-retail has-[:checked]:ring-2 has-[:checked]:ring-teal-200 hover:shadow-strong">
-                    <input type="checkbox" name="productIds" value={product.slug} defaultChecked={isPreselected} className="peer sr-only" />
+                  <article key={product.slug} className="vv-card overflow-hidden transition has-[:checked]:border-retail has-[:checked]:ring-2 has-[:checked]:ring-teal-200 hover:shadow-strong">
+                    <input id={`home-trial-${product.slug}`} type="checkbox" name="productIds" value={product.slug} defaultChecked={isPreselected} className="sr-only" />
+                    <label htmlFor={`home-trial-${product.slug}`} className="block cursor-pointer">
                     <div className="grid grid-cols-[80px_1fr] gap-3 p-3">
                       <div className="relative aspect-square overflow-hidden rounded bg-slate-50">
                         {frontImage ? (
@@ -113,12 +114,18 @@ export default async function TryAtHomePage({
                         <p className="mt-1 text-xs text-slate-400">{product.colour} · {product.shape}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 peer-checked:bg-teal-50 peer-checked:text-retail">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span className="peer-checked:hidden">Select</span>
-                      <span className="hidden peer-checked:inline">Selected</span>
+                    </label>
+                    <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
+                      <label htmlFor={`home-trial-${product.slug}`} className="inline-flex cursor-pointer items-center gap-2 hover:text-retail">
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Select frame
+                      </label>
+                      <Link href={`/frames/${product.slug}`} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-extrabold text-teal-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-teal-50 hover:ring-teal-200">
+                        View frame
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
                     </div>
-                  </label>
+                  </article>
                 );
               })}
             </div>

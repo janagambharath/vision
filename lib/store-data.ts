@@ -147,6 +147,7 @@ export type GetStoreProductsOptions = {
   category?: string;
   brand?: string;
   gender?: string;
+  ageGroup?: string;
   material?: string;
   shape?: string;
   color?: string;
@@ -175,6 +176,7 @@ type NormalizedStoreProductOptions = {
   category: string;
   brand: string;
   gender: string;
+  ageGroup: string;
   material: string;
   shape: string;
   color: string;
@@ -218,6 +220,7 @@ function normalizeStoreProductOptions(options: GetStoreProductsOptions): Normali
     category: normalizedText(options.category),
     brand: normalizedText(options.brand),
     gender: normalizedText(options.gender),
+    ageGroup: normalizedText(options.ageGroup),
     material: normalizedText(options.material),
     shape: normalizedText(options.shape),
     color: normalizedText(options.color),
@@ -238,6 +241,7 @@ function storeProductWhere(options: NormalizedStoreProductOptions) {
   else if (options.status) where.status = options.status;
   if (options.featuredOnly) where.featured = true;
   if (options.gender) where.gender = options.gender;
+  if (options.ageGroup) where.ageGroup = options.ageGroup;
   if (options.shape) where.shape = { contains: options.shape, mode: "insensitive" };
   if (options.material) where.material = { contains: options.material, mode: "insensitive" };
   if (options.color) where.colour = { contains: options.color, mode: "insensitive" };
@@ -293,8 +297,8 @@ export async function getStoreProducts(options: GetStoreProductsOptions = {}) {
   if (!hasDatabaseUrl()) return [];
 
   const normalized = normalizeStoreProductOptions(options);
-  const { query, category, brand, gender, material, shape, color, status, priceMin, priceMax, includeDrafts, featuredOnly, page, limit, sort } = normalized;
-  const isSimpleRequest = !query && !category && !brand && !gender && !material && !shape && !color && !status && priceMin === undefined && priceMax === undefined;
+  const { query, category, brand, gender, ageGroup, material, shape, color, status, priceMin, priceMax, includeDrafts, featuredOnly, page, limit, sort } = normalized;
+  const isSimpleRequest = !query && !category && !brand && !gender && !ageGroup && !material && !shape && !color && !status && priceMin === undefined && priceMax === undefined;
   if (isSimpleRequest) {
     const cacheKey = `store:products:all:${includeDrafts ? "y" : "n"}:${featuredOnly ? "y" : "n"}:s${sort}:p${page}:l${limit}`;
     const cached = await getCache<StoreProduct[]>(cacheKey);

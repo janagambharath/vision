@@ -1,6 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
-import { ArrowRight, Filter, Search, Sparkles, Star, Truck } from "lucide-react";
+import { ArrowRight, Filter, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getStoreProductsCount, getFeaturedProducts, normalizeCatalogPage, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
@@ -13,20 +14,31 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/frames` }
 };
 
-const CATEGORY_FILTERS = [
-  { label: "Unisex", value: "Unisex" },
-  { label: "Kids", value: "Kids" }
+const AGE_GROUP_TILES = [
+  {
+    label: "Adults",
+    value: "Adult",
+    image: "/assets/category-adults.jpeg",
+    description: "Everyday frames for adults"
+  },
+  {
+    label: "Kids",
+    value: "Kids",
+    image: "/assets/category-kids-age.jpeg",
+    description: "Comfortable frames for growing eyes"
+  }
 ];
 
 export default async function FramesPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; gender?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; ageGroup?: string; page?: string }>;
 }) {
   const params = (await searchParams) ?? {};
   const requestedPage = normalizeCatalogPage(params.page);
-  const hasFilters = Boolean(params.q?.trim() || params.gender);
-  const catalogOptions = { query: params.q, gender: params.gender };
+  const hasFilters = Boolean(params.q?.trim() || params.ageGroup);
+  const ageGroupLabel = params.ageGroup === "Kids" ? "kids" : "adults";
+  const catalogOptions = { query: params.q, ageGroup: params.ageGroup };
   const totalCount = await getStoreProductsCount(catalogOptions);
   const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_CATALOG_PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
@@ -38,7 +50,7 @@ export default async function FramesPage({
   const pageHref = (page: number) => {
     const query = new URLSearchParams();
     if (params.q) query.set("q", params.q);
-    if (params.gender) query.set("gender", params.gender);
+    if (params.ageGroup) query.set("ageGroup", params.ageGroup);
     if (page > 1) query.set("page", String(page));
     const search = query.toString();
     return search ? `/frames?${search}` : "/frames";
@@ -46,25 +58,44 @@ export default async function FramesPage({
 
   return (
     <main>
-      {!params.q?.trim() && currentPage === 1 ? (
+      {currentPage === 1 ? (
         <section className="border-b border-slate-100 bg-white">
-          <div className="vv-container flex flex-wrap items-center gap-2 py-4">
-            <p className="mr-1 text-xs font-extrabold uppercase tracking-wider text-slate-500">Shop frames</p>
-            <nav className="flex flex-wrap gap-2" aria-label="Shop frames by audience">
-              {CATEGORY_FILTERS.map((filter) => {
-                const active = params.gender === filter.value;
+          <div className="vv-container py-6 sm:py-8">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="vv-kicker mb-1 text-retail">Shop by age group</p>
+                <h1 className="text-2xl font-extrabold text-slate-950 sm:text-3xl">Frames for every stage.</h1>
+              </div>
+              {hasFilters ? (
+                <Link href="/frames" className="text-sm font-extrabold text-teal-700 hover:text-teal-900">
+                  View all frames
+                </Link>
+              ) : null}
+            </div>
+            <nav className="grid gap-4 sm:grid-cols-2" aria-label="Filter frames by age group">
+              {AGE_GROUP_TILES.map((tile) => {
+                const active = params.ageGroup === tile.value;
                 return (
                   <Link
-                    key={filter.value}
-                    href={`/frames?gender=${encodeURIComponent(filter.value)}`}
+                    key={tile.value}
+                    href={`/frames?ageGroup=${encodeURIComponent(tile.value)}`}
                     aria-current={active ? "page" : undefined}
-                    className={`rounded-full border px-3 py-1.5 text-xs font-extrabold transition ${
-                      active
-                        ? "border-teal-700 bg-teal-700 text-white"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800"
+                    className={`group relative isolate aspect-[4/3] overflow-hidden rounded-2xl border transition sm:aspect-[16/9] ${
+                      active ? "border-teal-500 ring-2 ring-teal-400/50" : "border-slate-200 hover:border-teal-300"
                     }`}
                   >
-                    {filter.label}
+                    <Image
+                      src={tile.image}
+                      alt={`${tile.label} eyewear`}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 50vw"
+                      className={`-z-20 object-cover transition duration-500 group-hover:scale-105 ${tile.value === "Kids" ? "object-[center_35%]" : "object-center"}`}
+                    />
+                    <div className="absolute inset-0 -z-10 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-6">
+                      <p className="text-xl font-extrabold sm:text-2xl">{tile.label}</p>
+                      <p className="mt-1 text-xs font-bold text-white/80 sm:text-sm">{tile.description}</p>
+                    </div>
                   </Link>
                 );
               })}
@@ -72,27 +103,6 @@ export default async function FramesPage({
           </div>
         </section>
       ) : null}
-
-      <section className="store-band">
-        <div className="vv-container py-4">
-          <form className="flex flex-col gap-2 sm:flex-row sm:items-end" action="/frames">
-            {params.gender ? <input type="hidden" name="gender" value={params.gender} /> : null}
-            <label className="grid flex-1 gap-1 text-sm font-extrabold text-slate-600">
-              Search frames
-              <input className="store-input" type="search" name="q" defaultValue={params.q ?? ""} placeholder="Name, brand, SKU, material, shape, colour..." />
-            </label>
-            <button className="vv-button-retail min-h-[36px] shrink-0 px-3 py-1.5 text-xs" type="submit">
-              <Search className="h-3.5 w-3.5" />
-              Search
-            </button>
-            {hasFilters ? (
-              <Link href="/frames" className="self-center text-xs font-bold text-slate-500 hover:text-retail sm:self-end sm:pb-2">
-                Clear filters
-              </Link>
-            ) : null}
-          </form>
-        </div>
-      </section>
 
       {!hasFilters && currentPage === 1 && featured.length > 0 ? (
         <section className="vv-section bg-white">
@@ -128,7 +138,7 @@ export default async function FramesPage({
                 {hasFilters ? `${totalCount} frame${totalCount !== 1 ? "s" : ""} found` : "Complete collection"}
               </h2>
               {params.q ? <p className="mt-2 text-slate-600">Showing results for &quot;{params.q}&quot;</p> : null}
-              {params.gender ? <p className="mt-2 text-slate-600">Showing {params.gender.toLowerCase()} frames.</p> : null}
+              {params.ageGroup ? <p className="mt-2 text-slate-600">Showing frames for {ageGroupLabel}.</p> : null}
             </div>
             <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-extrabold text-slate-600">
               {totalCount} frames
@@ -144,8 +154,8 @@ export default async function FramesPage({
           ) : (
             <div className="vv-card p-8">
               <Filter className="h-10 w-10 text-amber-600" />
-              <h3 className="mt-4 text-2xl font-extrabold">No frames match your search.</h3>
-              <p className="mt-2 text-slate-600">Try a different search phrase or browse the complete collection.</p>
+              <h3 className="mt-4 text-2xl font-extrabold">No frames match this age group.</h3>
+              <p className="mt-2 text-slate-600">Choose another age group or return to the complete collection.</p>
               <Link className="vv-button-retail mt-5" href="/frames">
                 Browse all frames
               </Link>

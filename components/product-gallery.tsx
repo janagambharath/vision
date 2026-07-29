@@ -17,7 +17,7 @@ export function ProductGallery({ images: productImages }: { images: StoreImage[]
   const activeImage = images[activeIdx] || images[0];
 
   return (
-    <div className="grid gap-3">
+    <div className="grid w-full content-start self-start gap-3">
       {/* Active Image Card */}
       <div className="vv-card relative aspect-square overflow-hidden bg-slate-50 group sm:aspect-[16/10]">
         <Image
