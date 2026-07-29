@@ -159,7 +159,7 @@ export default function ClinicHomePage() {
                   <Home className="h-3.5 w-3.5" />
                   Try at home
                 </span>
-                <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try frames from your sofa.</h2>
+                <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try optical frames from your sofa.</h2>
                 <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Choose up to five frames and we will help arrange your home trial.</p>
                 <span className="mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-blue-700">
                   Start a home trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -178,9 +178,9 @@ export default function ClinicHomePage() {
           </div>
         </section>
 
-        <section className="vv-section bg-white" id="lasik-evaluation">
+        <section className="home-store-intro relative overflow-hidden py-10 sm:py-14" id="lasik-evaluation">
           <div className="vv-container">
-            <div className="grid overflow-hidden rounded-[2rem] border border-blue-100 bg-gradient-to-br from-white via-blue-50 to-cyan-50 shadow-xl shadow-blue-950/10 lg:grid-cols-[.9fr_1.1fr]">
+            <div className="grid overflow-hidden rounded-[2rem] border border-white/15 bg-gradient-to-br from-white via-blue-50 to-cyan-50 shadow-2xl shadow-slate-950/25 lg:grid-cols-[.9fr_1.1fr]">
               <div className="relative min-h-[240px] border-b border-blue-100 bg-white sm:min-h-[310px] lg:min-h-full lg:border-b-0 lg:border-r">
                 <Image
                   src="/assets/lasik-evaluation-banner.jpeg"
