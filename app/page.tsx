@@ -122,7 +122,7 @@ export default function ClinicHomePage() {
 
         {/* ───────────── HERO ───────────── */}
         <section className="home-store-intro relative overflow-hidden text-white">
-          <div className="vv-container grid gap-5 py-5 sm:py-8 lg:grid-cols-[1.35fr_.65fr] lg:gap-7">
+          <div className="vv-container grid gap-5 pb-0 pt-5 sm:pb-0 sm:pt-8 lg:grid-cols-[1.35fr_.65fr] lg:gap-7">
             <Link
               href="/frames"
               className="group relative isolate min-h-[300px] overflow-hidden rounded-[1.75rem] border border-white/15 shadow-2xl shadow-slate-950/25 sm:min-h-[360px]"
@@ -178,7 +178,7 @@ export default function ClinicHomePage() {
           </div>
         </section>
 
-        <section className="home-store-intro relative overflow-hidden py-10 sm:py-14" id="lasik-evaluation">
+        <section className="home-store-intro relative overflow-hidden pb-10 pt-0 sm:pb-14 sm:pt-0" id="lasik-evaluation">
           <div className="vv-container">
             <div className="grid overflow-hidden rounded-[2rem] border border-white/15 bg-gradient-to-br from-white via-blue-50 to-cyan-50 shadow-2xl shadow-slate-950/25 lg:grid-cols-[.9fr_1.1fr]">
               <div className="relative min-h-[240px] border-b border-blue-100 bg-white sm:min-h-[310px] lg:min-h-full lg:border-b-0 lg:border-r">
