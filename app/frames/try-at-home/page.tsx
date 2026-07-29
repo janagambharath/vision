@@ -69,6 +69,10 @@ export default async function TryAtHomePage({
           <p className="mt-3 text-slate-600">
             Select up to {MAX_HOME_TRIAL_FRAMES} eligible frames, choose your preferred date and time, and send an availability request. A trial is scheduled only after we confirm coverage, frame availability, and team capacity.
           </p>
+          <div className="mt-4 rounded-vv border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+            <strong>Kids&apos; frames require a doctor&apos;s prescription.</strong>
+            <p className="mt-1 text-xs leading-relaxed text-blue-800">Please keep the prescription ready when requesting a home trial for a child.</p>
+          </div>
         </div>
 
         {params.error ? (
