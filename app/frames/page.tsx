@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
-import { ArrowRight, Filter, Sparkles, Star, Truck } from "lucide-react";
+import { ArrowRight, CalendarCheck, Filter, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getStoreProductsCount, getFeaturedProducts, normalizeCatalogPage, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
@@ -185,14 +185,15 @@ export default async function FramesPage({
           <div>
             <Sparkles className="h-8 w-8 text-teal-300" />
             <h2 className="mt-4 text-3xl font-extrabold">Not sure which frame suits you?</h2>
-            <p className="mt-2 text-slate-300">Try up to 5 frames at home or visit the clinic for a professional fitting.</p>
+            <p className="mt-2 text-slate-300">Try up to 5 frames at home or book a doctor-led LASIK evaluation.</p>
           </div>
           <Link className="vv-button-retail" href="/frames/try-at-home">
             <Truck className="h-5 w-5" />
             Book Home Trial
           </Link>
-          <Link className="vv-button-light" href="/appointments">
-            Visit Clinic
+          <Link className="vv-button-light" href="/#appointment">
+            <CalendarCheck className="h-5 w-5" />
+            Book LASIK Evaluation
           </Link>
         </div>
       </section>
