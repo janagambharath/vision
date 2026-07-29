@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ShoppingBag, Home, MessageCircle, Heart, Ruler, Zap } from "lucide-react";
 import { addToCart, buyNow } from "@/lib/cart-actions";
+import { CartSubmitButton } from "@/components/cart-submit-button";
 import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
 import LensSelector from "@/components/lens-selector";
@@ -109,19 +110,19 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
         <div className="grid gap-3 mt-3 sm:grid-cols-[1fr_50px]">
           <div className="grid gap-2">
             <div className="grid grid-cols-2 gap-2">
-              <button className="vv-button-light text-xs py-2.5 font-bold justify-center" type="submit" disabled={!sellable}>
+              <CartSubmitButton className="vv-button-light text-xs py-2.5 font-bold justify-center" disabled={!sellable} pendingLabel="Adding">
                 <ShoppingBag className="h-4 w-4" />
                 Add to cart
-              </button>
-              <button
+              </CartSubmitButton>
+              <CartSubmitButton
                 className="vv-button-retail text-xs py-2.5 font-bold justify-center"
                 formAction={buyNow}
-                type="submit"
                 disabled={!sellable}
+                pendingLabel="Loading"
               >
                 <Zap className="h-4 w-4" />
                 Buy now
-              </button>
+              </CartSubmitButton>
             </div>
             {product.tryAtHomeEligible ? (
               <Link className="vv-button-light text-xs py-2.5 font-bold justify-center" href={`/frames/try-at-home?productIds=${product.slug}`}>

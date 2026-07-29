@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Camera, Eye, Home, MessageCircle, ShoppingBag, Star, Heart, Zap } from "lucide-react";
 import { addToCart, buyNow } from "@/lib/cart-actions";
+import { CartSubmitButton } from "@/components/cart-submit-button";
 import { CLINIC_WHATSAPP_NUMBER } from "@/lib/constants";
 import { formatMoney } from "@/lib/money";
 import type { PublicStoreProduct } from "@/lib/inventory";
@@ -192,19 +193,19 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
           <form action={addToCart} className="grid min-w-0 grid-cols-2 gap-2">
             <input type="hidden" name="slug" value={product.slug} />
             <input type="hidden" name="quantity" value="1" />
-            <button className="vv-button-light w-full justify-center whitespace-nowrap text-sm" type="submit" disabled={!sellable}>
+            <CartSubmitButton className="vv-button-light w-full justify-center whitespace-nowrap text-sm" disabled={!sellable} pendingLabel="Adding">
               <ShoppingBag className="h-4 w-4" />
               Add
-            </button>
-            <button
+            </CartSubmitButton>
+            <CartSubmitButton
               className="vv-button-retail w-full justify-center whitespace-nowrap text-sm"
               formAction={buyNow}
-              type="submit"
               disabled={!sellable}
+              pendingLabel="Loading"
             >
               <Zap className="h-4 w-4" />
               Buy now
-            </button>
+            </CartSubmitButton>
           </form>
         </div>
       </div>

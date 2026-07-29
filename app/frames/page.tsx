@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Metadata } from "next";
 import { ArrowRight, Filter, Search, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
@@ -10,51 +9,36 @@ import { toPublicStoreProduct } from "@/lib/inventory";
 export const metadata: Metadata = {
   title: "Frames Store",
   description:
-    "Shop premium optical frames at Vision Vistara — verified frames with lens options, try-at-home, general product search, cart, checkout, and order tracking.",
+    "Shop premium optical frames at Vision Vistara — verified frames with lens options, try-at-home, cart, checkout, and order tracking.",
   alternates: { canonical: `${SITE_URL}/frames` }
 };
 
-const CATEGORY_TILES = [
-  {
-    label: "Men",
-    value: "Men",
-    image: "/assets/category-men.jpeg",
-    gradient: "from-slate-900/70 to-ink/60",
-  },
-  {
-    label: "Women",
-    value: "Women",
-    image: "/assets/category-women.jpeg",
-    gradient: "from-rose-900/60 to-slate-900/50",
-  },
-  {
-    label: "Kids",
-    value: "Kids",
-    image: "/assets/category-kids.jpeg",
-    gradient: "from-teal-900/50 to-slate-900/40",
-  },
+const CATEGORY_FILTERS = [
+  { label: "Unisex", value: "Unisex" },
+  { label: "Kids", value: "Kids" }
 ];
 
 export default async function FramesPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; gender?: string; page?: string }>;
 }) {
   const params = (await searchParams) ?? {};
   const requestedPage = normalizeCatalogPage(params.page);
-  const hasSearch = Boolean(params.q?.trim());
-  const catalogOptions = { query: params.q };
+  const hasFilters = Boolean(params.q?.trim() || params.gender);
+  const catalogOptions = { query: params.q, gender: params.gender };
   const totalCount = await getStoreProductsCount(catalogOptions);
   const totalPages = Math.max(1, Math.ceil(totalCount / PUBLIC_CATALOG_PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
   const [products, featured] = await Promise.all([
     getStoreProducts({ ...catalogOptions, page: currentPage, limit: PUBLIC_CATALOG_PAGE_SIZE }),
-    !hasSearch && currentPage === 1 ? getFeaturedProducts(6) : Promise.resolve([])
+    !hasFilters && currentPage === 1 ? getFeaturedProducts(6) : Promise.resolve([])
   ]);
 
   const pageHref = (page: number) => {
     const query = new URLSearchParams();
     if (params.q) query.set("q", params.q);
+    if (params.gender) query.set("gender", params.gender);
     if (page > 1) query.set("page", String(page));
     const search = query.toString();
     return search ? `/frames?${search}` : "/frames";
@@ -62,48 +46,37 @@ export default async function FramesPage({
 
   return (
     <main>
-
-      {/* ─── Category Tiles: Men / Women / Kids ─── */}
-      {!hasSearch && currentPage === 1 && (
-        <section className="bg-white border-b border-slate-100">
-          <div className="vv-container py-8">
-            <p className="vv-kicker text-retail mb-4">Shop by category</p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              {CATEGORY_TILES.map((tile) => (
-                <Link
-                  key={tile.value}
-                  href={`/frames?q=${encodeURIComponent(tile.value)}`}
-                  className="group relative overflow-hidden rounded-2xl aspect-[2/1] sm:aspect-[3/2]"
-                >
-                  <Image
-                    src={tile.image}
-                    alt={`${tile.label} frames`}
-                    fill
-                    className="object-cover transition duration-500 group-hover:scale-105"
-                    sizes="(max-width: 640px) 100vw, 33vw"
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-t ${tile.gradient}`} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                    <h3 className="text-3xl font-extrabold tracking-tight drop-shadow-lg">
-                      {tile.label}
-                    </h3>
-                    <p className="mt-1 text-sm font-bold text-white/80 drop-shadow">
-                      Shop {tile.label.toLowerCase()}&apos;s frames →
-                    </p>
-                  </div>
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-teal-600/0 transition duration-300 group-hover:bg-teal-600/10" />
-                </Link>
-              ))}
-            </div>
+      {!params.q?.trim() && currentPage === 1 ? (
+        <section className="border-b border-slate-100 bg-white">
+          <div className="vv-container flex flex-wrap items-center gap-2 py-4">
+            <p className="mr-1 text-xs font-extrabold uppercase tracking-wider text-slate-500">Shop frames</p>
+            <nav className="flex flex-wrap gap-2" aria-label="Shop frames by audience">
+              {CATEGORY_FILTERS.map((filter) => {
+                const active = params.gender === filter.value;
+                return (
+                  <Link
+                    key={filter.value}
+                    href={`/frames?gender=${encodeURIComponent(filter.value)}`}
+                    aria-current={active ? "page" : undefined}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-extrabold transition ${
+                      active
+                        ? "border-teal-700 bg-teal-700 text-white"
+                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-800"
+                    }`}
+                  >
+                    {filter.label}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
         </section>
-      )}
+      ) : null}
 
-      {/* General product search */}
       <section className="store-band">
         <div className="vv-container py-4">
           <form className="flex flex-col gap-2 sm:flex-row sm:items-end" action="/frames">
+            {params.gender ? <input type="hidden" name="gender" value={params.gender} /> : null}
             <label className="grid flex-1 gap-1 text-sm font-extrabold text-slate-600">
               Search frames
               <input className="store-input" type="search" name="q" defaultValue={params.q ?? ""} placeholder="Name, brand, SKU, material, shape, colour..." />
@@ -112,17 +85,16 @@ export default async function FramesPage({
               <Search className="h-3.5 w-3.5" />
               Search
             </button>
-            {hasSearch ? (
+            {hasFilters ? (
               <Link href="/frames" className="self-center text-xs font-bold text-slate-500 hover:text-retail sm:self-end sm:pb-2">
-                Clear
+                Clear filters
               </Link>
             ) : null}
           </form>
         </div>
       </section>
 
-      {/* Featured Section (only on unfiltered view) */}
-      {!hasSearch && currentPage === 1 && featured.length > 0 ? (
+      {!hasFilters && currentPage === 1 && featured.length > 0 ? (
         <section className="vv-section bg-white">
           <div className="vv-container">
             <div className="mb-8 flex items-end justify-between gap-4">
@@ -147,16 +119,16 @@ export default async function FramesPage({
         </section>
       ) : null}
 
-      {/* All Products */}
       <section className="vv-section bg-paper">
         <div className="vv-container">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="vv-kicker text-retail">{hasSearch ? "Search results" : "All frames"}</p>
+              <p className="vv-kicker text-retail">{hasFilters ? "Filtered frames" : "All frames"}</p>
               <h2 className="text-3xl font-extrabold">
-                {hasSearch ? `${totalCount} frame${totalCount !== 1 ? "s" : ""} found` : "Complete collection"}
+                {hasFilters ? `${totalCount} frame${totalCount !== 1 ? "s" : ""} found` : "Complete collection"}
               </h2>
               {params.q ? <p className="mt-2 text-slate-600">Showing results for &quot;{params.q}&quot;</p> : null}
+              {params.gender ? <p className="mt-2 text-slate-600">Showing {params.gender.toLowerCase()} frames.</p> : null}
             </div>
             <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-extrabold text-slate-600">
               {totalCount} frames
@@ -198,7 +170,6 @@ export default async function FramesPage({
         </div>
       </section>
 
-      {/* Bottom CTA */}
       <section className="bg-ink py-16 text-white">
         <div className="vv-container grid items-center gap-6 md:grid-cols-[1fr_auto_auto]">
           <div>

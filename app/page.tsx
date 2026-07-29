@@ -11,6 +11,7 @@ import {
   FileCheck2,
   Glasses,
   Heart,
+  Home,
   Mail,
   MapPin,
   MessageCircle,
@@ -113,39 +114,76 @@ export default function ClinicHomePage() {
   return (
     <>
       <SiteHeader />
-      <main>
+      <main className="clinic-page overflow-hidden">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
         />
 
         {/* ───────────── HERO ───────────── */}
-        <section className="relative isolate overflow-hidden bg-ink text-white">
-          {/* Desktop hero background */}
-          <Image
-            src="/assets/vision-vistara-hero.png"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="absolute inset-0 -z-20 object-cover hidden md:block"
-          />
-          {/* Mobile hero background */}
-          <Image
-            src="/assets/vision-vistara-hero-mobile.png"
-            alt=""
-            fill
-            priority
-            sizes="100vw"
-            className="absolute inset-0 -z-20 object-cover object-center md:hidden"
-          />
-          {/* Desktop overlay: gradient from left */}
-          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[rgba(4,11,22,0.97)] via-[rgba(4,11,22,0.88)] to-[rgba(15,35,60,0.35)] hidden md:block" />
-          {/* Mobile overlay: strong bottom gradient for text readability */}
-          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-ink/60 via-ink/70 to-ink/95 md:hidden" />
+        <section className="home-store-intro relative overflow-hidden text-white">
+          <div className="vv-container grid gap-5 py-5 sm:py-8 lg:grid-cols-[1.35fr_.65fr] lg:gap-7">
+            <Link
+              href="/frames"
+              className="group relative isolate min-h-[300px] overflow-hidden rounded-[1.75rem] border border-white/15 shadow-2xl shadow-slate-950/25 sm:min-h-[360px]"
+            >
+              <Image
+                src="/assets/frames-shop-cta.png"
+                alt="Browse Vision Vistara frames collection"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 65vw"
+                className="-z-20 object-cover transition duration-700 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 -z-10 bg-gradient-to-r from-slate-950 via-slate-950/75 to-slate-900/15" />
+              <div className="flex h-full max-w-xl flex-col justify-end p-6 sm:p-9">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-cyan-200 sm:text-xs">Frames Store</p>
+                <h2 className="mt-3 text-3xl font-extrabold leading-tight sm:text-5xl">Find the frame that feels like you.</h2>
+                <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-200 sm:text-base">
+                  Shop clinic-verified frames, then choose home delivery or an in-person fitting.
+                </p>
+                <span className="vv-button-retail mt-6 w-fit group-hover:shadow-[0_14px_28px_-8px_rgba(13,148,136,0.6)]">
+                  <Glasses className="h-5 w-5" />
+                  Shop frames
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </Link>
 
-          <div className="vv-container min-h-[100svh] md:min-h-[calc(100svh-80px)] py-20 md:py-32 flex flex-col justify-center relative">
-            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-hero-glow rounded-full blur-3xl opacity-20 -z-10 pointer-events-none" />
+            <Link
+              href="/frames/try-at-home"
+              className="group grid min-h-[300px] grid-cols-[1fr_1.1fr] overflow-hidden rounded-[1.75rem] border border-blue-100 bg-white p-4 text-slate-900 shadow-xl shadow-blue-950/10 transition hover:-translate-y-1 sm:min-h-[360px] sm:p-5 lg:grid-cols-1"
+            >
+              <div className="flex flex-col justify-center pr-3 lg:order-2 lg:pr-0 lg:pt-4">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-blue-700">
+                  <Home className="h-3.5 w-3.5" />
+                  Try at home
+                </span>
+                <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try frames from your sofa.</h2>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Choose up to five frames and we will help arrange your home trial.</p>
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-blue-700">
+                  Start a home trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+              <div className="relative overflow-hidden rounded-2xl bg-slate-50 lg:order-1">
+                <Image
+                  src="/assets/try-at-home.jpeg"
+                  alt="Try at Home Vision Vistara service"
+                  fill
+                  sizes="(max-width: 1024px) 50vw, 35vw"
+                  className="object-cover transition duration-700 group-hover:scale-105"
+                />
+              </div>
+            </Link>
+          </div>
+        </section>
+
+        <section className="clinic-hero relative isolate overflow-hidden text-white">
+          <div className="absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full border border-cyan-300/15" />
+          <div className="absolute right-8 top-16 h-72 w-72 rounded-full border border-blue-400/10 sm:right-[18%]" />
+          <div className="absolute -bottom-32 left-[30%] h-[28rem] w-[28rem] rounded-full bg-cyan-400/10 blur-3xl" />
+
+          <div className="vv-container relative flex min-h-[620px] flex-col justify-center py-16 sm:min-h-[650px] sm:py-20 md:min-h-[calc(100svh-80px)] md:py-28">
             <FadeIn className="max-w-3xl">
               <p className="mb-4 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">
                 Vision Vistara Optics &amp; Lasers Eye Care
@@ -167,6 +205,10 @@ export default function ClinicHomePage() {
                   <Glasses className="h-5 w-5" />
                   Visit Frames Store
                 </Link>
+                <Link className="vv-button border-cyan-300/40 bg-cyan-300/10 text-white hover:bg-cyan-300/20" href="/frames/try-at-home">
+                  <Home className="h-5 w-5" />
+                  Try at Home
+                </Link>
                 <a
                   className="vv-button bg-emerald-400 text-ink border-emerald-400 hover:bg-emerald-300"
                   href={`https://wa.me/${CLINIC_WHATSAPP_NUMBER}?text=${encodeURIComponent("Hello Vision Vistara, I would like to book an eye care appointment.")}`}
@@ -186,7 +228,7 @@ export default function ClinicHomePage() {
         </section>
 
         {/* ───────────── TRUST STRIP ───────────── */}
-        <section className="border-b border-slate-100 bg-white/70 backdrop-blur-lg relative z-10">
+        <section className="clinic-trust relative z-10 border-b border-white/40">
           <StaggerContainer className="vv-container grid grid-cols-2 gap-3 py-6 md:grid-cols-4 -mt-8 sm:-mt-10">
             {(
               [
@@ -467,7 +509,7 @@ export default function ClinicHomePage() {
         </section>
 
         {/* ───────────── FRAMES STORE CTA ───────────── */}
-        <section className="vv-section bg-paper">
+        <section className="hidden">
           <div className="vv-container">
             <SectionHeading
               kicker="Frames Store"
