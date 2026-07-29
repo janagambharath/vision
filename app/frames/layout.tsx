@@ -24,27 +24,27 @@ export default function FramesLayout({ children }: { children: React.ReactNode }
     <CompareProvider>
       <SiteHeader mode="store" />
       {/* Brand strip with inline search */}
-      <div className="border-b border-teal-900/10 bg-gradient-to-r from-ink via-slate-900 to-ink">
+      <div className="border-b border-blue-200 bg-gradient-to-r from-blue-950 via-blue-700 to-sky-50">
         <div className="vv-container flex items-center justify-between gap-3 py-2">
           <Link
             href="/frames"
-            className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-teal-300 hover:text-white transition shrink-0"
+            className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-white hover:text-cyan-100 transition shrink-0"
           >
             <ShoppingBag className="h-3.5 w-3.5" />
             Frames Store
           </Link>
           {/* Inline search */}
           <form action="/frames/search" method="GET" className="relative flex-1 max-w-xs hidden sm:flex">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500 pointer-events-none" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-100" />
             <input
               type="search"
               name="q"
               placeholder="Search frames…"
               aria-label="Search frames"
-              className="w-full rounded-full bg-white/10 border border-white/10 pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 outline-none focus:bg-white/15 focus:border-teal-400/40 transition"
+              className="w-full rounded-full border border-white/30 bg-white/15 py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-blue-100/75 outline-none transition focus:border-white/60 focus:bg-white/25"
             />
           </form>
-          <p className="hidden md:block text-[10px] font-bold text-slate-400 tracking-wide shrink-0">
+          <p className="hidden shrink-0 text-[10px] font-bold tracking-wide text-blue-950 md:block">
             Free exchange · 7-day returns · Clinic-verified
           </p>
         </div>
