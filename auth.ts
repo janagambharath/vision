@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -12,6 +13,8 @@ const credentialsSchema = z.object({
 
 const MAX_FAILED_ADMIN_LOGINS = 5;
 const ADMIN_LOCKOUT_MS = 15 * 60 * 1000;
+const googleClientId = process.env.AUTH_GOOGLE_ID;
+const googleClientSecret = process.env.AUTH_GOOGLE_SECRET;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -82,6 +85,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: admin.role
         };
       }
-    })
-  ]
+    }),
+    ...(googleClientId && googleClientSecret
+      ? [Google({ clientId: googleClientId, clientSecret: googleClientSecret })]
+      : [])
+  ],
+  callbacks: {
+    ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      if (account?.provider !== "google") return true;
+
+      const email = user.email?.trim().toLowerCase();
+      if (!email) return false;
+
+      const name = user.name?.trim() || null;
+      const customer = await prisma.user.upsert({
+        where: { email },
+        create: { email, name },
+        update: name ? { name } : {}
+      });
+
+      // Keep the JWT identity aligned with the customer record. This does not
+      // grant admin access; admin routes also verify AdminUser membership.
+      user.id = customer.id;
+      return true;
+    }
+  }
 });

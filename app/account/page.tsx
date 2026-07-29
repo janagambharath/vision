@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCustomerUser } from "@/lib/customer-auth";
+import { signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/constants";
@@ -47,7 +48,7 @@ export default async function CustomerDashboardPage({
     "use server";
     const cookieStore = await cookies();
     cookieStore.delete("vv_customer_session");
-    redirect("/account/login");
+    await signOut({ redirectTo: "/account/login" });
   }
 
   async function uploadPrescriptionLater(formData: FormData) {

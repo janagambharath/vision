@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { Smartphone, RefreshCw, Key, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function CustomerLoginPage() {
@@ -13,6 +14,20 @@ export default function CustomerLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+
+  useEffect(() => {
+    void fetch("/api/auth/providers")
+      .then(async (response) => response.ok ? response.json() : {})
+      .then((providers) => setGoogleAvailable(Boolean(providers.google)))
+      .catch(() => setGoogleAvailable(false));
+  }, []);
+
+  const signInWithGoogle = () => {
+    setError(null);
+    setLoading(true);
+    void signIn("google", { callbackUrl: "/account" });
+  };
 
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +106,25 @@ export default function CustomerLoginPage() {
               <span>{info}</span>
             </div>
           )}
+
+          {googleAvailable ? (
+            <>
+              <button
+                type="button"
+                onClick={signInWithGoogle}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-3 rounded-vv border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-blue-600 via-red-500 to-amber-400 text-xs font-black text-white">G</span>}
+                Continue with Google
+              </button>
+              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <span className="h-px flex-1 bg-slate-200" />
+                or use WhatsApp
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+            </>
+          ) : null}
 
           {step === "phone" ? (
             <form onSubmit={sendOtp} className="grid gap-4">

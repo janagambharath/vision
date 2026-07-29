@@ -178,6 +178,41 @@ export default function ClinicHomePage() {
           </div>
         </section>
 
+        <section className="vv-section bg-white" id="lasik-evaluation">
+          <div className="vv-container">
+            <div className="grid overflow-hidden rounded-[2rem] border border-blue-100 bg-gradient-to-br from-white via-blue-50 to-cyan-50 shadow-xl shadow-blue-950/10 lg:grid-cols-[.9fr_1.1fr]">
+              <div className="relative min-h-[240px] border-b border-blue-100 bg-white sm:min-h-[310px] lg:min-h-full lg:border-b-0 lg:border-r">
+                <Image
+                  src="/assets/lasik-evaluation-banner.jpeg"
+                  alt="LASIK Evaluation: precise check, clear vision, better tomorrow"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 45vw"
+                  className="object-contain p-4 sm:p-6"
+                />
+              </div>
+              <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-12">
+                <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-700">LASIK evaluation</p>
+                <h2 className="mt-3 text-3xl font-extrabold leading-tight text-slate-950 sm:text-4xl">
+                  Start with a precise check for clearer vision.
+                </h2>
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
+                  A doctor-led LASIK evaluation helps us understand your eye health, prescription, and whether laser vision correction is suitable for you.
+                </p>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <Link className="vv-button-primary w-full sm:w-fit" href="#appointment">
+                    <CalendarCheck className="h-5 w-5" />
+                    Book LASIK Evaluation
+                  </Link>
+                  <Link className="vv-button-light w-full sm:w-fit" href="#services">
+                    Learn about laser care
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="clinic-hero relative isolate overflow-hidden text-white">
           <div className="absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full border border-cyan-300/15" />
           <div className="absolute right-8 top-16 h-72 w-72 rounded-full border border-blue-400/10 sm:right-[18%]" />
@@ -250,41 +285,6 @@ export default function ClinicHomePage() {
         </section>
 
         {/* ───────────── ABOUT / DOCTOR ───────────── */}
-        <section className="vv-section bg-white" id="lasik-evaluation">
-          <div className="vv-container">
-            <div className="grid overflow-hidden rounded-[2rem] border border-blue-100 bg-gradient-to-br from-white via-blue-50 to-cyan-50 shadow-xl shadow-blue-950/10 lg:grid-cols-[.9fr_1.1fr]">
-              <div className="relative min-h-[240px] border-b border-blue-100 bg-white sm:min-h-[310px] lg:min-h-full lg:border-b-0 lg:border-r">
-                <Image
-                  src="/assets/lasik-evaluation-banner.jpeg"
-                  alt="LASIK Evaluation: precise check, clear vision, better tomorrow"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 45vw"
-                  className="object-contain p-4 sm:p-6"
-                />
-              </div>
-              <div className="flex flex-col justify-center p-6 sm:p-10 lg:p-12">
-                <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-blue-700">LASIK evaluation</p>
-                <h2 className="mt-3 text-3xl font-extrabold leading-tight text-slate-950 sm:text-4xl">
-                  Start with a precise check for clearer vision.
-                </h2>
-                <p className="mt-4 max-w-xl text-sm leading-relaxed text-slate-600 sm:text-base">
-                  A doctor-led LASIK evaluation helps us understand your eye health, prescription, and whether laser vision correction is suitable for you.
-                </p>
-                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-                  <Link className="vv-button-primary w-full sm:w-fit" href="#appointment">
-                    <CalendarCheck className="h-5 w-5" />
-                    Book LASIK Evaluation
-                  </Link>
-                  <Link className="vv-button-light w-full sm:w-fit" href="#services">
-                    Learn about laser care
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         <section className="vv-section bg-white" id="about">
           <div className="vv-container grid gap-12 lg:grid-cols-[.9fr_1.1fr]">
             <div>
