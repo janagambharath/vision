@@ -94,9 +94,8 @@ export default async function ProductPage({
   try {
     if (product.id) {
       reviews = await prisma.review.findMany({
-        // Legacy guest reviews remain in the audit trail but are never shown
-        // publicly: storefront ratings are reserved for verified buyers.
-        where: { productId: product.id, approved: true, verified: true },
+        // Every customer review is moderated before being displayed publicly.
+        where: { productId: product.id, approved: true },
         orderBy: { createdAt: "desc" },
         take: 10
       });
@@ -109,19 +108,7 @@ export default async function ProductPage({
     ? (reviews.reduce((sum, r: Review) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null;
   const reviewCustomer = await getCustomerUser().catch(() => null);
-  const canSubmitVerifiedReview = reviewCustomer ? await prisma.orderItem.findFirst({
-    where: {
-      productId: product.id,
-      order: {
-        status: "DELIVERED",
-        OR: [
-          { userId: reviewCustomer.id },
-          ...(reviewCustomer.phone ? [{ phone: reviewCustomer.phone }] : [])
-        ]
-      }
-    },
-    select: { id: true }
-  }).then(Boolean).catch(() => false) : false;
+  const canSubmitReview = Boolean(reviewCustomer);
 
   // Schema BreadcrumbList
   const breadcrumbSchema = {
@@ -200,20 +187,6 @@ export default async function ProductPage({
 
     const reviewer = await getCustomerUser();
     if (!reviewer) redirect(`/frames/${product!.slug}?error=sign-in-to-review`);
-    const deliveredPurchase = await prisma.orderItem.findFirst({
-      where: {
-        productId: product!.id!,
-        order: {
-          status: "DELIVERED",
-          OR: [
-            { userId: reviewer.id },
-            ...(reviewer.phone ? [{ phone: reviewer.phone }] : [])
-          ]
-        }
-      },
-      select: { id: true }
-    });
-    if (!deliveredPurchase) redirect(`/frames/${product!.slug}?error=verified-purchase-required`);
 
     const rating = Number(formData.get("rating") ?? 5);
     const title = String(formData.get("title") ?? "").trim().slice(0, 120);
@@ -228,7 +201,7 @@ export default async function ProductPage({
         rating,
         title: title || null,
         body,
-        verified: true,
+        verified: false,
         approved: false
       },
       create: {
@@ -238,7 +211,7 @@ export default async function ProductPage({
         rating,
         title: title || undefined,
         body,
-        verified: true,
+        verified: false,
         approved: false // requires moderator approval
       }
     });
@@ -431,9 +404,9 @@ export default async function ProductPage({
             </div>
             
             {/* Submit review */}
-            {canSubmitVerifiedReview && (
+            {canSubmitReview && (
               <form action={addReviewAction} className="vv-card p-5 border border-slate-200 bg-slate-50/50 grid gap-3">
-              <h3 className="font-extrabold text-slate-800 text-sm">Write a verified-purchase review</h3>
+              <h3 className="font-extrabold text-slate-800 text-sm">Write a review</h3>
               {query.reviewSubmitted && (
                 <p className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 p-2 rounded">
                   ✓ Review submitted! It will appear after moderation approval.
@@ -447,7 +420,7 @@ export default async function ProductPage({
               {/* Honeypot field - visually hidden */}
               <input type="text" name="website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
               
-              <p className="rounded bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800">Submitting as {reviewCustomer?.name?.trim() || "Verified customer"}.</p>
+              <p className="rounded bg-teal-50 px-3 py-2 text-xs font-bold text-teal-800">Submitting as {reviewCustomer?.name?.trim() || "Customer"}. Reviews are published after moderation.</p>
               <div className="grid gap-1 text-xs font-bold text-slate-600">
                 Rating
                 <select className="store-input py-1.5" name="rating">
@@ -471,21 +444,12 @@ export default async function ProductPage({
               </button>
               </form>
             )}
-            {!canSubmitVerifiedReview && (
+            {!canSubmitReview && (
               <div className="vv-card grid gap-3 border border-slate-200 bg-slate-50/50 p-5">
-                <h3 className="font-extrabold text-slate-800 text-sm">Reviews are for verified buyers</h3>
-                <p className="text-xs leading-relaxed text-slate-600">
-                  {reviewCustomer
-                    ? "You are signed in. A delivered purchase of this frame is required before you can leave a review."
-                    : "Sign in with Google or the phone number used for a delivered order to submit one review. This protects customers from fabricated ratings."}
-                </p>
+                <h3 className="font-extrabold text-slate-800 text-sm">Sign in to share your experience</h3>
+                <p className="text-xs leading-relaxed text-slate-600">Sign in with Google or your phone number to leave one review per frame. Every review is checked before it is published.</p>
                 {query.error === "sign-in-to-review" ? <p className="rounded bg-amber-50 p-2 text-xs font-bold text-amber-800">Sign in to submit a review.</p> : null}
-                {query.error === "verified-purchase-required" ? <p className="rounded bg-amber-50 p-2 text-xs font-bold text-amber-800">A delivered purchase of this frame is required before reviewing it.</p> : null}
-                {reviewCustomer ? (
-                  <Link href="/account" className="vv-button-light justify-center text-xs">View my account</Link>
-                ) : (
-                  <Link href="/account/login" className="vv-button-light justify-center text-xs">Sign in to review</Link>
-                )}
+                <Link href="/account/login" className="vv-button-light justify-center text-xs">Sign in to review</Link>
               </div>
             )}
           </div>
