@@ -474,10 +474,18 @@ export default async function ProductPage({
             {!canSubmitVerifiedReview && (
               <div className="vv-card grid gap-3 border border-slate-200 bg-slate-50/50 p-5">
                 <h3 className="font-extrabold text-slate-800 text-sm">Reviews are for verified buyers</h3>
-                <p className="text-xs leading-relaxed text-slate-600">Sign in with the phone number used for a delivered order to submit one review. This protects customers from fabricated ratings.</p>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  {reviewCustomer
+                    ? "You are signed in. A delivered purchase of this frame is required before you can leave a review."
+                    : "Sign in with Google or the phone number used for a delivered order to submit one review. This protects customers from fabricated ratings."}
+                </p>
                 {query.error === "sign-in-to-review" ? <p className="rounded bg-amber-50 p-2 text-xs font-bold text-amber-800">Sign in to submit a review.</p> : null}
                 {query.error === "verified-purchase-required" ? <p className="rounded bg-amber-50 p-2 text-xs font-bold text-amber-800">A delivered purchase of this frame is required before reviewing it.</p> : null}
-                <Link href="/account/login" className="vv-button-light justify-center text-xs">Sign in to review</Link>
+                {reviewCustomer ? (
+                  <Link href="/account" className="vv-button-light justify-center text-xs">View my account</Link>
+                ) : (
+                  <Link href="/account/login" className="vv-button-light justify-center text-xs">Sign in to review</Link>
+                )}
               </div>
             )}
           </div>

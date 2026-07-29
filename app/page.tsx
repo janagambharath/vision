@@ -122,7 +122,7 @@ export default function ClinicHomePage() {
 
         {/* ───────────── HERO ───────────── */}
         <section className="home-store-intro relative overflow-hidden text-white">
-          <div className="vv-container grid gap-5 pb-0 pt-5 sm:pb-0 sm:pt-8 lg:grid-cols-[1.35fr_.65fr] lg:gap-7">
+          <div className="vv-container grid gap-5 pb-4 pt-5 sm:pb-5 sm:pt-8 lg:grid-cols-[1.35fr_.65fr] lg:gap-7">
             <Link
               href="/frames"
               className="group relative isolate min-h-[300px] overflow-hidden rounded-[1.75rem] border border-white/15 shadow-2xl shadow-slate-950/25 sm:min-h-[360px]"
