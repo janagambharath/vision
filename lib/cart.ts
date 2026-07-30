@@ -186,6 +186,11 @@ export function calculateCartTotals(cart: Awaited<ReturnType<typeof getCartOrNul
       } else if (coupon.discountPct) {
         discountPaise = Math.round((subtotalPaise + lensTotalPaise) * coupon.discountPct / 100);
       }
+
+      // A malformed admin coupon must never turn a customer order into a
+      // negative merchandise total. Shipping remains a separately disclosed
+      // charge, but the discount itself cannot exceed the eligible items.
+      discountPaise = Math.max(0, Math.min(discountPaise, subtotalPaise + lensTotalPaise));
     }
   }
 

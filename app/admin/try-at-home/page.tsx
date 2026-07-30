@@ -144,7 +144,7 @@ export default async function AdminTryAtHomePage() {
                           </div>
                           <div className="flex items-center gap-2">
                             <MapPin className="h-4 w-4 text-slate-400" />
-                            <span>Address: <strong className="text-slate-800">{req.address}</strong></span>
+                            <span>Address: <strong className="text-slate-800">{req.address}{req.pincode ? `, ${req.pincode}` : ""}</strong></span>
                           </div>
                         </div>
 

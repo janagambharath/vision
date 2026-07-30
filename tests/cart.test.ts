@@ -81,6 +81,44 @@ test("calculateCartTotals rejects expired and exhausted coupons", () => {
   assert.equal(exhausted.discountPaise, 0);
 });
 
+test("calculateCartTotals never discounts more than eligible merchandise", () => {
+  const totals = calculateCartTotals(
+    makeCart({
+      coupon: {
+        active: true,
+        discountPaise: 99_999,
+        discountPct: null,
+        minOrderPaise: null,
+        maxUses: null,
+        usedCount: 0,
+        expiresAt: null
+      }
+    })
+  );
+
+  assert.equal(totals.discountPaise, 30_000);
+  assert.equal(totals.grandTotalPaise, 9_900);
+});
+
+test("calculateCartTotals rejects a malformed negative discount", () => {
+  const totals = calculateCartTotals(
+    makeCart({
+      coupon: {
+        active: true,
+        discountPaise: -5_000,
+        discountPct: null,
+        minOrderPaise: null,
+        maxUses: null,
+        usedCount: 0,
+        expiresAt: null
+      }
+    })
+  );
+
+  assert.equal(totals.discountPaise, 0);
+  assert.equal(totals.grandTotalPaise, 39_900);
+});
+
 test("checkout validation accepts complete COD delivery details only", () => {
   const checkout = {
     name: "Vision Customer",

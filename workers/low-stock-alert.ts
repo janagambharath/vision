@@ -5,20 +5,22 @@ import { sendWhatsAppTemplate } from "../lib/integrations/whatsapp";
 async function main() {
   console.log("⏰ Running low-stock alert worker...");
 
-  const lowStockThreshold = 3;
-
-  const lowStockItems = await prisma.product.findMany({
+  // A local store may set different reorder points for premium frames and
+  // fast-moving basics. Respect the per-product threshold maintained in the
+  // inventory dashboard instead of imposing a hidden global value here.
+  const stockedItems = await prisma.product.findMany({
     where: {
       deletedAt: null,
       status: "ACTIVE",
-      inventory: {
-        quantity: { lte: lowStockThreshold }
-      }
+      inventory: { isNot: null }
     },
     include: {
       inventory: true
     }
   });
+  const lowStockItems = stockedItems.filter((item) =>
+    item.inventory && item.inventory.quantity <= item.inventory.lowStockThreshold
+  );
 
   console.log(`  → Found ${lowStockItems.length} low stock frames`);
 
@@ -41,7 +43,7 @@ async function main() {
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
       <h2 style="color: #c2410c; border-bottom: 2px solid #c2410c; padding-bottom: 10px;">⚠️ Low Stock Alert</h2>
       <p>Hello Admin,</p>
-      <p>The following optical frame items have stock levels below or equal to the threshold of <strong>${lowStockThreshold}</strong>. Please review and coordinate restocking.</p>
+      <p>The following optical frame items have reached their individual low-stock threshold. Please review and coordinate restocking.</p>
       
       <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
         <thead>

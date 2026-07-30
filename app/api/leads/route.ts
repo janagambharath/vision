@@ -19,6 +19,13 @@ export async function POST(request: Request) {
   const originError = assertSameOrigin(request);
   if (originError) return originError;
 
+  // Browser forms retain the redirect-to-WhatsApp fallback. The enhanced
+  // appointment form asks for JSON so it can first acknowledge the request
+  // in-page, then let the customer choose whether to continue on WhatsApp.
+  // This prevents a local customer from being dropped into another app with
+  // no confirmation that the lead was recorded.
+  const wantsJson = (request.headers.get("accept") ?? "").includes("application/json");
+
   if (await isRateLimited(request, { keyPrefix: "leads", limit: 8, windowSeconds: 60 })) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
@@ -57,7 +64,7 @@ export async function POST(request: Request) {
     });
     leadId = lead.id;
   } catch {
-    if (!contentType.includes("application/json")) {
+    if (!contentType.includes("application/json") && !wantsJson) {
       return NextResponse.redirect(new URL("/contact?error=lead-not-saved", request.url), 303);
     }
     return NextResponse.json({ error: "Lead could not be saved" }, { status: 503 });
@@ -71,7 +78,7 @@ export async function POST(request: Request) {
     parsed.data.payload ? `Details: ${JSON.stringify(parsed.data.payload)}` : ""
   ].filter(Boolean).join("\n");
 
-  if (!contentType.includes("application/json")) {
+  if (!contentType.includes("application/json") && !wantsJson) {
     return NextResponse.redirect(buildWhatsAppUrl(message), 303);
   }
 

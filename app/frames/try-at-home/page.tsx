@@ -10,7 +10,7 @@ import { MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Try at Home",
-  description: "Request a Vision Vistara home trial for up to 5 eligible frames. We confirm service-area coverage, availability, and visit details before scheduling.",
+  description: "Request a Vision Vistara Hyderabad home trial for up to 5 eligible frames. We confirm pincode coverage, availability, and visit details before scheduling.",
   alternates: { canonical: `${SITE_URL}/frames/try-at-home` }
 };
 
@@ -69,6 +69,7 @@ export default async function TryAtHomePage({
           <p className="mt-3 text-slate-600">
             Select up to {MAX_HOME_TRIAL_FRAMES} eligible frames, choose your preferred date and time, and send an availability request. A trial is scheduled only after we confirm coverage, frame availability, and team capacity.
           </p>
+          <p className="mt-2 text-sm font-bold text-blue-800">Currently serving Hyderabad. Your pincode and preferred slot are confirmed by our team before a visit is booked.</p>
           <div className="mt-4 rounded-vv border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
             <strong>Kids&apos; frames require a doctor&apos;s prescription.</strong>
             <p className="mt-1 text-xs leading-relaxed text-blue-800">Please keep the prescription ready when requesting a home trial for a child.</p>
@@ -79,6 +80,8 @@ export default async function TryAtHomePage({
           <div className="mb-6 rounded-vv border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
             {params.error === "frames-unavailable"
               ? "One or more selected frames are no longer available. Please choose another frame."
+              : params.error === "service-unavailable"
+                ? "Home trials are currently available only in selected Hyderabad pincodes. Please contact us on WhatsApp if you need help."
               : params.error === "rate-limited"
                 ? "You have reached the request limit for this phone number. Please contact us if you need help."
                 : "Please fill in all required fields correctly."}
@@ -150,6 +153,10 @@ export default async function TryAtHomePage({
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Full address
                 <textarea className="store-input min-h-20 py-2" name="address" required placeholder="House/flat, street, area, city, pincode" />
+              </label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+                Hyderabad pincode
+                <input className="store-input" type="text" name="pincode" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required placeholder="6-digit pincode" />
               </label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">
                 Preferred date

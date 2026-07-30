@@ -611,6 +611,7 @@ model TryAtHomeRequest {
   name            String
   phone           String
   address         String
+  pincode         String?
   preferredDate   DateTime
   preferredSlot   String
   frameCount      Int
@@ -628,6 +629,7 @@ model TryAtHomeRequest {
   @@index([phone])
   @@index([status])
   @@index([preferredDate])
+  @@index([pincode])
 }
 
 model Prescription {

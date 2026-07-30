@@ -298,6 +298,13 @@ async function main() {
   });
 
   // ─── Admin User ───
+  // Correct the earlier seeded wording only when it still contains the
+  // contradictory launch copy. A home-trial request does not collect money.
+  await prisma.banner.updateMany({
+    where: { id: "banner-try-at-home", subtitle: { contains: "starting" } },
+    data: { subtitle: "Hyderabad availability request — no fee or deposit is collected when you submit" }
+  });
+
   const adminEmail = process.env.ADMIN_SEED_EMAIL;
   const adminPassword = process.env.ADMIN_SEED_PASSWORD;
   if (adminEmail && adminPassword) {

@@ -30,7 +30,17 @@ import { SectionHeading } from "@/components/section-heading";
 import { SiteHeader } from "@/components/site-header";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import { AppointmentForm } from "@/components/appointment-form";
-import { CLINIC_NAME, CLINIC_PHONE, CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
+import {
+  CLINIC_ADDRESS,
+  CLINIC_GOOGLE_BUSINESS_URL,
+  CLINIC_GOOGLE_MAPS_URL,
+  CLINIC_HOURS,
+  CLINIC_NAME,
+  CLINIC_PHONE,
+  CLINIC_POSTAL_CODE,
+  CLINIC_WHATSAPP_NUMBER,
+  SITE_URL
+} from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { headers } from "next/headers";
@@ -51,10 +61,15 @@ export default function ClinicHomePage() {
     areaServed: "Hyderabad",
     address: {
       "@type": "PostalAddress",
+      ...(CLINIC_ADDRESS ? { streetAddress: CLINIC_ADDRESS } : {}),
       addressLocality: "Hyderabad",
       addressRegion: "Telangana",
       addressCountry: "IN",
+      ...(CLINIC_POSTAL_CODE ? { postalCode: CLINIC_POSTAL_CODE } : {}),
     },
+    ...(CLINIC_HOURS ? { openingHours: CLINIC_HOURS } : {}),
+    ...(CLINIC_GOOGLE_MAPS_URL ? { hasMap: CLINIC_GOOGLE_MAPS_URL } : {}),
+    ...(CLINIC_GOOGLE_BUSINESS_URL ? { sameAs: [CLINIC_GOOGLE_BUSINESS_URL] } : {}),
   };
 
   /* Server action for appointment booking */
@@ -169,7 +184,7 @@ export default function ClinicHomePage() {
                   Try at home
                 </span>
                 <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try optical frames from your sofa.</h2>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Choose up to five frames, select a convenient time, and we will confirm your home trial.</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Available across Hyderabad, subject to pincode, frame availability, and team confirmation.</p>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-blue-950">
                   <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">1. Pick frames</span>
                   <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">2. Choose a slot</span>

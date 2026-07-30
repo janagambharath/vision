@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "node scripts/migrate-deploy-with-known-recovery.mjs && next start",
-    "test": "prisma generate && node --import tsx --test tests/cart.test.ts tests/razorpay.test.ts tests/product-publishing.test.ts tests/product-ai.test.ts tests/product-ai-analysis.test.ts tests/gemini-try-on.test.ts tests/prescriptions.test.ts tests/catalog-pagination.test.ts tests/security-hardening.test.ts tests/shipment-retry.test.ts tests/inventory-reservations.test.ts tests/order-status.test.ts",
+    "test": "prisma generate && node --import tsx --test tests/cart.test.ts tests/razorpay.test.ts tests/product-publishing.test.ts tests/product-ai.test.ts tests/product-ai-analysis.test.ts tests/gemini-try-on.test.ts tests/prescriptions.test.ts tests/catalog-pagination.test.ts tests/security-hardening.test.ts tests/shipment-retry.test.ts tests/inventory-reservations.test.ts tests/order-status.test.ts tests/local-service.test.ts",
     "lint": "eslint .",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",

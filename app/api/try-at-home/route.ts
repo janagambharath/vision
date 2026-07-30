@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { isRateLimited, rateLimit } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 import { normalizePhone, tryAtHomeSchema } from "@/lib/validations";
+import { isLocalPincodeServiceable, localServiceabilityMessage } from "@/lib/local-service";
 
 export async function POST(request: Request) {
   const originError = assertSameOrigin(request);
@@ -15,6 +16,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = tryAtHomeSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  if (!isLocalPincodeServiceable(parsed.data.pincode)) {
+    return NextResponse.json({ error: localServiceabilityMessage("home-trial") }, { status: 422 });
+  }
   const customerPhone = normalizePhone(parsed.data.phone);
   const phoneLimit = await rateLimit(`try-at-home:${customerPhone}`, 3, 24 * 60 * 60);
   if (!phoneLimit.allowed) {
@@ -44,6 +48,7 @@ export async function POST(request: Request) {
         name: parsed.data.name,
         phone: customerPhone,
         address: parsed.data.address,
+        pincode: parsed.data.pincode,
         preferredDate: new Date(parsed.data.preferredDate),
         preferredSlot: parsed.data.preferredSlot,
         frameCount: parsed.data.productIds.length,
@@ -63,6 +68,7 @@ export async function POST(request: Request) {
         payload: {
           requestId: homeTrial.id,
           productIds: parsed.data.productIds,
+          pincode: parsed.data.pincode,
           preferredDate: parsed.data.preferredDate,
           preferredSlot: parsed.data.preferredSlot
         }
@@ -77,7 +83,7 @@ export async function POST(request: Request) {
         status: "pending",
         entityType: "try_at_home_request",
         entityId: homeTrial.id,
-        metadata: { productIds: parsed.data.productIds, preferredDate: parsed.data.preferredDate, preferredSlot: parsed.data.preferredSlot }
+        metadata: { productIds: parsed.data.productIds, pincode: parsed.data.pincode, preferredDate: parsed.data.preferredDate, preferredSlot: parsed.data.preferredSlot }
       }
     });
     return homeTrial;

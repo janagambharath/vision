@@ -91,6 +91,10 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
             : lensPackages.filter((lens) => !lens.requiresPrescription)}
         />
 
+        <div className="rounded-vv border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-950">
+          <strong>Hyderabad local service:</strong> delivery and home trials are available in selected pincodes. We confirm every COD order before dispatch.
+        </div>
+
         <div className="mt-2">
           <label className="grid gap-1.5 text-sm font-extrabold text-slate-600">
             Quantity

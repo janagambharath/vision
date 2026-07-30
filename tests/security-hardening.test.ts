@@ -90,16 +90,20 @@ test("rate limiting remains bounded and functional without Redis in local develo
 });
 
 test("production rate limiting always requires Redis, even if an old toggle says false", () => {
-  const previousNodeEnv = process.env.NODE_ENV;
+  // Newer Node type definitions expose NODE_ENV as readonly even though the
+  // test must temporarily emulate production. Keep the mutation explicit and
+  // scoped to this test rather than weakening application typings.
+  const mutableEnv = process.env as Record<string, string | undefined>;
+  const previousNodeEnv = mutableEnv.NODE_ENV;
   const previousRequirement = process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
 
   try {
-    process.env.NODE_ENV = "production";
+    mutableEnv.NODE_ENV = "production";
     process.env.REQUIRE_REDIS_FOR_RATE_LIMITS = "false";
     assert.equal(isRedisRequiredForRateLimits(), true);
   } finally {
-    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
-    else process.env.NODE_ENV = previousNodeEnv;
+    if (previousNodeEnv === undefined) delete mutableEnv.NODE_ENV;
+    else mutableEnv.NODE_ENV = previousNodeEnv;
     if (previousRequirement === undefined) delete process.env.REQUIRE_REDIS_FOR_RATE_LIMITS;
     else process.env.REQUIRE_REDIS_FOR_RATE_LIMITS = previousRequirement;
   }

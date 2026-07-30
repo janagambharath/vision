@@ -73,6 +73,27 @@ function validateTimestamp(name, maxAgeDays) {
   pass(`${name}: recent`);
 }
 
+function validatePincodeList(name) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    fail(`${name}: missing; local delivery and home trials must have an explicit service-area list`);
+    return;
+  }
+  const pincodes = value.split(",").map((pincode) => pincode.trim());
+  if (pincodes.some((pincode) => !/^\d{6}$/.test(pincode))) {
+    fail(`${name}: must be a comma-separated list of six-digit Indian pincodes`);
+    return;
+  }
+  pass(`${name}: ${pincodes.length} local service pincode(s) configured`);
+}
+
+function validatePincode(name) {
+  const value = process.env[name]?.trim();
+  if (!value) return;
+  if (!/^\d{6}$/.test(value)) fail(`${name}: must be a six-digit Indian pincode`);
+  else pass(`${name}: valid`);
+}
+
 function checkWorkerManifests() {
   const workers = [
     ["abandoned-carts.json", "npm run worker:abandoned-carts"],
@@ -216,6 +237,14 @@ async function main() {
   requireVariables("customer AI try-on", ["GEMINI_API_KEY", "GEMINI_TRY_ON_MODEL"]);
   requireVariables("fulfillment", ["SHIPROCKET_EMAIL", "SHIPROCKET_PASSWORD", "SHIPROCKET_PICKUP_LOCATION"]);
   requireVariables("notifications", ["RESEND_API_KEY", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN", "CLINIC_PHONE"]);
+  requireVariables("local clinic identity", [
+    "CLINIC_ADDRESS",
+    "CLINIC_POSTAL_CODE",
+    "CLINIC_HOURS",
+    "CLINIC_GOOGLE_MAPS_URL",
+    "CLINIC_GOOGLE_BUSINESS_PROFILE_URL"
+  ]);
+  validatePincodeList("LOCAL_SERVICE_PINCODES");
 
   pass("rate limiting: production requires Redis and public mutations fail closed during an outage");
 
@@ -226,6 +255,9 @@ async function main() {
   if (!configured("NEXTAUTH_SECRET")) warn("NEXTAUTH_SECRET: not set; AUTH_SECRET is sufficient for the current configuration");
   validateHttpsUrl("AUTH_URL");
   validateHttpsUrl("NEXT_PUBLIC_SITE_URL");
+  validateHttpsUrl("CLINIC_GOOGLE_MAPS_URL");
+  validateHttpsUrl("CLINIC_GOOGLE_BUSINESS_PROFILE_URL");
+  validatePincode("CLINIC_POSTAL_CODE");
   checkWorkerManifests();
 
   validateTimestamp("PRODUCTION_WORKERS_VERIFIED_AT", 8);

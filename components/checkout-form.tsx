@@ -23,6 +23,8 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [loadingPincode, setLoadingPincode] = useState(false);
+  const [pincodeMessage, setPincodeMessage] = useState<string | null>(null);
+  const [isPincodeServiceable, setIsPincodeServiceable] = useState<boolean | null>(null);
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [prescriptionChoice, setPrescriptionChoice] = useState<PrescriptionChoice>("");
@@ -30,12 +32,17 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, "");
     setPincode(value);
+    setPincodeMessage(null);
+    setIsPincodeServiceable(null);
 
     if (value.length === 6) {
       setLoadingPincode(true);
       try {
-        const res = await fetch(`https://api.postalpincode.in/pincode/${value}`);
-        const data = await res.json();
+        const [postcodeResponse, serviceabilityResponse] = await Promise.all([
+          fetch(`https://api.postalpincode.in/pincode/${value}`),
+          fetch(`/api/serviceability?pincode=${encodeURIComponent(value)}`)
+        ]);
+        const data = await postcodeResponse.json();
         if (data && data[0] && data[0].Status === "Success") {
           const postOffices = data[0].PostOffice;
           if (postOffices && postOffices.length > 0) {
@@ -43,8 +50,14 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
             setState(postOffices[0].State);
           }
         }
+        const serviceability = await serviceabilityResponse.json().catch(() => null);
+        if (serviceability && typeof serviceability.serviceable === "boolean") {
+          setIsPincodeServiceable(serviceability.serviceable);
+          setPincodeMessage(typeof serviceability.message === "string" ? serviceability.message : null);
+        }
       } catch (err) {
-        console.error("Failed to fetch pincode details:", err);
+        console.error("Failed to check pincode details:", err);
+        setPincodeMessage("We could not verify this pincode yet. Please try again or contact us on WhatsApp.");
       } finally {
         setLoadingPincode(false);
       }
@@ -65,6 +78,11 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
       setErrors(fieldErrors);
       // Scroll to top to show errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (isPincodeServiceable === false) {
+      setErrors({ pincode: "Delivery is not currently available for this pincode." });
       return;
     }
     
@@ -146,6 +164,11 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
               <RefreshCw className="absolute right-3 bottom-9 h-4 w-4 animate-spin text-slate-400" />
             )}
             {errors.pincode && <span className="text-xs text-red-500 font-normal">{errors.pincode}</span>}
+            {pincodeMessage && !errors.pincode ? (
+              <span className={`text-xs font-normal ${isPincodeServiceable ? "text-emerald-700" : "text-amber-700"}`}>
+                {pincodeMessage}
+              </span>
+            ) : null}
           </label>
         </div>
 

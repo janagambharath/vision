@@ -13,6 +13,7 @@ import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { deletePrescriptionAsset, parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
 import { grantOrderAccess } from "@/lib/order-access";
 import { sendOrderReceivedNotifications } from "@/lib/payment-fulfillment";
+import { isLocalPincodeServiceable } from "@/lib/local-service";
 import {
   getCheckoutReservationExpiry,
   InventoryReservationConflictError,
@@ -25,6 +26,13 @@ function makePublicOrderId() {
   return `VV-${randomBytes(16).toString("hex").toUpperCase()}`;
 }
 
+class CouponUnavailableError extends Error {
+  constructor() {
+    super("The selected coupon is no longer available.");
+    this.name = "CouponUnavailableError";
+  }
+}
+
 export async function checkoutAction(formData: FormData) {
   // This field is visually hidden from people but catches basic form-filling
   // bots before they can reserve inventory or create COD orders.
@@ -34,6 +42,13 @@ export async function checkoutAction(formData: FormData) {
 
   const parsed = checkoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/frames/checkout?error=invalid-details");
+
+  // Vision Vistara is launching as a Hyderabad-local service. Never create a
+  // COD order that staff cannot fulfil; a browser-side availability indicator
+  // is helpful, but this server-side gate is authoritative.
+  if (!isLocalPincodeServiceable(parsed.data.pincode)) {
+    redirect("/frames/checkout?error=delivery-unavailable");
+  }
 
   const checkoutScope = formData.get("checkoutScope") === "CART" ? "CART" : "DIRECT";
   const cart = await getCheckoutCartOrNull(checkoutScope === "CART");
@@ -67,7 +82,7 @@ export async function checkoutAction(formData: FormData) {
     redirect("/frames/checkout?error=order-rate-limited");
   }
 
-  const totals = calculateCartTotals(cart);
+  const quotedTotals = calculateCartTotals(cart);
   const publicId = makePublicOrderId();
 
   const requiresPrescription = cart.items.some((item) => item.lensOption?.requiresPrescription);
@@ -100,6 +115,50 @@ export async function checkoutAction(formData: FormData) {
   for (let attempt = 0; attempt < 3 && !order; attempt += 1) {
     try {
       order = await prisma.$transaction(async (tx) => {
+        let totals = quotedTotals;
+        let couponCode: string | null = null;
+
+        // A coupon must be claimed in the same serializable transaction as
+        // the order. The previous check-then-increment sequence let several
+        // concurrent orders consume a single-use promotion.
+        if (cart.coupon && quotedTotals.discountPaise > 0) {
+          const coupon = await tx.coupon.findUnique({ where: { id: cart.coupon.id } });
+          const currentTotals = coupon ? calculateCartTotals({ ...cart, coupon }) : quotedTotals;
+          if (!coupon || currentTotals.discountPaise <= 0) {
+            throw new CouponUnavailableError();
+          }
+
+          const now = new Date();
+          const claim = await tx.coupon.updateMany({
+            where: {
+              id: coupon.id,
+              active: true,
+              OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+              AND: [
+                {
+                  OR: [
+                    { minOrderPaise: null },
+                    { minOrderPaise: { lte: currentTotals.subtotalPaise + currentTotals.lensTotalPaise } }
+                  ]
+                },
+                {
+                  OR: [
+                    { maxUses: null },
+                    { usedCount: { lt: coupon.maxUses ?? 0 } }
+                  ]
+                }
+              ]
+            },
+            data: { usedCount: { increment: 1 } }
+          });
+          if (claim.count !== 1) {
+            throw new CouponUnavailableError();
+          }
+
+          totals = currentTotals;
+          couponCode = coupon.code;
+        }
+
         const created = await tx.order.create({
           data: {
             publicId,
@@ -117,6 +176,7 @@ export async function checkoutAction(formData: FormData) {
             discountPaise: totals.discountPaise,
             grandTotalPaise: totals.grandTotalPaise,
             notes: parsed.data.notes,
+            couponCode: couponCode ?? undefined,
             shippingAddress: {
               create: {
                 name: parsed.data.name,
@@ -156,6 +216,9 @@ export async function checkoutAction(formData: FormData) {
         return { id: created.id, publicId: created.publicId };
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
+      if (error instanceof CouponUnavailableError) {
+        redirect("/frames/checkout?error=coupon-unavailable");
+      }
       if (error instanceof InventoryUnavailableError) {
         redirect("/frames/cart?error=out-of-stock");
       }
@@ -221,23 +284,9 @@ export async function checkoutAction(formData: FormData) {
   });
   await clearDirectCheckoutItem();
 
-  // Increment coupon usage counter
-  if (cart.coupon && totals.discountPaise > 0) {
-    await prisma.coupon.update({
-      where: { id: cart.coupon.id },
-      data: { usedCount: { increment: 1 } }
-    });
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { couponCode: cart.coupon.code }
-    });
-    // Detach coupon from cart after use
-    await prisma.cart.update({
-      where: { id: cart.id },
-      data: { couponId: null }
-    });
-  } else if (cart.coupon) {
-    // If there was a coupon but it was invalid (expired, min order not met), just detach it
+  if (cart.coupon) {
+    // A successfully claimed coupon and an already-invalid coupon should both
+    // be detached after checkout so it cannot affect a later cart order.
     await prisma.cart.update({
       where: { id: cart.id },
       data: { couponId: null }
@@ -303,6 +352,13 @@ export async function tryAtHomeAction(formData: FormData) {
 
   if (!parsed.success) redirect("/frames/try-at-home?error=invalid-details");
 
+  // A home-trial request must be serviceable before it creates staff work or
+  // stores a customer address. The configured pincode list is the launch
+  // contract; an unconfigured list intentionally accepts no requests.
+  if (!isLocalPincodeServiceable(parsed.data.pincode)) {
+    redirect("/frames/try-at-home?error=service-unavailable");
+  }
+
   const uniqueProductIds = [...new Set(parsed.data.productIds)];
   if (uniqueProductIds.length !== parsed.data.productIds.length) {
     redirect("/frames/try-at-home?error=invalid-details");
@@ -341,6 +397,7 @@ export async function tryAtHomeAction(formData: FormData) {
         name: parsed.data.name,
         phone,
         address: parsed.data.address,
+        pincode: parsed.data.pincode,
         preferredDate: new Date(parsed.data.preferredDate),
         preferredSlot: parsed.data.preferredSlot,
         frameCount: uniqueProductIds.length,
@@ -362,6 +419,7 @@ export async function tryAtHomeAction(formData: FormData) {
         payload: {
           requestId: created.id,
           productIds: uniqueProductIds,
+          pincode: parsed.data.pincode,
           preferredDate: parsed.data.preferredDate,
           preferredSlot: parsed.data.preferredSlot
         }
@@ -376,7 +434,7 @@ export async function tryAtHomeAction(formData: FormData) {
         status: "pending",
         entityType: "try_at_home_request",
         entityId: created.id,
-        metadata: { productIds: uniqueProductIds, preferredDate: parsed.data.preferredDate, preferredSlot: parsed.data.preferredSlot }
+        metadata: { productIds: uniqueProductIds, pincode: parsed.data.pincode, preferredDate: parsed.data.preferredDate, preferredSlot: parsed.data.preferredSlot }
       }
     });
     return created;

@@ -113,7 +113,10 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     lensCompatibility: product.lensCompatibility ?? [],
     faceShapes: product.faceShapes ?? [],
     careInstructions: product.careInstructions ?? "Clean with microfiber cloth. Store in a hard case.",
-    warranty: product.warranty ?? "1-year manufacturer warranty.",
+    // Never invent commercial coverage for a product with incomplete admin
+    // data. A default one-year manufacturer warranty looked reassuring but
+    // could become an enforceable promise the supplier never made.
+    warranty: product.warranty ?? "Warranty information is not specified for this frame. Please contact us before ordering if warranty coverage is important.",
     returnPolicy: product.returnPolicy ?? "7-day easy return on frame-only orders.",
     deliveryEstimate: product.deliveryEstimate ?? "3-5 business days.",
     seoTitle: product.seoTitle,
@@ -515,7 +518,7 @@ export async function getProductSlugs() {
 
   const products = await prisma.product.findMany({
     where: { status: "ACTIVE", deletedAt: null },
-    select: { slug: true }
+    select: { slug: true, updatedAt: true }
   });
-  return products.map(p => ({ slug: p.slug }));
+  return products.map((product) => ({ slug: product.slug, updatedAt: product.updatedAt }));
 }

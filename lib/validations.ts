@@ -58,6 +58,7 @@ export const tryAtHomeSchema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: phoneSchema,
   address: z.string().trim().min(8).max(240),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit pincode"),
   preferredDate: z.string().trim().refine(parseFutureDate, "Select today or a future date"),
   preferredSlot: z.string().trim().min(3).max(40),
   productIds: z.array(slugSchema).min(1).max(5),
