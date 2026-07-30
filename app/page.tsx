@@ -152,27 +152,32 @@ export default function ClinicHomePage() {
 
             <Link
               href="/frames/try-at-home"
-              className="group grid min-h-[300px] grid-cols-[1fr_1.1fr] overflow-hidden rounded-[1.75rem] border border-blue-100 bg-white p-4 text-slate-900 shadow-xl shadow-blue-950/10 transition hover:-translate-y-1 sm:min-h-[360px] sm:p-5 lg:grid-cols-1"
+              className="group relative isolate flex min-h-[300px] overflow-hidden rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-100 via-white to-cyan-50 p-6 text-slate-900 shadow-xl shadow-blue-950/10 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-950/15 sm:min-h-[360px] sm:p-7"
             >
-              <div className="flex flex-col justify-center pr-3 lg:order-2 lg:pr-0 lg:pt-4">
-                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-blue-700">
+              <div className="absolute inset-y-0 right-0 -z-10 w-[58%] opacity-25 transition duration-700 group-hover:scale-105 group-hover:opacity-35">
+                <Image
+                  src="/assets/try-at-home.jpeg"
+                  alt=""
+                  fill
+                  sizes="(max-width: 1024px) 55vw, 30vw"
+                  className="object-contain object-right p-4 sm:p-6"
+                />
+              </div>
+              <div className="absolute inset-y-0 right-0 -z-10 w-3/4 bg-gradient-to-r from-blue-100/95 via-white/70 to-transparent" />
+              <div className="flex max-w-xs flex-col justify-center">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-sm shadow-blue-600/30">
                   <Home className="h-3.5 w-3.5" />
                   Try at home
                 </span>
-                <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try optical frames from your sofa.</h2>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Choose up to five frames and we will help arrange your home trial.</p>
-                <span className="mt-4 inline-flex items-center gap-2 text-sm font-extrabold text-blue-700">
+                <h2 className="mt-4 text-2xl font-extrabold leading-tight sm:text-3xl">Try optical frames from your sofa.</h2>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">Choose up to five frames, select a convenient time, and we will confirm your home trial.</p>
+                <div className="mt-5 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-blue-950">
+                  <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">1. Pick frames</span>
+                  <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">2. Choose a slot</span>
+                </div>
+                <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-blue-700 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-blue-700/20">
                   Start a home trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
-              </div>
-              <div className="relative overflow-hidden rounded-2xl bg-slate-50 lg:order-1">
-                <Image
-                  src="/assets/try-at-home.jpeg"
-                  alt="Try at Home Vision Vistara service"
-                  fill
-                  sizes="(max-width: 1024px) 50vw, 35vw"
-                  className="object-cover transition duration-700 group-hover:scale-105"
-                />
               </div>
             </Link>
           </div>
@@ -213,20 +218,20 @@ export default function ClinicHomePage() {
           </div>
         </section>
 
-        <section className="clinic-hero relative isolate overflow-hidden text-white">
-          <div className="absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full border border-cyan-300/15" />
-          <div className="absolute right-8 top-16 h-72 w-72 rounded-full border border-blue-400/10 sm:right-[18%]" />
-          <div className="absolute -bottom-32 left-[30%] h-[28rem] w-[28rem] rounded-full bg-cyan-400/10 blur-3xl" />
+        <section className="clinic-hero relative isolate overflow-hidden text-slate-950">
+          <div className="absolute -right-32 -top-32 h-[28rem] w-[28rem] rounded-full border border-blue-200/70" />
+          <div className="absolute right-8 top-16 h-72 w-72 rounded-full border border-sky-200/80 sm:right-[18%]" />
+          <div className="absolute -bottom-32 left-[30%] h-[28rem] w-[28rem] rounded-full bg-cyan-200/30 blur-3xl" />
 
           <div className="vv-container relative flex min-h-[620px] flex-col justify-center py-16 sm:min-h-[650px] sm:py-20 md:min-h-[calc(100svh-80px)] md:py-28">
             <FadeIn className="max-w-3xl">
-              <p className="mb-4 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-cyan-300">
+              <p className="mb-4 text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-blue-700">
                 Vision Vistara Optics &amp; Lasers Eye Care
               </p>
               <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-extrabold leading-[1.08]">
                 Trusted eye care before every optical decision.
               </h1>
-              <p className="mt-5 sm:mt-6 max-w-2xl text-base sm:text-lg text-slate-300 leading-relaxed">
+              <p className="mt-5 sm:mt-6 max-w-2xl text-base sm:text-lg text-slate-600 leading-relaxed">
                 Consultation, prescription guidance, diagnostics, laser and
                 cataract advice, and practical follow-up — from a calm,
                 clinic-first experience.
@@ -240,7 +245,7 @@ export default function ClinicHomePage() {
                   <Glasses className="h-5 w-5" />
                   Visit Frames Store
                 </Link>
-                <Link className="vv-button border-cyan-300/40 bg-cyan-300/10 text-white hover:bg-cyan-300/20" href="/frames/try-at-home">
+                <Link className="vv-button border-blue-200 bg-white/75 text-blue-800 hover:bg-blue-50" href="/frames/try-at-home">
                   <Home className="h-5 w-5" />
                   Try at Home
                 </Link>
@@ -257,13 +262,13 @@ export default function ClinicHomePage() {
             </FadeIn>
           </div>
           {/* Scroll indicator */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce opacity-40 hidden sm:block">
-            <ChevronDown className="h-6 w-6 text-white" />
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce opacity-50 hidden sm:block">
+            <ChevronDown className="h-6 w-6 text-blue-700" />
           </div>
         </section>
 
         {/* ───────────── TRUST STRIP ───────────── */}
-        <section className="clinic-trust relative z-10 border-b border-white/40">
+        <section className="clinic-trust relative z-10 border-b border-blue-100">
           <StaggerContainer className="vv-container grid grid-cols-2 gap-3 py-6 md:grid-cols-4 -mt-8 sm:-mt-10">
             {(
               [
