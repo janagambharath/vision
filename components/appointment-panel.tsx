@@ -66,14 +66,12 @@ export function AppointmentPanel({ light = false }: { light?: boolean }) {
         Service required
         <select className={light ? "vv-input" : "store-input"} name="payload[service]" required disabled={pending}>
           <option value="">Select a service</option>
-          <option>Comprehensive Eye Test</option>
-          <option>Prescription Lens Guidance</option>
-          <option>LASIK Evaluation</option>
-          <option>Cataract Consultation</option>
-          <option>Retina Care</option>
-          <option>Glaucoma Evaluation</option>
-          <option>Diagnostics</option>
-          <option>Showroom Consultation</option>
+          <option>Online Prescription Guidance</option>
+          <option>Home Frame Fitting</option>
+          <option>Home Visit Consultation</option>
+          <option>Kids Eyewear Support</option>
+          <option>Lens Guidance</option>
+          <option>Diagnostic Referral Guidance</option>
         </select>
       </label>
       <div className="grid gap-3 md:grid-cols-2">

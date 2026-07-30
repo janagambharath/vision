@@ -1,20 +1,14 @@
 # Vision Vistara: Hyderabad launch runbook
 
-This runbook is for a controlled local launch. It does not replace medical,
+This runbook is for an online, scheduled-home-visit Hyderabad launch. It does not replace medical,
 tax, employment, or consumer-law advice.
 
 ## Before the site is public
 
-1. Set the real local-launch variables in the production service. Never use
-   placeholder values:
-   - `CLINIC_ADDRESS`
-   - `CLINIC_POSTAL_CODE`
-   - `CLINIC_HOURS`
-   - `CLINIC_GOOGLE_MAPS_URL`
-   - `CLINIC_GOOGLE_BUSINESS_PROFILE_URL`
-   - `LOCAL_SERVICE_PINCODES` (a comma-separated list of pincodes the team can actually fulfil)
-2. Check the clinic name, address, phone number, and business hours exactly
-   match the Google Business Profile and map listing.
+1. Set `LOCAL_SERVICE_PINCODES` in the production service: a comma-separated
+   list of pincodes the team can actually fulfil.
+2. Do not publish a physical address, map, walk-in, or showroom claim unless
+   Vision Vistara actually opens a staffed public location.
 3. Assign one named staff member per shift to own new leads, COD orders,
    prescription review, and home-trial requests.
 4. Confirm every active frame has real stock, a correct image, price, SKU,

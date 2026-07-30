@@ -19,7 +19,6 @@ import {
   ScanLine,
   ShieldCheck,
   Sparkles,
-  Star,
   Stethoscope,
   Store,
   UserCheck,
@@ -30,17 +29,7 @@ import { SectionHeading } from "@/components/section-heading";
 import { SiteHeader } from "@/components/site-header";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import { AppointmentForm } from "@/components/appointment-form";
-import {
-  CLINIC_ADDRESS,
-  CLINIC_GOOGLE_BUSINESS_URL,
-  CLINIC_GOOGLE_MAPS_URL,
-  CLINIC_HOURS,
-  CLINIC_NAME,
-  CLINIC_PHONE,
-  CLINIC_POSTAL_CODE,
-  CLINIC_WHATSAPP_NUMBER,
-  SITE_URL
-} from "@/lib/constants";
+import { CLINIC_NAME, CLINIC_PHONE, CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { headers } from "next/headers";
@@ -52,24 +41,19 @@ export const dynamic = "force-dynamic";
 export default function ClinicHomePage() {
   const schema = {
     "@context": "https://schema.org",
-    "@type": "MedicalClinic",
+    "@type": "MedicalOrganization",
     name: CLINIC_NAME,
     url: SITE_URL,
     telephone: `+91 ${CLINIC_PHONE}`,
     image: `${SITE_URL}/assets/vision-vistara-hero.png`,
     medicalSpecialty: ["Optometry", "Ophthalmology"],
     areaServed: "Hyderabad",
-    address: {
-      "@type": "PostalAddress",
-      ...(CLINIC_ADDRESS ? { streetAddress: CLINIC_ADDRESS } : {}),
-      addressLocality: "Hyderabad",
-      addressRegion: "Telangana",
-      addressCountry: "IN",
-      ...(CLINIC_POSTAL_CODE ? { postalCode: CLINIC_POSTAL_CODE } : {}),
+    contactPoint: {
+      "@type": "ContactPoint",
+      telephone: `+91 ${CLINIC_PHONE}`,
+      contactType: "customer service",
+      availableLanguage: ["en", "te"]
     },
-    ...(CLINIC_HOURS ? { openingHours: CLINIC_HOURS } : {}),
-    ...(CLINIC_GOOGLE_MAPS_URL ? { hasMap: CLINIC_GOOGLE_MAPS_URL } : {}),
-    ...(CLINIC_GOOGLE_BUSINESS_URL ? { sameAs: [CLINIC_GOOGLE_BUSINESS_URL] } : {}),
   };
 
   /* Server action for appointment booking */
@@ -155,7 +139,7 @@ export default function ClinicHomePage() {
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-cyan-200 sm:text-xs">Frames Store</p>
                 <h2 className="mt-3 text-3xl font-extrabold leading-tight sm:text-5xl">Find the frame that feels like you.</h2>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-200 sm:text-base">
-                  Shop clinic-verified frames, then choose home delivery or an in-person fitting.
+                  Shop expert-guided frames, then choose home delivery or a scheduled home visit.
                 </p>
                 <span className="vv-button-retail mt-6 w-fit group-hover:shadow-[0_14px_28px_-8px_rgba(13,148,136,0.6)]">
                   <Glasses className="h-5 w-5" />
@@ -383,13 +367,12 @@ export default function ClinicHomePage() {
         <section className="vv-section bg-paper" id="services">
           <div className="vv-container">
             <SectionHeading
-              kicker="Services and treatments"
-              title="Complete eye care with practical optical support."
+              kicker="Online and home-visit support"
+              title="Practical eyewear guidance before you buy."
             >
               <p>
-                Keep the clinic visit focused: check the eyes, understand the
-                prescription, choose the right lenses, and plan treatment only
-                when needed.
+                Start online, request a confirmed home visit where serviceable,
+                and get a specialist referral when equipment or treatment is needed.
               </p>
             </SectionHeading>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -397,23 +380,23 @@ export default function ClinicHomePage() {
                 [
                   [
                     Stethoscope,
-                    "Comprehensive eye test",
-                    "Refraction, visual clarity checks, and consultation for everyday comfort.",
+                    "Online prescription guidance",
+                    "Understand an existing prescription and the right next step before choosing eyewear.",
                   ],
                   [
                     Zap,
-                    "Laser eye care guidance",
-                    "LASIK and laser suitability discussions with clear eligibility next steps.",
+                    "Referral guidance",
+                    "Get practical next steps for LASIK, cataract, retina, or glaucoma concerns that need specialist care.",
                   ],
                   [
                     Sparkles,
-                    "Cataract consultation",
-                    "Assessment support and guidance for lens planning and surgical referral needs.",
+                    "Scheduled home visits",
+                    "Home visits are requested online and confirmed only after pincode, stock, and team checks.",
                   ],
                   [
                     Activity,
-                    "Retina and glaucoma care",
-                    "Screening-oriented guidance supported by diagnostics when clinically required.",
+                    "Report and prescription support",
+                    "Share an existing report or prescription for clear eyewear guidance and referral next steps.",
                   ],
                   [
                     Glasses,
@@ -423,7 +406,7 @@ export default function ClinicHomePage() {
                   [
                     Heart,
                     "Personalised follow-up",
-                    "Post-visit support via call or WhatsApp for prescription questions and recovery guidance.",
+                    "WhatsApp follow-up for prescription, order, and home-visit questions.",
                   ],
                 ] satisfies Array<[LucideIcon, string, string]>
               ).map(([Icon, title, body]) => (
@@ -445,12 +428,12 @@ export default function ClinicHomePage() {
         <section className="vv-section bg-white" id="diagnostics">
           <div className="vv-container">
             <SectionHeading
-              kicker="Diagnostics"
-              title="Advanced testing support for confident treatment planning."
+              kicker="Diagnostic referrals"
+              title="Clear guidance when specialist equipment is needed."
             >
               <p>
-                Diagnostic recommendations are based on the patient&apos;s
-                concern, eye condition, and treatment pathway.
+                Advanced imaging and diagnostic equipment are not promised
+                online or during a home visit. We guide the next step and referral.
               </p>
             </SectionHeading>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -458,13 +441,13 @@ export default function ClinicHomePage() {
                 [
                   [
                     ScanLine,
-                    "OCT",
-                    "Retina and optic nerve imaging support for detailed evaluation.",
+                    "OCT referral",
+                    "Retina and optic-nerve imaging is arranged through an equipped specialist provider.",
                   ],
                   [
                     Activity,
-                    "Visual fields",
-                    "Functional vision mapping for glaucoma and optic nerve monitoring.",
+                    "Visual-field referral",
+                    "Functional vision mapping is referred when a specialist advises it.",
                   ],
                   [
                     FileCheck2,
@@ -506,57 +489,37 @@ export default function ClinicHomePage() {
         <section className="vv-section bg-paper">
           <div className="vv-container">
             <SectionHeading
-              kicker="Patient experiences"
-              title="Calm guidance, clear explanations, and useful follow-up."
+              kicker="How we support you"
+              title="Clear next steps, without a showroom visit."
             />
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-              {[
-                {
-                  quote:
-                    "The clinic explained my prescription clearly and helped me understand which lens options made sense for my daily screen work.",
-                  name: "Rahul M.",
-                  role: "Optical patient",
-                  rating: 5,
-                },
-                {
-                  quote:
-                    "The consultation was patient and clear. I knew which diagnostic test was needed and why before it was done.",
-                  name: "Priya S.",
-                  role: "Diagnostics patient",
-                  rating: 5,
-                },
-                {
-                  quote:
-                    "WhatsApp booking made follow-up simple, and the frame store made choosing glasses easy after my eye test.",
-                  name: "Anil K.",
-                  role: "Frame customer",
-                  rating: 4,
-                },
-              ].map(({ quote, name, role, rating }) => (
-                <article key={name} className="vv-card p-5 sm:p-6">
-                  <div className="flex gap-0.5 mb-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${
-                          i < rating
-                            ? "text-amber-400 fill-amber-400"
-                            : "text-slate-200"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-sm sm:text-base text-slate-700 italic leading-relaxed">
-                    &ldquo;{quote}&rdquo;
+              {(
+                [
+                  [
+                    Glasses,
+                    "Browse and shortlist online",
+                    "Explore clinic-verified frames, compare options, and add the ones you want to try or buy.",
+                  ],
+                  [
+                    Home,
+                    "Request a confirmed home visit",
+                    "For serviceable Hyderabad pincodes, we confirm your selected frames, preferred time, and team availability first.",
+                  ],
+                  [
+                    BadgeCheck,
+                    "Get the right next step",
+                    "Receive practical prescription and lens guidance online, or a specialist referral when a test or treatment is needed.",
+                  ],
+                ] satisfies Array<[LucideIcon, string, string]>
+              ).map(([Icon, title, body]) => (
+                <article key={title} className="vv-card p-5 sm:p-6">
+                  <Icon className="h-10 w-10 rounded-vv bg-blue-50 p-2 text-clinic" />
+                  <h3 className="mt-4 text-base font-extrabold text-slate-900 sm:text-lg">
+                    {title}
+                  </h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">
+                    {body}
                   </p>
-                  <div className="mt-5 border-t border-slate-100 pt-3">
-                    <strong className="block text-sm font-extrabold text-slate-800">
-                      {name}
-                    </strong>
-                    <span className="text-xs text-clinic font-bold">
-                      {role}
-                    </span>
-                  </div>
                 </article>
               ))}
             </div>
@@ -636,18 +599,18 @@ export default function ClinicHomePage() {
           <div className="vv-container grid gap-10 lg:grid-cols-[.8fr_1.2fr]">
             <SectionHeading
               kicker="FAQ"
-              title="Common questions before a clinic visit."
+              title="Common questions before an online consultation or home visit."
             >
               <p>
-                The site keeps medical care central while sending product-heavy
-                shopping flows to the dedicated store.
+                The site keeps professional guidance central while sending
+                product-heavy shopping flows to the dedicated store.
               </p>
             </SectionHeading>
             <div className="grid gap-3">
               {[
                 [
-                  "Can I book an eye test before buying frames?",
-                  "Yes. The appointment flow is consultation-first, then lens and frame selection if needed.",
+                  "Can I request guidance before buying frames?",
+                  "Yes. Start with online guidance, then select frames and lenses or request a serviceable home visit.",
                 ],
                 [
                   "Where can I browse frames?",
@@ -655,11 +618,11 @@ export default function ClinicHomePage() {
                 ],
                 [
                   "Does camera try-on replace a prescription check?",
-                  "No. Try-on helps with appearance and preference. Prescription and lens guidance should still come from the clinic.",
+                  "No. Try-on helps with appearance and preference. Prescription and lens guidance still need professional review.",
                 ],
                 [
-                  "Can I contact the clinic on WhatsApp?",
-                  "Yes. Appointment requests and follow-up questions can be sent to Vision Vistara on WhatsApp.",
+                  "Can I contact Vision Vistara on WhatsApp?",
+                  "Yes. Online guidance, home-visit requests, and follow-up questions can be sent to Vision Vistara on WhatsApp.",
                 ],
                 [
                   "What happens after my eye test?",
@@ -683,11 +646,11 @@ export default function ClinicHomePage() {
         {/* ───────────── CONTACT ───────────── */}
         <section className="vv-section bg-white" id="contact">
           <div className="vv-container">
-            <SectionHeading kicker="Contact" title="Visit or reach out.">
-              <p>
-                Appointments can be made in person, over the phone, or through
-                WhatsApp. Walk-ins are welcome when slots are available.
-              </p>
+          <SectionHeading kicker="Contact" title="Online support and scheduled home visits.">
+            <p>
+                Request online guidance or a home visit over the phone or through
+                WhatsApp. Service availability is confirmed by pincode and team capacity.
+            </p>
             </SectionHeading>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               <a

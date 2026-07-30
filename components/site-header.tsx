@@ -36,7 +36,7 @@ const storeLinks = [
   ["Track Order", "/frames/orders/lookup", Truck],
   ["My Account", "/frames/account", User],
   ["Cart", "/frames/cart", Glasses],
-  ["Visit Clinic", "/", CalendarCheck],
+  ["Eye Care", "/", CalendarCheck],
 ] as const;
 
 export function SiteHeader({ mode = "clinic" }: { mode?: "clinic" | "store" }) {
@@ -88,7 +88,7 @@ export function SiteHeader({ mode = "clinic" }: { mode?: "clinic" | "store" }) {
               Cart
             </Link>
             <Link href="/" className="ml-2 rounded-full bg-white/10 px-4 py-2 text-white hover:bg-white/20 transition text-xs font-extrabold">
-              Clinic
+              Eye Care
             </Link>
           </nav>
         ) : (
