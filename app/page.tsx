@@ -154,28 +154,27 @@ export default function ClinicHomePage() {
               href="/frames/try-at-home"
               className="group relative isolate flex min-h-[300px] overflow-hidden rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-100 via-white to-cyan-50 p-6 text-slate-900 shadow-xl shadow-blue-950/10 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-950/15 sm:min-h-[360px] sm:p-7"
             >
-              <div className="absolute inset-y-0 right-0 -z-10 w-[58%] opacity-25 transition duration-700 group-hover:scale-105 group-hover:opacity-35">
+              <div className="absolute inset-y-5 right-5 z-0 w-[38%] overflow-hidden rounded-2xl border border-white/80 bg-white/80 p-2 shadow-lg shadow-blue-950/10 transition duration-700 group-hover:scale-[1.02] group-hover:shadow-xl sm:inset-y-6 sm:right-6">
                 <Image
                   src="/assets/try-at-home.jpeg"
-                  alt=""
+                  alt="Try at Home service"
                   fill
-                  sizes="(max-width: 1024px) 55vw, 30vw"
-                  className="object-contain object-right p-4 sm:p-6"
+                  sizes="(max-width: 1024px) 35vw, 15vw"
+                  className="object-contain p-2"
                 />
               </div>
-              <div className="absolute inset-y-0 right-0 -z-10 w-3/4 bg-gradient-to-r from-blue-100/95 via-white/70 to-transparent" />
-              <div className="flex max-w-xs flex-col justify-center">
+              <div className="relative z-10 flex max-w-[60%] flex-col justify-center">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-sm shadow-blue-600/30">
                   <Home className="h-3.5 w-3.5" />
                   Try at home
                 </span>
-                <h2 className="mt-4 text-2xl font-extrabold leading-tight sm:text-3xl">Try optical frames from your sofa.</h2>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">Choose up to five frames, select a convenient time, and we will confirm your home trial.</p>
-                <div className="mt-5 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-blue-950">
+                <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try optical frames from your sofa.</h2>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Choose up to five frames, select a convenient time, and we will confirm your home trial.</p>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-blue-950">
                   <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">1. Pick frames</span>
                   <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">2. Choose a slot</span>
                 </div>
-                <span className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-blue-700 px-4 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-blue-700/20">
+                <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-blue-700 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-blue-700/20 sm:text-sm">
                   Start a home trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
