@@ -169,16 +169,17 @@ export default function ClinicHomePage() {
               href="/frames/try-at-home"
               className="group relative isolate flex min-h-[300px] overflow-hidden rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-100 via-white to-cyan-50 p-6 text-slate-900 shadow-xl shadow-blue-950/10 transition hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-950/15 sm:min-h-[360px] sm:p-7"
             >
-              <div className="absolute inset-y-5 right-5 z-0 w-[38%] overflow-hidden rounded-2xl border border-white/80 bg-white/80 p-2 shadow-lg shadow-blue-950/10 transition duration-700 group-hover:scale-[1.02] group-hover:shadow-xl sm:inset-y-6 sm:right-6">
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-0 w-[48%] overflow-hidden">
+                <div className="absolute inset-y-0 left-0 z-10 w-1/2 bg-gradient-to-r from-blue-50 via-blue-50/75 to-transparent" />
                 <Image
                   src="/assets/try-at-home.jpeg"
                   alt="Try at Home service"
                   fill
-                  sizes="(max-width: 1024px) 35vw, 15vw"
-                  className="object-contain p-2"
+                  sizes="(max-width: 1024px) 46vw, 20vw"
+                  className="object-contain mix-blend-multiply opacity-90 transition duration-700 group-hover:scale-105"
                 />
               </div>
-              <div className="relative z-10 flex max-w-[60%] flex-col justify-center">
+              <div className="relative z-10 flex max-w-[61%] flex-col justify-center">
                 <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-sm shadow-blue-600/30">
                   <Home className="h-3.5 w-3.5" />
                   Try at home
