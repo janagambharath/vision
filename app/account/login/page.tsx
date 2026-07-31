@@ -1,27 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Smartphone, RefreshCw, Key, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, RefreshCw, ShieldCheck } from "lucide-react";
 
 export default function CustomerLoginPage() {
-  const router = useRouter();
-  
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"phone" | "otp">("phone");
   const [loading, setLoading] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
-  const [googleAvailable, setGoogleAvailable] = useState(false);
 
   useEffect(() => {
     void fetch("/api/auth/providers")
       .then(async (response) => response.ok ? response.json() : {})
       .then((providers) => setGoogleAvailable(Boolean(providers.google)))
       .catch(() => setGoogleAvailable(false));
-
   }, []);
 
   const getCallbackUrl = () => {
@@ -34,171 +26,38 @@ export default function CustomerLoginPage() {
   const signInWithGoogle = () => {
     setError(null);
     setLoading(true);
-    void signIn("google", { callbackUrl: getCallbackUrl() });
-  };
-
-  const sendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!phone) return;
-    setError(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Failed to send verification code.");
-      
-      setInfo("Verification code sent to your phone number on WhatsApp.");
-      setStep("otp");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
+    void signIn("google", { callbackUrl: getCallbackUrl() }).catch(() => {
       setLoading(false);
-    }
-  };
-
-  const verifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otp) return;
-    setError(null);
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, code: otp })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Invalid verification code.");
-      
-      // Success redirect
-      router.push(getCallbackUrl());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
+      setError("Google sign-in could not be started. Please try again.");
+    });
   };
 
   return (
-    <main className="vv-section bg-paper min-h-[70vh] flex items-center justify-center">
+    <main className="flex min-h-[70vh] items-center justify-center bg-paper vv-section">
       <div className="vv-container max-w-md">
-        <div className="vv-card p-8 bg-white border border-slate-200 grid gap-6 shadow-sm">
-          
+        <div className="vv-card grid gap-6 border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-center">
-            <p className="vv-kicker text-retail">Customer Area</p>
-            <h1 className="text-3xl font-extrabold text-slate-900 mt-1 font-sans">
-              {step === "phone" ? "Sign In / Register" : "Verify Phone"}
-            </h1>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              {step === "phone"
-                ? "Enter your mobile number to receive a secure 6-digit verification code on WhatsApp."
-                : `Enter the 6-digit code sent to ${phone}.`}
-            </p>
+            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-blue-50 text-blue-700"><ShieldCheck className="h-6 w-6" /></span>
+            <p className="vv-kicker mt-4 text-retail">Customer Account</p>
+            <h1 className="mt-1 font-sans text-3xl font-extrabold text-slate-900">Continue with Google</h1>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">Use your Google account to securely view orders, home-trial requests, prescriptions, and saved frames.</p>
           </div>
 
-          {error && (
-            <div className="rounded border border-red-200 bg-red-50 text-red-800 text-xs font-bold p-3">
-              {error}
-            </div>
-          )}
+          {error ? <div className="rounded border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-800">{error}</div> : null}
 
-          {info && (
-            <div className="rounded border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-bold p-3 flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span>{info}</span>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            disabled={loading || googleAvailable !== true}
+            className="flex w-full items-center justify-center gap-3 rounded-vv border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading || googleAvailable === null ? <RefreshCw className="h-4 w-4 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-blue-600 via-red-500 to-amber-400 text-xs font-black text-white">G</span>}
+            {loading ? "Opening Google…" : googleAvailable === null ? "Checking Google sign-in…" : "Continue with Google"}
+            {!loading && googleAvailable === true ? <ArrowRight className="h-4 w-4" /> : null}
+          </button>
 
-          {googleAvailable ? (
-            <>
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-vv border border-slate-300 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <span className="grid h-5 w-5 place-items-center rounded-full bg-gradient-to-br from-blue-600 via-red-500 to-amber-400 text-xs font-black text-white">G</span>}
-                Continue with Google
-              </button>
-              <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                <span className="h-px flex-1 bg-slate-200" />
-                or use WhatsApp
-                <span className="h-px flex-1 bg-slate-200" />
-              </div>
-            </>
-          ) : null}
-
-          {step === "phone" ? (
-            <form onSubmit={sendOtp} className="grid gap-4">
-              <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-                Mobile Number
-                <div className="relative">
-                  <input
-                    className="store-input pl-9"
-                    type="tel"
-                    placeholder="e.g. 7842938316"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                  <Smartphone className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
-                </div>
-              </label>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="vv-button-retail py-3 justify-center w-full font-bold flex items-center gap-1.5"
-              >
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Request Verification Code"}
-                {!loading && <ArrowRight className="h-4 w-4" />}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={verifyOtp} className="grid gap-4">
-              <label className="grid gap-2 text-sm font-extrabold text-slate-600">
-                Verification Code (6-digit)
-                <div className="relative">
-                  <input
-                    className="store-input pl-9 text-center tracking-widest font-extrabold text-lg"
-                    type="text"
-                    maxLength={6}
-                    placeholder="0 0 0 0 0 0"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    required
-                    disabled={loading}
-                  />
-                  <Key className="absolute left-3 top-4 h-4 w-4 text-slate-400" />
-                </div>
-              </label>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="vv-button-retail py-3 justify-center w-full font-bold flex items-center gap-1.5"
-              >
-                {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Verify and Login"}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setStep("phone")}
-                className="text-xs text-slate-500 hover:text-slate-800 underline font-bold mt-2"
-                disabled={loading}
-              >
-                Change phone number
-              </button>
-            </form>
-          )}
-
+          {googleAvailable === false ? <p className="rounded border border-amber-200 bg-amber-50 p-3 text-center text-xs font-bold text-amber-800">Google sign-in is not configured right now. Please contact Vision Vistara for help.</p> : null}
+          <p className="text-center text-[11px] leading-relaxed text-slate-400">Phone-number sign-in has been retired. Your delivery phone number is collected only during checkout.</p>
         </div>
       </div>
     </main>

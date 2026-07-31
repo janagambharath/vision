@@ -73,20 +73,6 @@ function validateTimestamp(name, maxAgeDays) {
   pass(`${name}: recent`);
 }
 
-function validatePincodeList(name) {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    fail(`${name}: missing; local COD delivery must have an explicit service-area list`);
-    return;
-  }
-  const pincodes = value.split(",").map((pincode) => pincode.trim());
-  if (pincodes.some((pincode) => !/^\d{6}$/.test(pincode))) {
-    fail(`${name}: must be a comma-separated list of six-digit Indian pincodes`);
-    return;
-  }
-  pass(`${name}: ${pincodes.length} local service pincode(s) configured`);
-}
-
 function checkWorkerManifests() {
   const workers = [
     ["abandoned-carts.json", "npm run worker:abandoned-carts"],
@@ -230,8 +216,6 @@ async function main() {
   requireVariables("customer AI try-on", ["GEMINI_API_KEY", "GEMINI_TRY_ON_MODEL"]);
   requireVariables("fulfillment", ["SHIPROCKET_EMAIL", "SHIPROCKET_PASSWORD", "SHIPROCKET_PICKUP_LOCATION"]);
   requireVariables("notifications", ["RESEND_API_KEY", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN", "CLINIC_PHONE"]);
-  validatePincodeList("LOCAL_SERVICE_PINCODES");
-
   pass("rate limiting: production requires Redis and public mutations fail closed during an outage");
 
   const authSecret = process.env.AUTH_SECRET?.trim();

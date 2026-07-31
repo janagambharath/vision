@@ -37,7 +37,7 @@ function redisConfigured() {
 }
 
 export function isRedisRequiredForRateLimits() {
-  // Public checkout, OTP, AI, and admin mutations must not silently fall back
+  // Public checkout, AI, and admin mutations must not silently fall back
   // to per-instance memory limits in production. Redis is already a required
   // production dependency, so fail closed even when an environment toggle was
   // omitted or incorrectly set to false. Local development may opt in with

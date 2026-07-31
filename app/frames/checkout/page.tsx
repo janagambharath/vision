@@ -36,8 +36,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
     ? "Please complete every required delivery field and try again."
     : rawError === "order-rate-limited"
       ? "Too many order attempts. Please wait a little while before trying again."
-      : rawError === "delivery-unavailable"
-        ? "Delivery is currently available only in selected Hyderabad pincodes. Please contact us on WhatsApp if you need help."
       : rawError === "coupon-unavailable"
         ? "That coupon was just used up or changed. Please review your total and try again."
       : rawError === "prescription-upload-failed"

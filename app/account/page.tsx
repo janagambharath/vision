@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCustomerUser } from "@/lib/customer-auth";
 import { signOut } from "@/auth";
@@ -58,8 +57,6 @@ export default async function CustomerDashboardPage({
 
   async function handleLogout() {
     "use server";
-    const cookieStore = await cookies();
-    cookieStore.delete("vv_customer_session");
     await signOut({ redirectTo: "/account/login" });
   }
 

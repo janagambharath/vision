@@ -13,7 +13,6 @@ import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { deletePrescriptionAsset, parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
 import { grantOrderAccess } from "@/lib/order-access";
 import { sendOrderReceivedNotifications } from "@/lib/payment-fulfillment";
-import { isLocalPincodeServiceable } from "@/lib/local-service";
 import {
   getCheckoutReservationExpiry,
   InventoryReservationConflictError,
@@ -42,13 +41,6 @@ export async function checkoutAction(formData: FormData) {
 
   const parsed = checkoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/frames/checkout?error=invalid-details");
-
-  // Vision Vistara is launching as a Hyderabad-local service. Never create a
-  // COD order that staff cannot fulfil; a browser-side availability indicator
-  // is helpful, but this server-side gate is authoritative.
-  if (!isLocalPincodeServiceable(parsed.data.pincode)) {
-    redirect("/frames/checkout?error=delivery-unavailable");
-  }
 
   const checkoutScope = formData.get("checkoutScope") === "CART" ? "CART" : "DIRECT";
   const cart = await getCheckoutCartOrNull(checkoutScope === "CART");

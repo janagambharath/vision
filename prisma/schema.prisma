@@ -882,7 +882,7 @@ model AnalyticsEvent {
   @@index([createdAt])
 }
 
-// Customer OTP for phone-based auth
+// Historical OTP records retained for audit; phone-number sign-in is retired.
 model OtpCode {
   id        String   @id @default(cuid())
   phone     String

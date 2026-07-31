@@ -115,7 +115,7 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
       action={handleAction}
       method="POST"
       encType="multipart/form-data"
-      className="grid gap-6 lg:grid-cols-[1fr_380px]"
+      className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,380px)]"
     >
       <input type="hidden" name="paymentMethod" value="COD" />
       <input type="hidden" name="deliveryMethod" value="DELIVERY" />
@@ -125,7 +125,7 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
         <input id="checkout-website" type="text" name="website" tabIndex={-1} autoComplete="off" />
       </div>
 
-      <section className="vv-card grid gap-5 p-6">
+      <section className="vv-card min-w-0 grid gap-5 p-6">
         {error ? <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">{error}</div> : null}
         {directCheckout ? (
           <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-900">
@@ -265,7 +265,7 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
         {errors.acceptedTerms && <span className="text-xs text-red-500 font-normal -mt-3">{errors.acceptedTerms}</span>}
       </section>
 
-      <aside className="vv-card sticky top-28 self-start p-6 grid gap-6">
+      <aside className="vv-card min-w-0 self-start p-5 grid gap-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
         <div>
           <h2 className="text-2xl font-extrabold border-b border-slate-100 pb-2">Order summary</h2>
           <div className="mt-4 grid gap-3">

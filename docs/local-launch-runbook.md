@@ -1,23 +1,20 @@
-# Vision Vistara: Hyderabad launch runbook
+# Vision Vistara: online launch runbook
 
-This runbook is for an online, scheduled-home-visit Hyderabad launch. It does not replace medical,
+This runbook is for an online, scheduled-home-visit launch across India. It does not replace medical,
 tax, employment, or consumer-law advice.
 
 ## Before the site is public
 
-1. Set `LOCAL_SERVICE_PINCODES` in the production service: a comma-separated
-   list of pincodes the team can fulfil for COD delivery. Home-trial requests
-   are accepted from any valid Indian pincode and must be reviewed manually.
-2. Do not publish a physical address, map, walk-in, or showroom claim unless
+1. Do not publish a physical address, map, walk-in, or showroom claim unless
    Vision Vistara actually opens a staffed public location.
-3. Assign one named staff member per shift to own new leads, COD orders,
+2. Assign one named staff member per shift to own new leads, COD orders,
    prescription review, and home-trial requests.
-4. Confirm every active frame has real stock, a correct image, price, SKU,
+3. Confirm every active frame has real stock, a correct image, price, SKU,
    measurements, lens compatibility, warranty, and return terms.
-5. Test a real customer flow on a phone: appointment request, WhatsApp
+4. Test a real customer flow on a phone: appointment request, WhatsApp
    continuation, home-trial request, COD order, prescription upload, and
    order lookup.
-6. Run the release gate from the production environment only after the real
+5. Run the release gate from the production environment only after the real
    operations checks are complete:
 
    ```powershell
