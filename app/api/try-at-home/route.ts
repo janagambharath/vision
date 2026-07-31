@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { isRateLimited, rateLimit } from "@/lib/rate-limit";
 import { assertSameOrigin } from "@/lib/request-security";
 import { normalizePhone, tryAtHomeSchema } from "@/lib/validations";
-import { isLocalPincodeServiceable, localServiceabilityMessage } from "@/lib/local-service";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 export async function POST(request: Request) {
   const originError = assertSameOrigin(request);
@@ -16,8 +16,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = tryAtHomeSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  if (!isLocalPincodeServiceable(parsed.data.pincode)) {
-    return NextResponse.json({ error: localServiceabilityMessage("home-trial") }, { status: 422 });
+  const customerSession = await getCustomerSession();
+  if (!customerSession) {
+    return NextResponse.json({ error: "Sign in to save this home-trial request in My Account." }, { status: 401 });
   }
   const customerPhone = normalizePhone(parsed.data.phone);
   const phoneLimit = await rateLimit(`try-at-home:${customerPhone}`, 3, 24 * 60 * 60);
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   const created = await prisma.$transaction(async (tx) => {
     const homeTrial = await tx.tryAtHomeRequest.create({
       data: {
+        userId: customerSession.userId,
         name: parsed.data.name,
         phone: customerPhone,
         address: parsed.data.address,

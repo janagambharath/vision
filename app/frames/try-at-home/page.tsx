@@ -1,16 +1,16 @@
-import Image from "next/image";
-import { ArrowLeft, ArrowRight, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
+import { ArrowLeft, CalendarCheck, CheckCircle2, Home, Package, Truck } from "lucide-react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { tryAtHomeAction } from "@/lib/orders";
 import { getStoreProducts } from "@/lib/store-data";
-import { formatMoney } from "@/lib/money";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
+import { TryAtHomeRequestForm } from "@/components/try-at-home-request-form";
 import { MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 export const metadata: Metadata = {
   title: "Try at Home",
-  description: "Request a Vision Vistara Hyderabad home trial for up to 5 eligible frames. We confirm pincode coverage, availability, and visit details before scheduling.",
+  description: "Choose up to 5 eligible frames and request a Vision Vistara home trial from any Indian pincode. Review your selection before sending; we confirm the visit details before booking.",
   alternates: { canonical: `${SITE_URL}/frames/try-at-home` }
 };
 
@@ -20,184 +20,75 @@ export default async function TryAtHomePage({
   searchParams?: Promise<{ productIds?: string; request?: string; error?: string }>;
 }) {
   const params = (await searchParams) ?? {};
-  const products = await getStoreProducts({});
-  const eligibleProducts = products.filter((p) => p.tryAtHomeEligible && p.status === "ACTIVE");
+  const [products, customerSession] = await Promise.all([getStoreProducts({}), getCustomerSession()]);
+  const eligibleProducts = products.filter((product) => product.tryAtHomeEligible && product.status === "ACTIVE");
   const preselectedIds = params.productIds?.split(",").filter(Boolean) ?? [];
+  const returnTo = preselectedIds.length > 0
+    ? `/frames/try-at-home?productIds=${encodeURIComponent(preselectedIds.join(","))}`
+    : "/frames/try-at-home";
 
-  // Success state
   if (params.request) {
     return (
       <main className="vv-section bg-paper">
         <div className="vv-container max-w-2xl text-center">
           <CheckCircle2 className="mx-auto h-16 w-16 text-retail" />
           <h1 className="mt-6 text-4xl font-extrabold">Home trial request received</h1>
-          <p className="mt-4 text-lg text-slate-600">
-            This is not a confirmed booking. We will check service-area coverage and frame availability, then contact you to confirm the visit details.
-          </p>
+          <p className="mt-4 text-lg text-slate-600">Your selected frames and request are saved in My Account. This is not a confirmed visit yet—we will verify route, stock, and team availability before confirming.</p>
           <p className="mt-2 text-sm text-slate-500">Request ID: {params.request}</p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Link className="vv-button-retail" href="/frames">Browse frames</Link>
-            <Link className="vv-button-light" href="/frames/try-at-home">Make another request</Link>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link className="vv-button-retail" href="/account/orders">View My Requests</Link>
+            <Link className="vv-button-light" href="/frames">Browse frames</Link>
           </div>
         </div>
       </main>
     );
   }
 
-  const timeSlots = [
-    "10:00 AM – 12:00 PM",
-    "12:00 PM – 2:00 PM",
-    "2:00 PM – 4:00 PM",
-    "4:00 PM – 6:00 PM",
-    "6:00 PM – 8:00 PM"
-  ];
-
   return (
     <main className="vv-section bg-paper">
       <FadeIn className="vv-container">
-        <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-          Back to store
-        </Link>
+        <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-900"><ArrowLeft className="h-4 w-4" />Back to store</Link>
 
         <div className="mb-8">
-          <p className="vv-kicker text-retail flex items-center gap-2">
-            <Home className="h-4 w-4" />
-            Try at Home
-          </p>
+          <p className="vv-kicker flex items-center gap-2 text-retail"><Home className="h-4 w-4" />Try at Home</p>
           <h1 className="text-4xl font-extrabold">Try frames at home before you buy.</h1>
-          <p className="mt-3 text-slate-600">
-            Select up to {MAX_HOME_TRIAL_FRAMES} eligible frames, choose your preferred date and time, and send an availability request. A trial is scheduled only after we confirm coverage, frame availability, and team capacity.
-          </p>
-          <p className="mt-2 text-sm font-bold text-blue-800">Currently serving Hyderabad. Your pincode and preferred slot are confirmed by our team before a visit is booked.</p>
-          <div className="mt-4 rounded-vv border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
-            <strong>Kids&apos; frames require a doctor&apos;s prescription.</strong>
-            <p className="mt-1 text-xs leading-relaxed text-blue-800">Please keep the prescription ready when requesting a home trial for a child.</p>
-          </div>
+          <p className="mt-3 max-w-3xl text-slate-600">Select up to {MAX_HOME_TRIAL_FRAMES} eligible frames, add your preferred date and time, then review every detail before sending your request. A visit is scheduled only after our team confirms the route, frame availability, and capacity.</p>
+          <p className="mt-2 text-sm font-bold text-blue-800">You can request a home trial from any valid Indian pincode. We confirm the final visit details after your request.</p>
+          <div className="mt-4 rounded-vv border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950"><strong>Kids&apos; frames require a doctor&apos;s prescription.</strong><p className="mt-1 text-xs leading-relaxed text-blue-800">Please keep the prescription ready when requesting a home trial for a child.</p></div>
         </div>
 
         {params.error ? (
           <div className="mb-6 rounded-vv border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
-            {params.error === "frames-unavailable"
-              ? "One or more selected frames are no longer available. Please choose another frame."
-              : params.error === "service-unavailable"
-                ? "Home trials are currently available only in selected Hyderabad pincodes. Please contact us on WhatsApp if you need help."
-              : params.error === "rate-limited"
-                ? "You have reached the request limit for this phone number. Please contact us if you need help."
-                : "Please fill in all required fields correctly."}
+            {params.error === "frames-unavailable" ? "One or more selected frames are no longer available. Please choose another frame." : params.error === "rate-limited" ? "You have reached the request limit for this phone number. Please contact us if you need help." : "Please fill in all required fields correctly."}
           </div>
         ) : null}
 
-        {/* Info Cards */}
         <StaggerContainer className="mb-8 grid gap-4 md:grid-cols-3">
-          <StaggerItem><InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} eligible frames you'd like to try.`} /></StaggerItem>
-          <StaggerItem><InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Pick a preferred slot" body="Tell us the date and time window that work best for you." /></StaggerItem>
-          <StaggerItem><InfoCard icon={<Truck className="h-8 w-8" />} title="We confirm first" body="We check serviceability, availability, and team capacity before scheduling." /></StaggerItem>
+          <StaggerItem><InfoCard icon={<Package className="h-8 w-8" />} title="Select frames" body={`Choose 1–${MAX_HOME_TRIAL_FRAMES} eligible frames you would like to try.`} /></StaggerItem>
+          <StaggerItem><InfoCard icon={<CalendarCheck className="h-8 w-8" />} title="Review your request" body="Preview your selected frames, address, and preferred time before sending." /></StaggerItem>
+          <StaggerItem><InfoCard icon={<Truck className="h-8 w-8" />} title="We confirm first" body="We confirm route, frame availability, and team capacity before scheduling." /></StaggerItem>
         </StaggerContainer>
 
-        <form action={tryAtHomeAction} className="grid gap-8 lg:grid-cols-[1fr_380px]">
-          <input className="hidden" type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-          {/* Frame Selector */}
-          <div>
-            <h2 className="mb-4 text-2xl font-extrabold">Select frames to try</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {eligibleProducts.map((product) => {
-                const frontImage = product.images[0];
-                const isPreselected = preselectedIds.includes(product.slug);
-                return (
-                  <article key={product.slug} className="vv-card overflow-hidden transition has-[:checked]:border-retail has-[:checked]:ring-2 has-[:checked]:ring-teal-200 hover:shadow-strong">
-                    <input id={`home-trial-${product.slug}`} type="checkbox" name="productIds" value={product.slug} defaultChecked={isPreselected} className="sr-only" />
-                    <label htmlFor={`home-trial-${product.slug}`} className="block cursor-pointer">
-                    <div className="grid grid-cols-[80px_1fr] gap-3 p-3">
-                      <div className="relative aspect-square overflow-hidden rounded bg-slate-50">
-                        {frontImage ? (
-                          <Image src={frontImage.url} alt={frontImage.alt} fill className="object-contain p-1" sizes="80px" />
-                        ) : null}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-500">{product.brand}</p>
-                        <p className="truncate font-extrabold">{product.name}</p>
-                        <p className="mt-1 text-sm font-bold text-retail">{formatMoney(product.pricePaise)}</p>
-                        <p className="mt-1 text-xs text-slate-400">{product.colour} · {product.shape}</p>
-                      </div>
-                    </div>
-                    </label>
-                    <div className="flex items-center justify-between gap-2 border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500">
-                      <label htmlFor={`home-trial-${product.slug}`} className="inline-flex cursor-pointer items-center gap-2 hover:text-retail">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Select frame
-                      </label>
-                      <Link href={`/frames/${product.slug}`} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 font-extrabold text-teal-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-teal-50 hover:ring-teal-200">
-                        View frame
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Booking Form */}
-          <aside className="vv-card sticky top-28 self-start p-6">
-            <h2 className="text-xl font-extrabold">Your request details</h2>
-            <div className="mt-5 grid gap-4">
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Name
-                <input className="store-input" type="text" name="name" required placeholder="Full name" />
-              </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Phone
-                <input className="store-input" type="tel" name="phone" required placeholder="e.g. 9876543210" />
-              </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Full address
-                <textarea className="store-input min-h-20 py-2" name="address" required placeholder="House/flat, street, area, city, pincode" />
-              </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Hyderabad pincode
-                <input className="store-input" type="text" name="pincode" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required placeholder="6-digit pincode" />
-              </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Preferred date
-                <input className="store-input" type="date" name="preferredDate" required min={new Date().toISOString().split("T")[0]} />
-              </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Preferred time window
-                <select className="store-input" name="preferredSlot" required>
-                  {timeSlots.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-                Notes (optional)
-                <textarea className="store-input min-h-16 py-2" name="notes" placeholder="Special requests for the visit..." />
-              </label>
-            </div>
-
-            <div className="mt-5 rounded-vv bg-slate-50 p-4 text-sm">
-              <p className="font-bold text-slate-700">No payment, deposit, or service fee is collected with this request.</p>
-              <p className="mt-2 text-xs text-slate-500">This does not reserve frames or confirm a visit. We will contact you after confirming service-area coverage, frame availability, and team capacity.</p>
-            </div>
-
-            <button className="vv-button-retail mt-5 w-full" type="submit">
-              <Home className="h-4 w-4" />
-              Request Home Trial
-            </button>
-          </aside>
-        </form>
+        <TryAtHomeRequestForm
+          products={eligibleProducts.map((product) => ({
+            slug: product.slug,
+            name: product.name,
+            brand: product.brand,
+            pricePaise: product.pricePaise,
+            colour: product.colour,
+            shape: product.shape,
+            image: product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt } : undefined
+          }))}
+          initialProductIds={preselectedIds}
+          isSignedIn={Boolean(customerSession)}
+          loginHref={`/account/login?callbackUrl=${encodeURIComponent(returnTo)}`}
+          action={tryAtHomeAction}
+        />
       </FadeIn>
     </main>
   );
 }
 
 function InfoCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
-  return (
-    <div className="vv-card p-5">
-      <div className="text-retail">{icon}</div>
-      <h3 className="mt-3 font-extrabold">{title}</h3>
-      <p className="mt-1 text-sm text-slate-600">{body}</p>
-    </div>
-  );
+  return <div className="vv-card p-5"><div className="text-retail">{icon}</div><h3 className="mt-3 font-extrabold">{title}</h3><p className="mt-1 text-sm text-slate-600">{body}</p></div>;
 }

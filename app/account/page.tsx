@@ -10,7 +10,7 @@ import { uploadFormFile } from "@/lib/uploads";
 import { deletePrescriptionAsset } from "@/lib/prescriptions";
 import { rateLimit } from "@/lib/rate-limit";
 import { revalidatePath } from "next/cache";
-import { ArrowRight, ClipboardList, FileText, Heart, LogOut, Package, ShieldCheck, ShoppingBag } from "lucide-react";
+import { ArrowRight, CalendarCheck, ClipboardList, FileText, Heart, Home, LogOut, Package, ShieldCheck, ShoppingBag } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 
 export const metadata = { title: "My Account | Vision Vistara" };
@@ -27,7 +27,7 @@ export default async function CustomerDashboardPage({
   const params = (await searchParams) ?? {};
 
   // Fetch recent orders
-  const [orders, totalOrders, wishlistCount] = await Promise.all([
+  const [orders, totalOrders, wishlistCount, homeTrials, totalHomeTrials] = await Promise.all([
     prisma.order.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
@@ -35,7 +35,13 @@ export default async function CustomerDashboardPage({
       include: { _count: { select: { items: true } } }
     }),
     prisma.order.count({ where: { userId: user.id } }),
-    prisma.wishlistItem.count({ where: { userId: user.id } })
+    prisma.wishlistItem.count({ where: { userId: user.id } }),
+    prisma.tryAtHomeRequest.findMany({
+      where: { OR: [{ userId: user.id }, ...(user.phone ? [{ phone: user.phone }] : [])] },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    }),
+    prisma.tryAtHomeRequest.count({ where: { OR: [{ userId: user.id }, ...(user.phone ? [{ phone: user.phone }] : [])] } })
   ]);
 
   // Fetch prescriptions
@@ -204,9 +210,9 @@ export default async function CustomerDashboardPage({
         <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Account overview">
           <Link href="/account/orders" className="group rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-950/5 sm:p-5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><Package className="h-4 w-4" /></span>
-            <p className="mt-4 text-2xl font-extrabold text-slate-950">{totalOrders}</p>
-            <p className="mt-0.5 text-xs font-bold text-slate-500">Total orders</p>
-            <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-extrabold text-blue-700">Order history <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /></span>
+            <p className="mt-4 text-2xl font-extrabold text-slate-950">{totalOrders + totalHomeTrials}</p>
+            <p className="mt-0.5 text-xs font-bold text-slate-500">Orders & home trials</p>
+            <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-extrabold text-blue-700">View activity <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /></span>
           </Link>
           <Link href="/frames/wishlist" className="group rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-950/5 sm:p-5">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-rose-50 text-rose-600"><Heart className="h-4 w-4" /></span>
@@ -235,15 +241,15 @@ export default async function CustomerDashboardPage({
             <div className="mb-5 flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <h2 className="flex items-center gap-2 text-xl font-extrabold text-slate-900">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-700"><Package className="h-4 w-4" /></span>
-                Recent Orders
+                Recent Orders & Trials
               </h2>
               <Link href="/account/orders" className="inline-flex items-center gap-1 text-xs font-extrabold text-blue-700 hover:text-blue-900">View all <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
 
-            {orders.length === 0 ? (
+            {orders.length === 0 && homeTrials.length === 0 ? (
               <div className="grid flex-1 place-items-center content-center gap-3 rounded-2xl bg-slate-50/80 p-6 text-center text-slate-500">
                 <span className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-slate-300 shadow-sm"><ClipboardList className="h-7 w-7" /></span>
-                <div><p className="text-sm font-extrabold text-slate-800">Your order history will appear here</p><p className="mt-1 text-xs">Discover clinic-verified optical frames.</p></div>
+                <div><p className="text-sm font-extrabold text-slate-800">Your orders and home trials will appear here</p><p className="mt-1 text-xs">Discover clinic-verified optical frames.</p></div>
                 <Link href="/frames" className="vv-button-retail mt-1 text-xs">Browse Frames <ArrowRight className="h-3.5 w-3.5" /></Link>
               </div>
             ) : (
@@ -266,8 +272,21 @@ export default async function CustomerDashboardPage({
                     </div>
                   </div>
                 ))}
+                {homeTrials.map((trial) => (
+                  <div key={trial.id} className="flex items-center justify-between gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-xs transition hover:border-blue-200 hover:bg-white">
+                    <div>
+                      <p className="flex items-center gap-1.5 font-extrabold text-slate-900"><Home className="h-3.5 w-3.5 text-retail" />Home trial request</p>
+                      <p className="mt-1 text-slate-500">{trial.frameCount} {trial.frameCount === 1 ? "frame" : "frames"} · {new Date(trial.createdAt).toLocaleDateString()}</p>
+                      <span className="mt-2 inline-block rounded-full bg-blue-100 px-2 py-1 text-[10px] font-extrabold text-blue-800">{ORDER_STATUS_LABELS[trial.status] ?? trial.status}</span>
+                    </div>
+                    <div className="text-right">
+                      <strong className="block text-xs font-extrabold text-slate-800">{new Date(trial.preferredDate).toLocaleDateString()}</strong>
+                      <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-blue-700"><CalendarCheck className="h-3 w-3" />{trial.preferredSlot}</span>
+                    </div>
+                  </div>
+                ))}
                 
-                {orders.length >= 5 && (
+                {totalOrders + totalHomeTrials > orders.length + homeTrials.length && (
                   <Link href="/account/orders" className="text-xs text-retail font-bold hover:underline mt-2 text-center block">
                     View all order history
                   </Link>

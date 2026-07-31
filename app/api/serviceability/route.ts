@@ -8,7 +8,7 @@ export function GET(request: Request) {
   }
 
   if (!isLocalPincodeServiceable(pincode)) {
-    return NextResponse.json({ serviceable: false, message: localServiceabilityMessage("delivery") });
+    return NextResponse.json({ serviceable: false, message: localServiceabilityMessage() });
   }
 
   return NextResponse.json({

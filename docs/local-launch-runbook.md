@@ -6,7 +6,8 @@ tax, employment, or consumer-law advice.
 ## Before the site is public
 
 1. Set `LOCAL_SERVICE_PINCODES` in the production service: a comma-separated
-   list of pincodes the team can actually fulfil.
+   list of pincodes the team can fulfil for COD delivery. Home-trial requests
+   are accepted from any valid Indian pincode and must be reviewed manually.
 2. Do not publish a physical address, map, walk-in, or showroom claim unless
    Vision Vistara actually opens a staffed public location.
 3. Assign one named staff member per shift to own new leads, COD orders,
@@ -33,7 +34,8 @@ tax, employment, or consumer-law advice.
 
 ## Every home-trial request
 
-1. Check the request pincode is in `LOCAL_SERVICE_PINCODES`.
+1. Check the request pincode, practical travel route, and staff availability;
+   never confirm a visit merely because the request was submitted.
 2. Confirm every chosen frame is physically available and photograph/scan the
    handover if the team uses that process.
 3. Confirm the address, date, time, staff assignee, and return handover on
@@ -55,7 +57,7 @@ tax, employment, or consumer-law advice.
 Pause ads and home-trial promotion if any of these are true:
 
 - Staff are taking more than ten minutes to respond during advertised hours.
-- A pincode is being accepted that the team cannot serve.
+- A home-trial visit is being confirmed without a viable route and staff plan.
 - Product stock or pricing is inaccurate.
 - A prescription order is moving without review.
 - The production preflight, backup restore, provider canary, or worker

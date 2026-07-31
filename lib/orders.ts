@@ -352,11 +352,12 @@ export async function tryAtHomeAction(formData: FormData) {
 
   if (!parsed.success) redirect("/frames/try-at-home?error=invalid-details");
 
-  // A home-trial request must be serviceable before it creates staff work or
-  // stores a customer address. The configured pincode list is the launch
-  // contract; an unconfigured list intentionally accepts no requests.
-  if (!isLocalPincodeServiceable(parsed.data.pincode)) {
-    redirect("/frames/try-at-home?error=service-unavailable");
+  // A signed-in customer is required so the availability request is visible
+  // in My Account. We accept every valid pincode here; operations confirms
+  // routing, frame availability, and the visit only after the final review.
+  const customerSession = await getCustomerSession();
+  if (!customerSession) {
+    redirect("/account/login?callbackUrl=%2Fframes%2Ftry-at-home");
   }
 
   const uniqueProductIds = [...new Set(parsed.data.productIds)];
@@ -394,6 +395,7 @@ export async function tryAtHomeAction(formData: FormData) {
   const request = await prisma.$transaction(async (tx) => {
     const created = await tx.tryAtHomeRequest.create({
       data: {
+        userId: customerSession.userId,
         name: parsed.data.name,
         phone,
         address: parsed.data.address,

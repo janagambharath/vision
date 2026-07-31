@@ -92,7 +92,7 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
         />
 
         <div className="rounded-vv border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-950">
-          <strong>Hyderabad local service:</strong> delivery and home trials are available in selected pincodes. We confirm every COD order before dispatch.
+          <strong>Local delivery:</strong> COD delivery is available in selected Hyderabad pincodes. Home-trial requests accept any valid Indian pincode and are confirmed before a visit is booked.
         </div>
 
         <div className="mt-2">

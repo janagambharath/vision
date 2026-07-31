@@ -125,6 +125,7 @@ model User {
   reviews       Review[]
   prescriptions Prescription[]
   shipping      ShippingAddress[]
+  homeTrials    TryAtHomeRequest[]
 
   @@index([phone])
   @@index([createdAt])
@@ -608,6 +609,7 @@ model ShippingAddress {
 model TryAtHomeRequest {
   id              String      @id @default(cuid())
   orderId         String?     @unique
+  userId          String?
   name            String
   phone           String
   address         String
@@ -623,6 +625,7 @@ model TryAtHomeRequest {
   productIds      String[]
   notes           String?
   order           Order?      @relation(fields: [orderId], references: [id])
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -630,6 +633,7 @@ model TryAtHomeRequest {
   @@index([status])
   @@index([preferredDate])
   @@index([pincode])
+  @@index([userId])
 }
 
 model Prescription {

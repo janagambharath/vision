@@ -7,6 +7,7 @@ import { Smartphone, RefreshCw, Key, ArrowRight, CheckCircle2 } from "lucide-rea
 
 export default function CustomerLoginPage() {
   const router = useRouter();
+  const [callbackUrl, setCallbackUrl] = useState("/account");
   
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -21,12 +22,17 @@ export default function CustomerLoginPage() {
       .then(async (response) => response.ok ? response.json() : {})
       .then((providers) => setGoogleAvailable(Boolean(providers.google)))
       .catch(() => setGoogleAvailable(false));
+
+    const requestedCallback = new URLSearchParams(window.location.search).get("callbackUrl");
+    if (requestedCallback?.startsWith("/") && !requestedCallback.startsWith("//")) {
+      setCallbackUrl(requestedCallback);
+    }
   }, []);
 
   const signInWithGoogle = () => {
     setError(null);
     setLoading(true);
-    void signIn("google", { callbackUrl: "/account" });
+    void signIn("google", { callbackUrl });
   };
 
   const sendOtp = async (e: React.FormEvent) => {
@@ -69,7 +75,7 @@ export default function CustomerLoginPage() {
       if (!res.ok) throw new Error(data.error ?? "Invalid verification code.");
       
       // Success redirect
-      router.push("/account");
+      router.push(callbackUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

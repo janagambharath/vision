@@ -10,7 +10,7 @@ function configuredPincodes() {
 }
 
 /**
- * Local launch deliveries and home trials are deliberately fail-closed. A
+ * Local launch deliveries are deliberately fail-closed. A
  * city name is not a service area: staff need an explicit, maintained pincode
  * list before accepting a visit or a COD delivery.
  */
@@ -18,9 +18,8 @@ export function isLocalPincodeServiceable(pincode: string) {
   return configuredPincodes().has(pincode.trim());
 }
 
-export function localServiceabilityMessage(kind: "delivery" | "home-trial") {
-  const label = kind === "home-trial" ? "Home trials" : "Delivery";
-  return `${label} is currently available only in selected Hyderabad pincodes. Please contact Vision Vistara on WhatsApp if your area is not listed.`;
+export function localServiceabilityMessage() {
+  return "Delivery is currently available only in selected Hyderabad pincodes. Please contact Vision Vistara on WhatsApp if your area is not listed.";
 }
 
 export function hasConfiguredLocalServicePincodes() {

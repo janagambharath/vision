@@ -169,11 +169,7 @@ export default function ClinicHomePage() {
                   Try at home
                 </span>
                 <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try optical frames from your sofa.</h2>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Available across Hyderabad, subject to pincode, frame availability, and team confirmation.</p>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] font-extrabold text-blue-950">
-                  <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">1. Pick frames</span>
-                  <span className="rounded-xl border border-blue-100 bg-white/80 px-2.5 py-2">2. Choose a slot</span>
-                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Request from any Indian pincode, review your selected frames, then let our team confirm the visit details.</p>
                 <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-blue-700 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-blue-700/20 sm:text-sm">
                   Start a home trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
@@ -371,7 +367,7 @@ export default function ClinicHomePage() {
               title="Practical eyewear guidance before you buy."
             >
               <p>
-                Start online, request a confirmed home visit where serviceable,
+                Start online, request a confirmed home visit from any valid pincode,
                 and get a specialist referral when equipment or treatment is needed.
               </p>
             </SectionHeading>
@@ -503,7 +499,7 @@ export default function ClinicHomePage() {
                   [
                     Home,
                     "Request a confirmed home visit",
-                    "For serviceable Hyderabad pincodes, we confirm your selected frames, preferred time, and team availability first.",
+                    "From any valid Indian pincode, we confirm your selected frames, preferred time, route, and team availability first.",
                   ],
                   [
                     BadgeCheck,
@@ -610,7 +606,7 @@ export default function ClinicHomePage() {
               {[
                 [
                   "Can I request guidance before buying frames?",
-                  "Yes. Start with online guidance, then select frames and lenses or request a serviceable home visit.",
+                  "Yes. Start with online guidance, then select frames and lenses or request a home visit from any valid Indian pincode.",
                 ],
                 [
                   "Where can I browse frames?",

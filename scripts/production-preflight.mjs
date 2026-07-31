@@ -76,7 +76,7 @@ function validateTimestamp(name, maxAgeDays) {
 function validatePincodeList(name) {
   const value = process.env[name]?.trim();
   if (!value) {
-    fail(`${name}: missing; local delivery and home trials must have an explicit service-area list`);
+    fail(`${name}: missing; local COD delivery must have an explicit service-area list`);
     return;
   }
   const pincodes = value.split(",").map((pincode) => pincode.trim());
