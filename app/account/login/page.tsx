@@ -7,7 +7,6 @@ import { Smartphone, RefreshCw, Key, ArrowRight, CheckCircle2 } from "lucide-rea
 
 export default function CustomerLoginPage() {
   const router = useRouter();
-  const [callbackUrl, setCallbackUrl] = useState("/account");
   
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -23,16 +22,19 @@ export default function CustomerLoginPage() {
       .then((providers) => setGoogleAvailable(Boolean(providers.google)))
       .catch(() => setGoogleAvailable(false));
 
-    const requestedCallback = new URLSearchParams(window.location.search).get("callbackUrl");
-    if (requestedCallback?.startsWith("/") && !requestedCallback.startsWith("//")) {
-      setCallbackUrl(requestedCallback);
-    }
   }, []);
+
+  const getCallbackUrl = () => {
+    const requestedCallback = new URLSearchParams(window.location.search).get("callbackUrl");
+    return requestedCallback?.startsWith("/") && !requestedCallback.startsWith("//")
+      ? requestedCallback
+      : "/account";
+  };
 
   const signInWithGoogle = () => {
     setError(null);
     setLoading(true);
-    void signIn("google", { callbackUrl });
+    void signIn("google", { callbackUrl: getCallbackUrl() });
   };
 
   const sendOtp = async (e: React.FormEvent) => {
@@ -75,7 +77,7 @@ export default function CustomerLoginPage() {
       if (!res.ok) throw new Error(data.error ?? "Invalid verification code.");
       
       // Success redirect
-      router.push(callbackUrl);
+      router.push(getCallbackUrl());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
