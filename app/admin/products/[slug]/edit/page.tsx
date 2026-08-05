@@ -169,7 +169,7 @@ export default async function EditProductPage({
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;
     if (status === "ACTIVE" && getPublishBlockersForDraft({
-      name, brand, sku, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
+      name, brand, sku, description, pricePaise, compareAtPaise, costPricePaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
     }).length) redirect(`/admin/products/${currentSlug}/edit?error=publish-incomplete`);
 
     try {
@@ -199,7 +199,7 @@ export default async function EditProductPage({
         }
       });
 
-      const inventoryStatus = pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED";
+      const inventoryStatus = pricePaise && costPricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED";
       if (product!.inventory) {
         const inventoryUpdate = await tx.inventory.updateMany({
           where: { id: product!.inventory.id, reservedStock: { lte: quantity } },

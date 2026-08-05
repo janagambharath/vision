@@ -11,6 +11,8 @@ export const CLINIC_GOOGLE_BUSINESS_URL = process.env.CLINIC_GOOGLE_BUSINESS_PRO
 export const CART_COOKIE = "vv_cart_session";
 export const DIRECT_CHECKOUT_ITEM_COOKIE = "vv_direct_checkout_item";
 export const WISHLIST_COOKIE = "vv_wishlist_session";
+// A route-confirmed local trial may carry up to five selected frames. Operations
+// still batches routes and confirms stock before it commits to a visit.
 export const MAX_HOME_TRIAL_FRAMES = 5;
 
 export const ORDER_STATUS_LABELS: Record<string, string> = {

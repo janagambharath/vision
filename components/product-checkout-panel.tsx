@@ -9,6 +9,7 @@ import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
 import LensSelector from "@/components/lens-selector";
 import SizeGuideModal from "@/components/size-guide-modal";
+import { LOCAL_DELIVERY_PROMISE, LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service-public";
 
 import type { LensOption } from "@prisma/client";
 
@@ -92,7 +93,7 @@ export default function ProductCheckoutPanel({ product, sellable, lensPackages }
         />
 
         <div className="rounded-vv border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs leading-relaxed text-blue-950">
-          <strong>Delivery across India:</strong> COD delivery and home-trial requests accept any valid Indian pincode. We confirm every order and visit before dispatch or booking.
+          <strong>Select Hyderabad delivery:</strong> We currently serve {LOCAL_SERVICE_AREA_LABEL}. Estimated delivery: {LOCAL_DELIVERY_PROMISE}.
         </div>
 
         <div className="mt-2">

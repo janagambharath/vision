@@ -13,6 +13,7 @@ import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { deletePrescriptionAsset, parsePrescriptionSubmission, PrescriptionValidationError } from "@/lib/prescriptions";
 import { grantOrderAccess } from "@/lib/order-access";
 import { sendOrderReceivedNotifications } from "@/lib/payment-fulfillment";
+import { isLocalLaunchPincode } from "@/lib/local-service";
 import {
   getCheckoutReservationExpiry,
   InventoryReservationConflictError,
@@ -41,6 +42,9 @@ export async function checkoutAction(formData: FormData) {
 
   const parsed = checkoutSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) redirect("/frames/checkout?error=invalid-details");
+  if (!isLocalLaunchPincode(parsed.data.pincode)) {
+    redirect("/frames/checkout?error=outside-service-zone");
+  }
 
   const checkoutScope = formData.get("checkoutScope") === "CART" ? "CART" : "DIRECT";
   const cart = await getCheckoutCartOrNull(checkoutScope === "CART");
@@ -343,10 +347,13 @@ export async function tryAtHomeAction(formData: FormData) {
   });
 
   if (!parsed.success) redirect("/frames/try-at-home?error=invalid-details");
+  if (!isLocalLaunchPincode(parsed.data.pincode)) {
+    redirect("/frames/try-at-home?error=outside-service-zone");
+  }
 
   // A signed-in customer is required so the availability request is visible
-  // in My Account. We accept every valid pincode here; operations confirms
-  // routing, frame availability, and the visit only after the final review.
+  // in My Account. Pincode eligibility is checked above; operations still
+  // confirms route capacity, frame availability, and the visit.
   const customerSession = await getCustomerSession();
   if (!customerSession) {
     redirect("/account/login?callbackUrl=%2Fframes%2Ftry-at-home");

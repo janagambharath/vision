@@ -26,8 +26,9 @@ export async function updateInventoryAction(formData: FormData) {
   if (!product) return;
   const status: InventoryStatus =
     quantity === 0 ? "OUT_OF_STOCK" :
+    !product.pricePaise || !product.costPricePaise ? "PRICE_REQUIRED" :
     quantity <= (product.inventory?.lowStockThreshold ?? 2) ? "LOW_STOCK" :
-    product.pricePaise ? "IN_STOCK" : "PRICE_REQUIRED";
+    "IN_STOCK";
 
   if (product.inventory) {
     const updated = await prisma.inventory.updateMany({
@@ -73,8 +74,9 @@ export async function receiveStockAction(formData: FormData) {
 
   const status: InventoryStatus =
     quantity === 0 ? "OUT_OF_STOCK" :
+    !product.pricePaise || !product.costPricePaise ? "PRICE_REQUIRED" :
     quantity <= (product.inventory?.lowStockThreshold ?? 2) ? "LOW_STOCK" :
-    product.pricePaise ? "IN_STOCK" : "PRICE_REQUIRED";
+    "IN_STOCK";
 
   await prisma.inventory.upsert({
     where: { productId: product.id },

@@ -47,6 +47,16 @@ The preflight can validate the local worker manifests, but it cannot discover
 Railway scheduled services or safely invoke chargeable/mutating provider APIs.
 Do not set an attestation timestamp without the evidence above.
 
+## Hyderabad local-service configuration
+
+The public launch is limited to the comma-separated six-digit pincodes in
+`HYDERABAD_SERVICEABLE_PINCODES`. This variable is a release-gate requirement.
+It controls delivery and home-trial eligibility on both the customer API and
+the server-side order actions; do not widen it merely to accept a lead. Expand
+only after route capacity, fulfillment timing, and staff coverage have been
+measured in the existing zone. The optional public label
+`NEXT_PUBLIC_HYDERABAD_SERVICE_AREA_LABEL` must accurately describe that list.
+
 ## Database Backups
 
 Run a verified local dump before every production release and schedule the same command hourly on the host:

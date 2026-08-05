@@ -7,10 +7,11 @@ import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import { TryAtHomeRequestForm } from "@/components/try-at-home-request-form";
 import { MAX_HOME_TRIAL_FRAMES, SITE_URL } from "@/lib/constants";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { LOCAL_HOME_TRIAL_PROMISE, LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service";
 
 export const metadata: Metadata = {
   title: "Try at Home",
-  description: "Choose up to 5 eligible frames and request a Vision Vistara home trial from any Indian pincode. Review your selection before sending; we confirm the visit details before booking.",
+  description: "Choose up to 3 eligible frames and request a route-confirmed Vision Vistara home trial in select Hyderabad neighbourhoods.",
   alternates: { canonical: `${SITE_URL}/frames/try-at-home` }
 };
 
@@ -51,9 +52,9 @@ export default async function TryAtHomePage({
 
         <div className="mb-8">
           <p className="vv-kicker flex items-center gap-2 text-retail"><Home className="h-4 w-4" />Try at Home</p>
-          <h1 className="text-4xl font-extrabold">Try frames at home before you buy.</h1>
+          <h1 className="text-4xl font-extrabold">Try selected frames at home before you buy.</h1>
           <p className="mt-3 max-w-3xl text-slate-600">Select up to {MAX_HOME_TRIAL_FRAMES} eligible frames, add your preferred date and time, then review every detail before sending your request. A visit is scheduled only after our team confirms the route, frame availability, and capacity.</p>
-          <p className="mt-2 text-sm font-bold text-blue-800">You can request a home trial from any valid Indian pincode. We confirm the final visit details after your request.</p>
+          <p className="mt-2 text-sm font-bold text-blue-800">{LOCAL_HOME_TRIAL_PROMISE}: {LOCAL_SERVICE_AREA_LABEL}.</p>
           <div className="mt-4 rounded-vv border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950"><strong>Kids&apos; frames require a doctor&apos;s prescription.</strong><p className="mt-1 text-xs leading-relaxed text-blue-800">Please keep the prescription ready when requesting a home trial for a child.</p></div>
         </div>
 
@@ -69,21 +70,29 @@ export default async function TryAtHomePage({
           <StaggerItem><InfoCard icon={<Truck className="h-8 w-8" />} title="We confirm first" body="We confirm route, frame availability, and team capacity before scheduling." /></StaggerItem>
         </StaggerContainer>
 
-        <TryAtHomeRequestForm
-          products={eligibleProducts.map((product) => ({
-            slug: product.slug,
-            name: product.name,
-            brand: product.brand,
-            pricePaise: product.pricePaise,
-            colour: product.colour,
-            shape: product.shape,
-            image: product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt } : undefined
-          }))}
-          initialProductIds={preselectedIds}
-          isSignedIn={Boolean(customerSession)}
-          loginHref={`/account/login?callbackUrl=${encodeURIComponent(returnTo)}`}
-          action={tryAtHomeAction}
-        />
+        {eligibleProducts.length ? (
+          <TryAtHomeRequestForm
+            products={eligibleProducts.map((product) => ({
+              slug: product.slug,
+              name: product.name,
+              brand: product.brand,
+              pricePaise: product.pricePaise,
+              colour: product.colour,
+              shape: product.shape,
+              image: product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt } : undefined
+            }))}
+            initialProductIds={preselectedIds}
+            isSignedIn={Boolean(customerSession)}
+            loginHref={`/account/login?callbackUrl=${encodeURIComponent(returnTo)}`}
+            action={tryAtHomeAction}
+          />
+        ) : (
+          <section className="vv-card max-w-2xl p-6 sm:p-8">
+            <h2 className="text-2xl font-extrabold">No verified trial frames are available yet.</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">We do not schedule a trial until frame stock, price, and product details have been checked. Contact us on WhatsApp to register your requirements and receive an update when the local collection is ready.</p>
+            <Link className="vv-button-retail mt-6" href="https://wa.me/917842938316?text=Hello%20Vision%20Vistara%2C%20please%20notify%20me%20when%20the%20local%20frame%20collection%20is%20ready.">Request an update</Link>
+          </section>
+        )}
       </FadeIn>
     </main>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { CLINIC_NAME, CLINIC_PHONE, SITE_URL } from "@/lib/constants";
+import { LOCAL_DELIVERY_PROMISE, LOCAL_HOME_TRIAL_PROMISE, LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -27,7 +28,7 @@ export default function TermsPage() {
 
             <section>
               <h2>2. About {CLINIC_NAME}</h2>
-              <p>{CLINIC_NAME} is an optical clinic and eyewear retailer operating from Hyderabad, Telangana, India. Our platform provides clinic appointment booking, an online frames store with checkout, AI-powered virtual try-on, and try-at-home services.</p>
+              <p>{CLINIC_NAME} is an optical clinic and eyewear retailer serving select Hyderabad, Telangana neighbourhoods. Our platform provides appointment requests, an online frames store with checkout, AI-powered virtual try-on, and route-confirmed try-at-home services.</p>
             </section>
 
             <section>
@@ -47,12 +48,12 @@ export default function TermsPage() {
 
             <section>
               <h2>6. Try-at-Home Service</h2>
-              <p>Submitting a Try-at-Home form is an availability request, not a confirmed booking or reservation of frames. We do not collect payment, a deposit, or a service fee through that request. A trial is subject to eligible frame stock, service-area coverage, and team capacity; your requested date and time are preferences only. We will contact you to confirm visit details before a trial is scheduled. For a confirmed trial, frames must be returned in the condition and timeframe agreed during that confirmation.</p>
+              <p>Submitting a Try-at-Home form is an availability request, not a confirmed booking or reservation of frames. We do not collect payment, a deposit, or a service fee through that request. {LOCAL_HOME_TRIAL_PROMISE} in {LOCAL_SERVICE_AREA_LABEL}; a trial is subject to eligible frame stock and team capacity, and your requested date and time are preferences only. We will contact you to confirm visit details before a trial is scheduled. For a confirmed trial, frames must be returned in the condition and timeframe agreed during that confirmation.</p>
             </section>
 
             <section>
               <h2>7. Delivery</h2>
-              <p>Delivery estimates are indicative and not guaranteed. We partner with third-party logistics providers and are not liable for delays beyond our control. Risk of loss transfers to you upon delivery confirmation.</p>
+              <p>Local delivery is limited to our published Hyderabad service zone. The current estimate is {LOCAL_DELIVERY_PROMISE}; it is indicative and not guaranteed. We are not liable for delays beyond our control. Risk of loss transfers to you upon delivery confirmation.</p>
             </section>
 
             <section>

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
       const nextPricePaise = hasPrice ? pricePaise! : product.pricePaise;
       const nextQuantity = hasQuantity ? quantity! : product.inventory?.quantity ?? 0;
-      const inventoryStatus = nextPricePaise === null
+      const inventoryStatus = nextPricePaise === null || !product.costPricePaise
         ? "PRICE_REQUIRED"
         : nextQuantity === 0
           ? "OUT_OF_STOCK"

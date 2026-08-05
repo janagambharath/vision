@@ -9,6 +9,7 @@ const readyProduct = {
   description: "A lightweight full-rim acetate optical frame.",
   pricePaise: 199900,
   compareAtPaise: 249900,
+  costPricePaise: 65000,
   quantity: 4,
   imageRoles: ["front", "angle"],
   categoryCount: 1,
@@ -24,6 +25,7 @@ test("product publish guard rejects missing commercial and catalog essentials", 
   const blockers = getPublishBlockersForDraft({
     ...readyProduct,
     pricePaise: null,
+    costPricePaise: null,
     quantity: 0,
     imageRoles: [],
     categoryCount: 0,
@@ -32,6 +34,7 @@ test("product publish guard rejects missing commercial and catalog essentials", 
 
   assert.deepEqual(blockers, [
     "a selling price is required",
+    "a landed cost is required",
     "stock quantity must be greater than zero",
     "at least one product image is required",
     "at least one category is required"
@@ -44,12 +47,14 @@ test("product creation never accepts an incomplete draft", () => {
     ...createCandidate,
     description: "",
     pricePaise: null,
+    costPricePaise: null,
     quantity: -1,
     imageRoles: [],
     categoryCount: 0
   }), [
     "a product description is required",
     "a selling price is required",
+    "a landed cost is required",
     "a valid stock quantity is required",
     "at least one product image is required",
     "at least one category is required"

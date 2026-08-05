@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { CLINIC_PHONE, SITE_URL } from "@/lib/constants";
+import { LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service";
 
 export const metadata: Metadata = {
   title: "Return & Refund Policy",
@@ -35,7 +36,7 @@ export default function ReturnPolicyPage() {
 
             <section>
               <h2>3. Try-at-Home Requests</h2>
-              <p>Submitting a Try-at-Home form creates a no-payment availability request, not a paid order or a confirmed booking. It does not reserve frames. We assess service-area coverage, eligible-frame availability, and team capacity, then contact you if we can confirm the visit details. Because no payment, deposit, or service fee is collected through the request, there is no Try-at-Home deposit refund process.</p>
+              <p>Submitting a Try-at-Home form creates a no-payment availability request, not a paid order or a confirmed booking. It does not reserve frames. The service is limited to {LOCAL_SERVICE_AREA_LABEL}; we assess route capacity and eligible-frame availability, then contact you if we can confirm the visit details. Because no payment, deposit, or service fee is collected through the request, there is no Try-at-Home deposit refund process.</p>
             </section>
 
             <section>

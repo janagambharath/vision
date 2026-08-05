@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { SectionHeading } from "@/components/section-heading";
 import { SiteHeader } from "@/components/site-header";
 import { CLINIC_PHONE, SITE_URL } from "@/lib/constants";
+import { LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service";
 
 export const metadata: Metadata = {
   title: "Online & Home Visit Eye Care",
@@ -22,7 +23,7 @@ const services: Array<{ icon: LucideIcon; title: string; description: string; de
   {
     icon: Glasses,
     title: "Scheduled home frame fitting",
-    description: "Choose eligible frames online and request a scheduled home visit from any valid Indian pincode. Every request is confirmed before a visit is booked.",
+    description: "Choose eligible frames online and request a route-confirmed home visit in our select Hyderabad service zone. Every request is confirmed before a visit is booked.",
     details: ["Select up to five eligible frames", "Route and stock confirmation", "Preferred time window", "No walk-in location required"]
   },
   {
@@ -55,7 +56,7 @@ export default function ServicesPage() {
           <div className="vv-container py-24 md:py-32">
             <p className="mb-4 text-xs font-extrabold uppercase text-cyan-300">Online and home-visit care</p>
             <h1 className="max-w-3xl text-4xl font-extrabold leading-tight md:text-6xl">Eye-care guidance and eyewear support, without a walk-in location.</h1>
-            <p className="mt-6 max-w-2xl text-lg text-slate-300">Start online, request a scheduled home visit from any valid Indian pincode, and get a clear referral when specialist equipment or treatment is needed.</p>
+            <p className="mt-6 max-w-2xl text-lg text-slate-300">Start online, request a scheduled home visit in {LOCAL_SERVICE_AREA_LABEL}, and get a clear referral when specialist equipment or treatment is needed.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link className="vv-button-primary" href="/appointments"><CalendarCheck className="h-5 w-5" />Request guidance</Link>
               <a className="vv-button bg-emerald-400 text-ink" href={`https://wa.me/91${CLINIC_PHONE}?text=Hello%20Vision%20Vistara%2C%20I%20need%20online%20guidance%20or%20a%20home%20visit.`} target="_blank" rel="noopener"><MessageCircle className="h-5 w-5" />WhatsApp Us</a>

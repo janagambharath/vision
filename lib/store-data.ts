@@ -240,7 +240,20 @@ function normalizeStoreProductOptions(options: GetStoreProductsOptions): Normali
 
 function storeProductWhere(options: NormalizedStoreProductOptions) {
   const where: Record<string, unknown> = { deletedAt: null };
-  if (!options.includeDrafts) where.status = "ACTIVE";
+  if (!options.includeDrafts) {
+    // Public catalog pages are a commercial promise, not an internal product
+    // backlog. Do not expose an item until it has a selling price, a recorded
+    // landed cost, physical stock, and a COD path.
+    where.status = "ACTIVE";
+    where.costPricePaise = { gt: 0 };
+    where.codAvailable = true;
+    where.inventory = {
+      is: {
+        quantity: { gt: 0 },
+        status: { in: ["IN_STOCK", "LOW_STOCK"] }
+      }
+    };
+  }
   else if (options.status) where.status = options.status;
   if (options.featuredOnly) where.featured = true;
   if (options.gender) where.gender = options.gender;
@@ -249,8 +262,9 @@ function storeProductWhere(options: NormalizedStoreProductOptions) {
   if (options.material) where.material = { contains: options.material, mode: "insensitive" };
   if (options.color) where.colour = { contains: options.color, mode: "insensitive" };
   if (options.brand) where.brand = { contains: options.brand, mode: "insensitive" };
-  if (options.priceMin !== undefined || options.priceMax !== undefined) {
+  if (options.priceMin !== undefined || options.priceMax !== undefined || !options.includeDrafts) {
     const pricePaise: Record<string, number> = {};
+    if (!options.includeDrafts) pricePaise.gt = 0;
     if (options.priceMin !== undefined) pricePaise.gte = options.priceMin;
     if (options.priceMax !== undefined) pricePaise.lte = options.priceMax;
     where.pricePaise = pricePaise;
@@ -338,7 +352,15 @@ export async function getStoreProduct(slug: string) {
   if (!hasDatabaseUrl()) return null;
 
   const product = await prisma.product.findFirst({
-    where: { slug, status: "ACTIVE", deletedAt: null },
+    where: {
+      slug,
+      status: "ACTIVE",
+      deletedAt: null,
+      pricePaise: { gt: 0 },
+      costPricePaise: { gt: 0 },
+      codAvailable: true,
+      inventory: { is: { quantity: { gt: 0 }, status: { in: ["IN_STOCK", "LOW_STOCK"] } } }
+    },
     include: {
       images: { orderBy: { sortOrder: "asc" } },
       inventory: true,
@@ -401,7 +423,11 @@ export async function getProductsBySlugs(slugs: string[]) {
     where: {
       slug: { in: slugs },
       status: "ACTIVE",
-      deletedAt: null
+      deletedAt: null,
+      pricePaise: { gt: 0 },
+      costPricePaise: { gt: 0 },
+      codAvailable: true,
+      inventory: { is: { quantity: { gt: 0 }, status: { in: ["IN_STOCK", "LOW_STOCK"] } } }
     },
     include: PRODUCT_INCLUDE
   });
@@ -420,6 +446,10 @@ export async function getRelatedProducts(product: StoreProduct, limit = 4) {
     where: {
       deletedAt: null,
       status: "ACTIVE",
+      pricePaise: { gt: 0 },
+      costPricePaise: { gt: 0 },
+      codAvailable: true,
+      inventory: { is: { quantity: { gt: 0 }, status: { in: ["IN_STOCK", "LOW_STOCK"] } } },
       slug: { not: product.slug },
       categories: product.categories.length > 0
         ? { some: { category: { slug: { in: product.categories } } } }
@@ -435,7 +465,15 @@ export async function getFeaturedProducts(limit = 8) {
   if (!hasDatabaseUrl()) return [];
 
   const products = await prisma.product.findMany({
-    where: { deletedAt: null, status: "ACTIVE", featured: true },
+    where: {
+      deletedAt: null,
+      status: "ACTIVE",
+      featured: true,
+      pricePaise: { gt: 0 },
+      costPricePaise: { gt: 0 },
+      codAvailable: true,
+      inventory: { is: { quantity: { gt: 0 }, status: { in: ["IN_STOCK", "LOW_STOCK"] } } }
+    },
     include: PRODUCT_INCLUDE,
     orderBy: { createdAt: "desc" },
     take: limit
@@ -517,7 +555,14 @@ export async function getProductSlugs() {
   if (!hasDatabaseUrl()) return [];
 
   const products = await prisma.product.findMany({
-    where: { status: "ACTIVE", deletedAt: null },
+    where: {
+      status: "ACTIVE",
+      deletedAt: null,
+      pricePaise: { gt: 0 },
+      costPricePaise: { gt: 0 },
+      codAvailable: true,
+      inventory: { is: { quantity: { gt: 0 }, status: { in: ["IN_STOCK", "LOW_STOCK"] } } }
+    },
     select: { slug: true, updatedAt: true }
   });
   return products.map((product) => ({ slug: product.slug, updatedAt: product.updatedAt }));

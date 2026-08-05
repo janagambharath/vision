@@ -370,12 +370,13 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
                 placeholder="e.g. 2499.00" />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              Cost Price (₹)
-              <input className="store-input" type="number" step="0.01" name="costPricePaise"
+              Landed Cost (₹) *
+              <input className="store-input" type="number" step="0.01" min="0.01" name="costPricePaise" required
                 defaultValue={product?.costPricePaise ? product.costPricePaise / 100 : ""}
-                placeholder="For margin calculation" />
+                placeholder="Supplier + inbound cost per frame" />
             </label>
           </div>
+          <p className="-mt-2 text-xs leading-relaxed text-slate-500">A product cannot be published until its selling price exceeds its landed cost. Add lens, delivery, and support costs to the launch margin sheet before setting the final price.</p>
 
           <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2 mt-4">Inventory</h2>
           <div className="grid gap-4 sm:grid-cols-3">

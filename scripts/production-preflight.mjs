@@ -73,6 +73,20 @@ function validateTimestamp(name, maxAgeDays) {
   pass(`${name}: recent`);
 }
 
+function validateLocalLaunchPincodes() {
+  const value = process.env.HYDERABAD_SERVICEABLE_PINCODES?.trim();
+  if (!value) {
+    fail("local launch: HYDERABAD_SERVICEABLE_PINCODES is required; do not ship with an implicit service area");
+    return;
+  }
+  const pincodes = value.split(",").map((pincode) => pincode.trim()).filter(Boolean);
+  if (!pincodes.length || pincodes.some((pincode) => !/^\d{6}$/.test(pincode))) {
+    fail("local launch: HYDERABAD_SERVICEABLE_PINCODES must be a comma-separated list of six-digit pincodes");
+    return;
+  }
+  pass(`local launch: ${pincodes.length} serviceable pincode(s) configured`);
+}
+
 function checkWorkerManifests() {
   const workers = [
     ["abandoned-carts.json", "npm run worker:abandoned-carts"],
@@ -216,6 +230,7 @@ async function main() {
   requireVariables("customer AI try-on", ["GEMINI_API_KEY", "GEMINI_TRY_ON_MODEL"]);
   requireVariables("fulfillment", ["SHIPROCKET_EMAIL", "SHIPROCKET_PASSWORD", "SHIPROCKET_PICKUP_LOCATION"]);
   requireVariables("notifications", ["RESEND_API_KEY", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN", "CLINIC_PHONE"]);
+  validateLocalLaunchPincodes();
   pass("rate limiting: production requires Redis and public mutations fail closed during an outage");
 
   const authSecret = process.env.AUTH_SECRET?.trim();

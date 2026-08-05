@@ -34,6 +34,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams?: Pr
   );
   const error = rawError === "invalid-details"
     ? "Please complete every required delivery field and try again."
+    : rawError === "outside-service-zone"
+      ? "Delivery is currently limited to our select Hyderabad launch neighbourhoods. Please contact us on WhatsApp if you need help."
     : rawError === "order-rate-limited"
       ? "Too many order attempts. Please wait a little while before trying again."
       : rawError === "coupon-unavailable"

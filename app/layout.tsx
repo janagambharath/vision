@@ -10,11 +10,11 @@ export const metadata: Metadata = {
     template: `%s | ${CLINIC_NAME}`,
   },
   description:
-    "Vision Vistara Optics & Lasers Eye Care combines clinic-first eye care with a dedicated premium optical frames store.",
+    "Optometrist-guided prescription eyewear, local frame fitting, and route-confirmed home trials for select Hyderabad customers.",
   openGraph: {
     title: CLINIC_NAME,
     description:
-      "Trusted eye consultation, diagnostics, prescription guidance, and a separate Vision Vistara frames store.",
+      "Optometrist-guided prescription eyewear and local frame fitting for select Hyderabad customers.",
     url: SITE_URL,
     siteName: CLINIC_NAME,
     images: ["/assets/vision-vistara-hero.png"],
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: CLINIC_NAME,
     description:
-      "Clinic-first eye care and a dedicated frames e-commerce store.",
+      "Prescription eyewear guidance and local frame fitting in Hyderabad.",
   },
 };
 

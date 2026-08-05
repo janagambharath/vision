@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { ArrowRight, CalendarCheck, CheckCircle2, Home, MapPin, Package, Pencil, ShieldCheck, Truck } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 import { MAX_HOME_TRIAL_FRAMES } from "@/lib/constants";
+import { LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service-public";
 
 type TrialProduct = {
   slug: string;
@@ -197,13 +198,13 @@ export function TryAtHomeRequestForm({
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">Name<input className="store-input" type="text" name="name" required placeholder="Full name" /></label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">Phone<input className="store-input" type="tel" name="phone" required placeholder="e.g. 9876543210" /></label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">Full address<textarea className="store-input min-h-20 py-2" name="address" required placeholder="House/flat, street, area, city" /></label>
-              <label className="grid gap-1 text-sm font-extrabold text-slate-600">Pincode<input className="store-input" type="text" name="pincode" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required placeholder="Any 6-digit pincode" /></label>
+              <label className="grid gap-1 text-sm font-extrabold text-slate-600">Pincode<input className="store-input" type="text" name="pincode" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required placeholder="Select Hyderabad pincode" /></label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">Preferred date<input className="store-input" type="date" name="preferredDate" required min={new Date().toISOString().split("T")[0]} /></label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">Preferred time window<select className="store-input" name="preferredSlot" defaultValue="10:00 AM – 12:00 PM" required>{["10:00 AM – 12:00 PM", "12:00 PM – 2:00 PM", "2:00 PM – 4:00 PM", "4:00 PM – 6:00 PM", "6:00 PM – 8:00 PM"].map((slot) => <option key={slot} value={slot}>{slot}</option>)}</select></label>
               <label className="grid gap-1 text-sm font-extrabold text-slate-600">Notes (optional)<textarea className="store-input min-h-16 py-2" name="notes" placeholder="Special requests for the visit..." /></label>
             </div>
 
-            <div className="mt-5 rounded-vv bg-slate-50 p-4 text-sm"><p className="font-bold text-slate-700">No payment, deposit, or service fee is collected with this request.</p><p className="mt-2 text-xs text-slate-500">Any valid Indian pincode can be requested. We confirm route, frame availability, and team capacity before booking a visit.</p></div>
+            <div className="mt-5 rounded-vv bg-slate-50 p-4 text-sm"><p className="font-bold text-slate-700">No payment, deposit, or service fee is collected with this request.</p><p className="mt-2 text-xs text-slate-500">Home trials are limited to {LOCAL_SERVICE_AREA_LABEL}. We confirm route, frame availability, and team capacity before booking a visit.</p></div>
             <button className="vv-button-retail mt-5 w-full" type="button" onClick={openPreview}><CalendarCheck className="h-4 w-4" />Review selected frames</button>
           </aside>
         </>

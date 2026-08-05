@@ -154,10 +154,10 @@ export default async function FramesPage({
           ) : (
             <div className="vv-card p-8">
               <Filter className="h-10 w-10 text-amber-600" />
-              <h3 className="mt-4 text-2xl font-extrabold">No frames match this age group.</h3>
-              <p className="mt-2 text-slate-600">Choose another age group or return to the complete collection.</p>
-              <Link className="vv-button-retail mt-5" href="/frames">
-                Browse all frames
+              <h3 className="mt-4 text-2xl font-extrabold">Our local collection is being verified.</h3>
+              <p className="mt-2 max-w-xl text-slate-600">We publish a frame only after its price, landed cost, physical stock, specifications, and images have been checked. Message us if you would like help choosing your first pair.</p>
+              <Link className="vv-button-retail mt-5" href="https://wa.me/917842938316?text=Hello%20Vision%20Vistara%2C%20I%20would%20like%20help%20choosing%20frames.">
+                Ask on WhatsApp
               </Link>
             </div>
           )}

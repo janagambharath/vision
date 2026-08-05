@@ -42,7 +42,9 @@ const seedProducts: SeedProduct[] = [
     sku: "VV-SUPH-PK-96409",
     name: "Suphous Pink Oval",
     brand: "Vision Vistara",
-    status: "ACTIVE",
+    // Supplier samples remain private until their landed cost, price, and
+    // supplier terms are verified by the launch operator.
+    status: "DRAFT",
     featured: true,
     pricePaise: null,
     compareAtPaise: null,
@@ -77,7 +79,9 @@ const seedProducts: SeedProduct[] = [
     sku: "VV-SUPH-GN-96408",
     name: "Suphous Gun Aviator",
     brand: "Vision Vistara",
-    status: "ACTIVE",
+    // Supplier samples remain private until their landed cost, price, and
+    // supplier terms are verified by the launch operator.
+    status: "DRAFT",
     featured: true,
     pricePaise: null,
     compareAtPaise: null,
@@ -109,6 +113,9 @@ const seedProducts: SeedProduct[] = [
   }
 ];
 
+// Fixture lens prices are not a lab agreement. Keep these disabled until a
+// manager verifies price, power range, turnaround, and remake policy.
+const LENS_PACKAGES_REQUIRE_LAB_APPROVAL = true;
 const seedLensPackages = [
   { code: "FRAME_ONLY", name: "Frame Only", description: "Frame only — bring your own lenses or visit Vision Vistara clinic for professional fitting.", pricePaise: null, active: true, sortOrder: 0 },
   { code: "SV_STANDARD", name: "Single Vision – Standard", description: "Standard single-vision CR-39 lenses with scratch-resistant hard coating.", pricePaise: 60000, active: true, sortOrder: 1 },
@@ -244,10 +251,11 @@ async function main() {
   console.log("  → Lens options");
   for (const lens of seedLensPackages) {
     const requiresPrescription = !["FRAME_ONLY", "ZERO_POWER_BC"].includes(lens.code);
+    const active = lens.active && !LENS_PACKAGES_REQUIRE_LAB_APPROVAL;
     await prisma.lensOption.upsert({
       where: { code: lens.code },
-      update: { name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, requiresPrescription, sortOrder: lens.sortOrder },
-      create: { code: lens.code, name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active: lens.active, requiresPrescription, sortOrder: lens.sortOrder }
+      update: { name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active, requiresPrescription, sortOrder: lens.sortOrder },
+      create: { code: lens.code, name: lens.name, description: lens.description, pricePaise: lens.pricePaise, active, requiresPrescription, sortOrder: lens.sortOrder }
     });
   }
 
@@ -265,6 +273,8 @@ async function main() {
     where: { code: "FREEDELIVERY" }, update: {},
     create: { code: "FREEDELIVERY", description: "Free delivery on any order", active: true, discountPaise: 9900, minOrderPaise: 0 }
   });
+  // Do not launch with blanket discounts before contribution margins are real.
+  await prisma.coupon.updateMany({ data: { active: false } });
 
   // ─── Homepage Sections ───
   console.log("  → Homepage sections");
@@ -290,11 +300,11 @@ async function main() {
   console.log("  → Banners");
   await prisma.banner.upsert({
     where: { id: "banner-welcome" }, update: {},
-    create: { id: "banner-welcome", title: "New arrivals: Premium titanium collection", subtitle: "Lightweight frames from ₹1,499", href: "/frames/category/premium", active: true, sortOrder: 0 }
+    create: { id: "banner-welcome", title: "Local collection coming soon", subtitle: "Only verified, priced frames are published", href: "/frames", active: false, sortOrder: 0 }
   });
   await prisma.banner.upsert({
     where: { id: "banner-try-at-home" }, update: {},
-    create: { id: "banner-try-at-home", title: "Try at home — select up to 5 frames", subtitle: "Free home trial service starting at ₹199", href: "/frames/try-at-home", active: true, sortOrder: 1 }
+    create: { id: "banner-try-at-home", title: "Select Hyderabad home trials", subtitle: "Route-confirmed after staff review", href: "/frames/try-at-home", active: false, sortOrder: 1 }
   });
 
   // ─── Admin User ───
@@ -303,6 +313,13 @@ async function main() {
   await prisma.banner.updateMany({
     where: { id: "banner-try-at-home", subtitle: { contains: "starting" } },
     data: { subtitle: "Hyderabad availability request — no fee or deposit is collected when you submit" }
+  });
+
+  // Disable fixture promotions: local launch pricing must be deliberate and
+  // tied to real contribution margin, not seed copy.
+  await prisma.banner.updateMany({
+    where: { id: { in: ["banner-welcome", "banner-try-at-home"] } },
+    data: { active: false }
   });
 
   const adminEmail = process.env.ADMIN_SEED_EMAIL;

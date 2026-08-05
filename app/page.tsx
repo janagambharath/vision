@@ -35,6 +35,7 @@ import { serializeJsonLd } from "@/lib/json-ld";
 import { headers } from "next/headers";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { leadSchema } from "@/lib/validations";
+import { LOCAL_HOME_TRIAL_PROMISE, LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-service";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,10 @@ export default function ClinicHomePage() {
     "@type": "MedicalOrganization",
     name: CLINIC_NAME,
     url: SITE_URL,
+    areaServed: { "@type": "City", name: "Hyderabad, Telangana" },
     telephone: `+91 ${CLINIC_PHONE}`,
     image: `${SITE_URL}/assets/vision-vistara-hero.png`,
     medicalSpecialty: ["Optometry", "Ophthalmology"],
-    areaServed: "Hyderabad",
     contactPoint: {
       "@type": "ContactPoint",
       telephone: `+91 ${CLINIC_PHONE}`,
@@ -139,7 +140,7 @@ export default function ClinicHomePage() {
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-cyan-200 sm:text-xs">Frames Store</p>
                 <h2 className="mt-3 text-3xl font-extrabold leading-tight sm:text-5xl">Find the frame that feels like you.</h2>
                 <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-200 sm:text-base">
-                  Shop expert-guided frames, then choose home delivery or a scheduled home visit.
+                  Shop curated frames with prescription guidance and delivery in select Hyderabad neighbourhoods.
                 </p>
                 <span className="vv-button-retail mt-6 w-fit group-hover:shadow-[0_14px_28px_-8px_rgba(13,148,136,0.6)]">
                   <Glasses className="h-5 w-5" />
@@ -169,7 +170,7 @@ export default function ClinicHomePage() {
                   Try at home
                 </span>
                 <h2 className="mt-3 text-xl font-extrabold leading-tight sm:text-2xl">Try optical frames from your sofa.</h2>
-                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Request from any Indian pincode, review your selected frames, then let our team confirm the visit details.</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">Available in {LOCAL_SERVICE_AREA_LABEL}. Review your selected frames, then let our team confirm the visit details.</p>
                 <span className="mt-4 inline-flex w-fit items-center gap-2 rounded-full bg-blue-700 px-4 py-2 text-xs font-extrabold text-white shadow-lg shadow-blue-700/20 sm:text-sm">
                   Start a home trial <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
@@ -367,7 +368,7 @@ export default function ClinicHomePage() {
               title="Practical eyewear guidance before you buy."
             >
               <p>
-                Start online, request a confirmed home visit from any valid pincode,
+                Start online, request a route-confirmed home visit in select Hyderabad neighbourhoods,
                 and get a specialist referral when equipment or treatment is needed.
               </p>
             </SectionHeading>
@@ -499,7 +500,7 @@ export default function ClinicHomePage() {
                   [
                     Home,
                     "Request a confirmed home visit",
-                    "From any valid Indian pincode, we confirm your selected frames, preferred time, route, and team availability first.",
+                    `${LOCAL_HOME_TRIAL_PROMISE}. We confirm your selected frames, preferred time, route, and team availability first.`,
                   ],
                   [
                     BadgeCheck,
@@ -531,7 +532,7 @@ export default function ClinicHomePage() {
             >
               <p>
                 The Vision Vistara frames store is a separate, product-first
-                experience with 50+ verified frames, try-at-home, and full checkout.
+                experience with a carefully verified local collection, try-at-home, and full checkout.
               </p>
             </SectionHeading>
             <Link
@@ -551,7 +552,7 @@ export default function ClinicHomePage() {
                 {/* Content */}
                 <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-10 md:px-14">
                   <p className="text-[10px] sm:text-xs font-extrabold uppercase tracking-[0.2em] text-teal-300">
-                    50+ verified frames
+                    Curated local collection
                   </p>
                   <h3 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight max-w-lg">
                     Shop Frames Collection
@@ -606,7 +607,7 @@ export default function ClinicHomePage() {
               {[
                 [
                   "Can I request guidance before buying frames?",
-                  "Yes. Start with online guidance, then select frames and lenses or request a home visit from any valid Indian pincode.",
+                  `Yes. Start with online guidance, then select frames and lenses or request a home visit in ${LOCAL_SERVICE_AREA_LABEL}.`,
                 ],
                 [
                   "Where can I browse frames?",
@@ -642,10 +643,10 @@ export default function ClinicHomePage() {
         {/* ───────────── CONTACT ───────────── */}
         <section className="vv-section bg-white" id="contact">
           <div className="vv-container">
-          <SectionHeading kicker="Contact" title="Online support and scheduled home visits.">
+          <SectionHeading kicker="Contact" title="WhatsApp-first support and local home visits.">
             <p>
                 Request online guidance or a home visit over the phone or through
-                WhatsApp. Service availability is confirmed by pincode and team capacity.
+                WhatsApp. {LOCAL_HOME_TRIAL_PROMISE}; service availability is confirmed by pincode and team capacity.
             </p>
             </SectionHeading>
             <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">

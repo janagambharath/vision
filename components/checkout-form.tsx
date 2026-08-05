@@ -20,8 +20,8 @@ interface CheckoutFormProps {
 
 export default function CheckoutForm({ cart, totals, error, checkoutScope, directCheckout }: CheckoutFormProps) {
   const [pincode, setPincode] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
+  const [city, setCity] = useState("Hyderabad");
+  const [state, setState] = useState("Telangana");
   const [loadingPincode, setLoadingPincode] = useState(false);
   const [pincodeMessage, setPincodeMessage] = useState<string | null>(null);
   const [isPincodeServiceable, setIsPincodeServiceable] = useState<boolean | null>(null);
@@ -81,8 +81,8 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
       return;
     }
 
-    if (isPincodeServiceable === false) {
-      setErrors({ pincode: "Delivery is not currently available for this pincode." });
+    if (isPincodeServiceable !== true) {
+      setErrors({ pincode: "Enter a supported Hyderabad pincode before placing your order." });
       return;
     }
     
@@ -225,7 +225,7 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
               <Banknote className="h-4 w-4 text-retail" />
               Cash on delivery
             </span>
-            <span className="mt-1 block text-xs text-slate-500">Pay in cash when your order is delivered. We will confirm your order before dispatch.</span>
+          <span className="mt-1 block text-xs text-slate-500">Pay in cash on local delivery. We confirm every order before dispatch.</span>
           </div>
         </div>
 

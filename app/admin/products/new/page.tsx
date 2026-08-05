@@ -148,12 +148,12 @@ export default async function NewProductPage({
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;
     if (getCreateBlockersForDraft({
-      name, brand, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
+      name, brand, description, pricePaise, compareAtPaise, costPricePaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
     }).length) redirect("/admin/products/new?error=missing-fields");
 
     const sku = createProductSku(brand, name);
     if (status === "ACTIVE" && getPublishBlockersForDraft({
-      name, brand, sku, description, pricePaise, compareAtPaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
+      name, brand, sku, description, pricePaise, compareAtPaise, costPricePaise, quantity, imageRoles, categoryCount, tryOnEligible, arImageUrl: arImageUrl || null
     }).length) redirect("/admin/products/new?error=publish-incomplete");
 
     await prisma.$transaction(async (tx) => {
@@ -177,7 +177,7 @@ export default async function NewProductPage({
         data: {
           productId: product.id,
           quantity,
-          status: pricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
+          status: pricePaise && costPricePaise ? (quantity > 0 ? "IN_STOCK" : "OUT_OF_STOCK") : "PRICE_REQUIRED",
           warehouse: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory",
           supplier: String(formData.get("supplier") ?? "").trim() || null,
           location: String(formData.get("warehouse") ?? "").trim() || "Vision Vistara clinic inventory"

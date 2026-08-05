@@ -401,7 +401,7 @@ export async function bulkInventoryUpdate(
 
   const products = await prisma.product.findMany({
     where: { slug: { in: uniqueSlugs } },
-    select: { id: true, slug: true, pricePaise: true, inventory: { select: { id: true, reservedStock: true, lowStockThreshold: true } } }
+    select: { id: true, slug: true, pricePaise: true, costPricePaise: true, inventory: { select: { id: true, reservedStock: true, lowStockThreshold: true } } }
   });
   const blockedSlugs = products
     .filter((product) => quantity < (product.inventory?.reservedStock ?? 0))
@@ -413,7 +413,7 @@ export async function bulkInventoryUpdate(
       for (const product of products) {
         const status = quantity === 0
           ? "OUT_OF_STOCK"
-          : !product.pricePaise
+          : !product.pricePaise || !product.costPricePaise
             ? "PRICE_REQUIRED"
             : quantity <= (product.inventory?.lowStockThreshold ?? 2)
               ? "LOW_STOCK"

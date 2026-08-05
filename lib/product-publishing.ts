@@ -7,6 +7,7 @@ type PublishCandidate = {
   description: string;
   pricePaise: number | null;
   compareAtPaise: number | null;
+  costPricePaise: number | null;
   quantity: number;
   imageRoles: string[];
   categoryCount: number;
@@ -23,6 +24,10 @@ export function getCreateBlockersForDraft(candidate: Omit<PublishCandidate, "sku
   if (!candidate.name.trim() || !candidate.brand.trim()) blockers.push("name and brand are required");
   if (!candidate.description.trim()) blockers.push("a product description is required");
   if (!candidate.pricePaise || candidate.pricePaise <= 0) blockers.push("a selling price is required");
+  if (!candidate.costPricePaise || candidate.costPricePaise <= 0) blockers.push("a landed cost is required");
+  if (candidate.pricePaise && candidate.costPricePaise && candidate.costPricePaise >= candidate.pricePaise) {
+    blockers.push("selling price must exceed landed cost");
+  }
   if (candidate.compareAtPaise && candidate.pricePaise && candidate.compareAtPaise < candidate.pricePaise) {
     blockers.push("compare-at price cannot be lower than selling price");
   }
@@ -37,6 +42,10 @@ export function getPublishBlockersForDraft(candidate: PublishCandidate) {
   if (!candidate.name.trim() || !candidate.brand.trim() || !candidate.sku.trim()) blockers.push("name, brand, and SKU are required");
   if (!candidate.description.trim()) blockers.push("a product description is required");
   if (!candidate.pricePaise || candidate.pricePaise <= 0) blockers.push("a selling price is required");
+  if (!candidate.costPricePaise || candidate.costPricePaise <= 0) blockers.push("a landed cost is required");
+  if (candidate.pricePaise && candidate.costPricePaise && candidate.costPricePaise >= candidate.pricePaise) {
+    blockers.push("selling price must exceed landed cost");
+  }
   if (candidate.compareAtPaise && candidate.pricePaise && candidate.compareAtPaise < candidate.pricePaise) {
     blockers.push("compare-at price cannot be lower than selling price");
   }
@@ -62,6 +71,7 @@ export async function getProductPublishBlockers(slug: string) {
     description: product.description,
     pricePaise: product.pricePaise,
     compareAtPaise: product.compareAtPaise,
+    costPricePaise: product.costPricePaise,
     quantity: product.inventory?.quantity ?? 0,
     imageRoles: product.images.map((image) => image.role),
     categoryCount: product.categories.length,
