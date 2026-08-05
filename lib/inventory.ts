@@ -93,17 +93,15 @@ export type LensPackage = {
   sortOrder: number;
 };
 
-export function productIsSellable(product: Pick<StoreProduct, "status" | "pricePaise" | "costPricePaise" | "inventoryStatus" | "inventoryQuantity" | "codAvailable">) {
+export function productIsSellable(product: Pick<StoreProduct, "status" | "pricePaise" | "inventoryStatus" | "inventoryQuantity" | "codAvailable">) {
   return (
     product.status === "ACTIVE" &&
     typeof product.pricePaise === "number" &&
     product.pricePaise > 0 &&
-    typeof product.costPricePaise === "number" &&
-    product.costPricePaise > 0 &&
-    product.costPricePaise < product.pricePaise &&
     product.codAvailable &&
     product.inventoryQuantity > 0 &&
-    (product.inventoryStatus === "IN_STOCK" || product.inventoryStatus === "LOW_STOCK")
+    product.inventoryStatus !== "OUT_OF_STOCK" &&
+    product.inventoryStatus !== "PRICE_REQUIRED"
   );
 }
 

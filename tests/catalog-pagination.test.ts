@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { productIsSellable } from "../lib/inventory";
 import { normalizeCatalogPage, normalizeStoreProductSort } from "../lib/store-data";
 
 test("catalog pagination clamps invalid and out-of-range page input", () => {
@@ -14,4 +15,14 @@ test("catalog sorting falls back to the safe storefront order", () => {
   assert.equal(normalizeStoreProductSort(undefined), "featured");
   assert.equal(normalizeStoreProductSort("not-a-sort"), "featured");
   assert.equal(normalizeStoreProductSort("price-desc"), "price-desc");
+});
+
+test("legacy active inventory remains sellable without a landed-cost record", () => {
+  assert.equal(productIsSellable({
+    status: "ACTIVE",
+    pricePaise: 149900,
+    codAvailable: true,
+    inventoryQuantity: 2,
+    inventoryStatus: "LOW_STOCK"
+  }), true);
 });
