@@ -95,11 +95,6 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
               {discountPct}% OFF
             </span>
           ) : null}
-          {product.lowStock ? (
-            <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-white animate-pulse">
-              Low stock
-            </span>
-          ) : null}
           {product.tryAtHomeEligible ? (
             <span className="rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
               🏠 Home trial

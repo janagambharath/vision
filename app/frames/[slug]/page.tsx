@@ -255,17 +255,11 @@ export default async function ProductPage({
               )}
             </div>
 
-            {/* Stock Urgency Display */}
+            {/* Availability */}
             <div className="mt-3">
-              {product.inventoryQuantity <= 3 && product.inventoryQuantity > 0 ? (
-                <span className="text-xs font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full animate-pulse">
-                  Low stock — order soon!
-                </span>
-              ) : (
-                <span className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs font-extrabold uppercase text-slate-600 bg-slate-50">
-                  {sellable ? "Available" : "Unavailable"}
-                </span>
-              )}
+              <span className="rounded-full border border-slate-200 px-2.5 py-0.5 text-xs font-extrabold uppercase text-slate-600 bg-slate-50">
+                {sellable ? "Available" : "Unavailable"}
+              </span>
             </div>
 
             {query.blocked ? (

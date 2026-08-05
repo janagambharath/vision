@@ -144,7 +144,7 @@ export default function ClinicHomePage() {
                 </p>
                 <span className="vv-button-retail mt-6 w-fit group-hover:shadow-[0_14px_28px_-8px_rgba(13,148,136,0.6)]">
                   <Glasses className="h-5 w-5" />
-                  Shop frames
+                  Shop Opticals
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
