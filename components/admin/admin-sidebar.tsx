@@ -13,6 +13,7 @@ import {
   Home,
   Layers,
   LogOut,
+  Menu,
   ShoppingBag,
   Sparkles,
   Star,
@@ -44,26 +45,28 @@ const adminMenuItems = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobilePrimaryItems = adminMenuItems.filter((item) => ["/admin", "/admin/products", "/admin/orders"].includes(item.href));
+  const mobileMoreItems = adminMenuItems.filter((item) => !mobilePrimaryItems.includes(item));
+  const isActive = (href: string) => href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
+  const hasActiveMoreItem = mobileMoreItems.some((item) => isActive(item.href));
 
   return (
     <>
       {/* Mobile top bar */}
-      <nav className="lg:hidden flex items-center gap-2 border-b border-slate-200 bg-white px-4 py-3 overflow-x-auto">
-        <Link href="/admin" className="text-sm font-extrabold text-slate-900 shrink-0 mr-2">
-          VV Admin
-        </Link>
-        {adminMenuItems.map((item) => {
+      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur lg:hidden">
+        <div className="flex items-center gap-2 overflow-x-auto px-3 py-2.5 [scrollbar-width:thin]">
+          <Link href="/admin" className="mr-1 shrink-0 text-sm font-extrabold text-slate-900" aria-label="Admin dashboard">
+            VV <span className="text-teal-600">Admin</span>
+          </Link>
+          {mobilePrimaryItems.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            item.href === "/admin"
-              ? pathname === "/admin"
-              : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-                isActive
+              className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition ${
+                isActive(item.href)
                   ? "border-teal-600 bg-teal-50 text-teal-700"
                   : "border-slate-200 text-slate-600 hover:border-teal-300 hover:text-teal-700"
               }`}
@@ -72,7 +75,48 @@ export function AdminSidebar() {
               {item.label}
             </Link>
           );
-        })}
+          })}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="admin-mobile-menu"
+            className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition ${
+              mobileMenuOpen || hasActiveMoreItem
+                ? "border-teal-600 bg-teal-50 text-teal-700"
+                : "border-slate-200 text-slate-600 hover:border-teal-300 hover:text-teal-700"
+            }`}
+          >
+            <Menu className="h-4 w-4" />
+            More
+          </button>
+        </div>
+        {mobileMenuOpen ? (
+          <div id="admin-mobile-menu" className="grid grid-cols-2 gap-2 border-t border-slate-100 px-3 py-3 sm:grid-cols-3">
+            {mobileMoreItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                    isActive(item.href)
+                      ? "border-teal-600 bg-teal-50 text-teal-700"
+                      : "border-slate-200 text-slate-600 hover:border-teal-300 hover:text-teal-700"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+            <Link href="/" className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600">
+              <LogOut className="h-4 w-4 shrink-0" />
+              Back to site
+            </Link>
+          </div>
+        ) : null}
       </nav>
 
       {/* Desktop sidebar */}
@@ -106,25 +150,20 @@ export function AdminSidebar() {
           <div className="grid gap-0.5">
             {adminMenuItems.map((item) => {
               const Icon = item.icon;
-              const isActive =
-                item.href === "/admin"
-                  ? pathname === "/admin"
-                  : pathname.startsWith(item.href);
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
                   className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-150 ${
-                    isActive
+                    isActive(item.href)
                       ? "bg-teal-50 text-teal-700 font-bold shadow-sm shadow-teal-100"
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   } ${collapsed ? "justify-center px-0" : ""}`}
                 >
                   <Icon
                     className={`h-[18px] w-[18px] shrink-0 ${
-                      isActive ? "text-teal-600" : "text-slate-400"
+                      isActive(item.href) ? "text-teal-600" : "text-slate-400"
                     }`}
                   />
                   {!collapsed && <span className="truncate">{item.label}</span>}

@@ -14,7 +14,7 @@ export default async function VirtualTryOnPage({ searchParams }: { searchParams:
   const frames = await getTryOnFrames();
 
   return (
-    <main className="vv-section bg-paper min-h-screen">
+    <main className="vv-section w-full max-w-full bg-paper min-h-screen">
       <div className="vv-container max-w-5xl">
         <Link href="/frames" className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900">
           <ArrowLeft className="h-4 w-4" />

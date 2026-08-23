@@ -22,6 +22,7 @@ export const metadata: Metadata = {
 export default function FramesLayout({ children }: { children: React.ReactNode }) {
   return (
     <CompareProvider>
+      <div className="w-screen max-w-[100vw] overflow-x-clip">
       <SiteHeader mode="store" />
       {/* Brand strip with inline search */}
       <div className="border-b border-blue-200 bg-gradient-to-r from-blue-950 via-blue-700 to-sky-50">
@@ -50,6 +51,7 @@ export default function FramesLayout({ children }: { children: React.ReactNode }
         </div>
       </div>
       {children}
+      </div>
       <CompareBar />
     </CompareProvider>
   );

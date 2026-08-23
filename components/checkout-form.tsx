@@ -115,7 +115,7 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
       action={handleAction}
       method="POST"
       encType="multipart/form-data"
-      className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,380px)]"
+      className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,380px)]"
     >
       <input type="hidden" name="paymentMethod" value="COD" />
       <input type="hidden" name="deliveryMethod" value="DELIVERY" />
@@ -265,14 +265,14 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
         {errors.acceptedTerms && <span className="text-xs text-red-500 font-normal -mt-3">{errors.acceptedTerms}</span>}
       </section>
 
-      <aside className="vv-card min-w-0 self-start p-5 grid gap-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
+      <aside className="vv-card w-full min-w-0 max-w-full self-start p-5 grid gap-5 sm:p-6 xl:sticky xl:top-24 xl:max-h-[calc(100vh-7rem)] xl:overflow-y-auto">
         <div>
           <h2 className="text-2xl font-extrabold border-b border-slate-100 pb-2">Order summary</h2>
           <div className="mt-4 grid gap-3">
             {items.map((item: CheckoutCartItem) => {
               const imgUrl = item.product.images?.[0]?.url || "/placeholder-frame.png";
               return (
-                <div key={item.id} className="flex gap-3 rounded-vv border border-slate-200 p-3 text-sm items-center bg-white">
+                <div key={item.id} className="flex min-w-0 max-w-full gap-3 rounded-vv border border-slate-200 p-3 text-sm items-center bg-white">
                   <div className="relative h-12 w-12 shrink-0 border border-slate-100 rounded bg-slate-50 overflow-hidden">
                     <Image
                       src={imgUrl}
@@ -309,9 +309,9 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
               <dd>-{formatMoney(totals.discountPaise)}</dd>
             </div>
           ) : null}
-          <div className="border-t border-slate-200 pt-3 flex justify-between font-extrabold text-base">
-            <dt>Grand total</dt>
-            <dd className="text-retail">{formatMoney(totals.grandTotalPaise)}</dd>
+          <div className="flex min-w-0 items-start justify-between gap-4 border-t border-slate-200 pt-3 font-extrabold text-base">
+            <dt className="min-w-0">Grand total</dt>
+            <dd className="shrink-0 text-right text-retail">{formatMoney(totals.grandTotalPaise)}</dd>
           </div>
         </dl>
 
@@ -330,17 +330,17 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
 
         {/* Premium Trust Badges */}
         <div className="grid gap-3 border-t border-slate-100 pt-5 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-start gap-2">
             <Lock className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span><strong>Secure checkout</strong> - Your order details are sent over an encrypted connection.</span>
+            <span className="min-w-0"><strong>Secure checkout</strong> - Your order details are sent over an encrypted connection.</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-start gap-2">
             <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span><strong>Cash on delivery</strong> - Pay when your order is delivered.</span>
+            <span className="min-w-0"><strong>Cash on delivery</strong> - Pay when your order is delivered.</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-start gap-2">
             <Smartphone className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span><strong>Order confirmation</strong> - We will confirm your COD order before dispatch.</span>
+            <span className="min-w-0"><strong>Order confirmation</strong> - We will confirm your COD order before dispatch.</span>
           </div>
         </div>
       </aside>
@@ -350,9 +350,9 @@ export default function CheckoutForm({ cart, totals, error, checkoutScope, direc
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between text-slate-600">
-      <dt>{label}</dt>
-      <dd className="font-semibold">{value}</dd>
+    <div className="flex min-w-0 items-start justify-between gap-4 text-slate-600">
+      <dt className="min-w-0">{label}</dt>
+      <dd className="shrink-0 text-right font-semibold">{value}</dd>
     </div>
   );
 }

@@ -102,7 +102,7 @@ export default async function AdminOrdersPage({
                     Fulfillment: {order.deliveryMethod} · Payment: {order.paymentMethod}
                   </p>
                 </div>
-                <div className="text-right flex flex-col md:items-end gap-2">
+                <div className="flex items-center justify-between gap-3 text-left md:flex-col md:items-end md:text-right">
                   <strong className="block text-xl text-retail">{formatMoney(order.grandTotalPaise)}</strong>
                   <Link className="vv-button-light text-sm py-2" href={`/admin/orders/${order.publicId}`}>
                     Manage Order

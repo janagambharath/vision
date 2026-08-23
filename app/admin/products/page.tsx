@@ -226,7 +226,7 @@ export default async function AdminProductsPage({
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 md:self-center">
+                <div className="flex flex-wrap gap-1.5 md:self-center [&>a]:min-h-10 [&>a]:items-center [&>form>button]:min-h-10">
                   <Link className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-600 hover:border-teal-300 hover:text-teal-700 transition" href={`/frames/${product.slug}`} target="_blank">
                     <Eye className="h-3.5 w-3.5" /> Preview
                   </Link>

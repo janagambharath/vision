@@ -136,6 +136,17 @@ textarea {
   .clinic-page .vv-button {
     min-height: 52px;
   }
+
+  /* Admin pages are used for active operations, so preserve screen space and
+     avoid hover movement that can make touch interactions feel unstable. */
+  .admin-shell .vv-section {
+    padding-top: 1.5rem;
+    padding-bottom: 3rem;
+  }
+
+  .admin-shell .vv-card:hover {
+    transform: none;
+  }
 }
 
 /* ─── WhatsApp floating button ─── */
