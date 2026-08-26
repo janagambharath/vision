@@ -64,6 +64,11 @@ const instructions = [
   "Use Indian English. Keep marketing copy factual, concise, and suitable for a premium eyewear catalog."
 ].join(" ");
 
+const productEnrichmentModels = [
+  { id: "dots-studio/dots-3-note-preview:free", supportsStrictSchema: true },
+  { id: "stealth/ox-alpha", supportsStrictSchema: false }
+] as const;
+
 function requestedSiteUrl() {
   return process.env.OPENROUTER_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.AUTH_URL || "http://localhost:3000";
 }
@@ -82,73 +87,82 @@ async function generateWithOpenRouter(imageUrl: string) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OpenRouter product enrichment is not configured.");
 
-  // OpenRouter's free router filters its live free-model pool for image input.
-  // This avoids depending on a fixed free model that can be withdrawn.
-  const requestedModel = "openrouter/free";
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": requestedSiteUrl(),
-      "X-Title": "Vision Vistara Product Enrichment"
-    },
-    body: JSON.stringify({
-      model: requestedModel,
-      // The free router will select only a live model that supports image input
-      // and this strict structured-output request.
-      provider: { require_parameters: true },
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "product_catalog_draft",
-          strict: true,
-          schema: productDraftJsonSchema
-        }
-      },
-      messages: [
-        {
-          role: "system",
-          content: `${instructions} Return exactly one JSON object with no markdown or prose, matching this JSON Schema: ${JSON.stringify(productDraftJsonSchema)}`
+  for (const [index, candidate] of productEnrichmentModels.entries()) {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": requestedSiteUrl(),
+          "X-Title": "Vision Vistara Product Enrichment"
         },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
-            { type: "image_url", image_url: { url: imageUrl } }
-          ]
-        }
-      ],
-      max_tokens: 1_800,
-      temperature: 0.1
-    }),
-    signal: AbortSignal.timeout(45_000)
-  });
+        body: JSON.stringify({
+          model: candidate.id,
+          provider: { require_parameters: true },
+          response_format: candidate.supportsStrictSchema
+            ? {
+                type: "json_schema",
+                json_schema: {
+                  name: "product_catalog_draft",
+                  strict: true,
+                  schema: productDraftJsonSchema
+                }
+              }
+            : { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: `${instructions} Return exactly one JSON object with no markdown or prose, matching this JSON Schema: ${JSON.stringify(productDraftJsonSchema)}`
+            },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
+                { type: "image_url", image_url: { url: imageUrl } }
+              ]
+            }
+          ],
+          max_tokens: 1_800,
+          temperature: 0.1
+        }),
+        signal: AbortSignal.timeout(30_000)
+      });
 
-  if (!response.ok) {
-    console.warn("OpenRouter product enrichment request failed", {
-      status: response.status,
-      requestId: response.headers.get("x-request-id"),
-      model: requestedModel
-    });
-    throw new Error("OpenRouter product enrichment could not complete.");
+      if (!response.ok) {
+        console.warn("OpenRouter product enrichment request failed", {
+          status: response.status,
+          requestId: response.headers.get("x-request-id"),
+          model: candidate.id
+        });
+        continue;
+      }
+
+      const payload = await response.json();
+      const content = openRouterChatText(payload) ?? "";
+      const draft = parseDraft(content);
+      if (!draft) {
+        console.warn("OpenRouter product enrichment returned an invalid draft", {
+          model: openRouterResponseModel(payload, candidate.id),
+          responseLength: content.length
+        });
+        continue;
+      }
+
+      return {
+        draft,
+        model: openRouterResponseModel(payload, candidate.id),
+        fallbackUsed: index > 0
+      };
+    } catch (error) {
+      console.warn("OpenRouter product enrichment request threw", {
+        model: candidate.id,
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 
-  const payload = await response.json();
-  const content = openRouterChatText(payload) ?? "";
-  const draft = parseDraft(content);
-  if (!draft) {
-    console.warn("OpenRouter product enrichment returned an invalid draft", {
-      model: openRouterResponseModel(payload, requestedModel),
-      responseLength: content.length
-    });
-    throw new Error("OpenRouter returned an invalid product draft.");
-  }
-  return {
-    draft,
-    model: openRouterResponseModel(payload, requestedModel),
-    fallbackUsed: openRouterResponseModel(payload, requestedModel) !== requestedModel
-  };
+  throw new Error("Neither configured free image model could complete the product draft.");
 }
 
 export async function POST(request: NextRequest) {
@@ -161,7 +175,7 @@ export async function POST(request: NextRequest) {
 
   if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: "AI product enrichment is not configured. Add OPENROUTER_API_KEY to enable Nemotron analysis and its free fallback." },
+      { error: "AI product enrichment is not configured. Add OPENROUTER_API_KEY to enable free image analysis." },
       { status: 503 }
     );
   }

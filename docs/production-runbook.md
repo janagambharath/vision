@@ -170,7 +170,7 @@ A product can be active only when:
 
 ## AI Product Detail Prefill
 
-- Product-image enrichment uses OpenRouter only: set `OPENROUTER_API_KEY`. The application always uses OpenRouter's `openrouter/free` router, which selects a currently available free model that supports image input, so the deployment does not depend on a specific free model remaining available. Remove the obsolete `OPENROUTER_PRODUCT_ENRICHMENT_MODEL` and `OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL` variables. `GEMINI_API_KEY` is reserved for customer AI try-on.
+- Product-image enrichment uses OpenRouter only: set `OPENROUTER_API_KEY`. The application tries `dots-studio/dots-3-note-preview:free` first, then `stealth/ox-alpha` if it cannot complete the draft. Both are free vision models as of 26 August 2026; the application attempts each explicitly so a router outage cannot fail the workflow before backup is tried. Remove the obsolete `OPENROUTER_PRODUCT_ENRICHMENT_MODEL` and `OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL` variables. `GEMINI_API_KEY` is reserved for customer AI try-on.
 - Free-model availability and latency vary. Staff must review every draft before publishing; the workflow intentionally fills blank fields only and never infers price, SKU, stock, or warranty terms. Measurements are accepted only from a signed 15-minute result tied to the uploaded Cloudinary image; they remain blank when no readable marking is present.
 
 ## Railway Scheduled Workers

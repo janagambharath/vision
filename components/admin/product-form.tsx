@@ -159,7 +159,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       ...draft.needsReview
     ].filter(Boolean).join(" ");
     setAiState("ready");
-    setAiMessage(`${fallbackUsed ? "OpenRouter selected an available free image model to complete this draft. " : `${provider === "openrouter" ? "OpenRouter's free image model" : "AI"} completed this draft. `}${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
+    setAiMessage(`${fallbackUsed ? "The primary free image model was unavailable, so the backup completed this draft. " : `${provider === "openrouter" ? "OpenRouter's free image model" : "AI"} completed this draft. `}${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
   };
 
   const generateAiDraft = async (image = firstProductImage) => {
@@ -537,7 +537,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-violet-950">AI product draft</h3>
-                <p className="mt-1 text-xs font-medium text-violet-800">OpenRouter&apos;s free image router analyzes the uploaded product image using an available vision model. It transcribes measurements only from clearly visible markings; it never invents price, SKU, stock, or policies.</p>
+                <p className="mt-1 text-xs font-medium text-violet-800">Two free OpenRouter vision models analyze the uploaded product image, with automatic backup if the first is unavailable. It transcribes measurements only from clearly visible markings; it never invents price, SKU, stock, or policies.</p>
               </div>
               <button
                 type="button"
