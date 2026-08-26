@@ -188,16 +188,10 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
   };
 
   const handleImagesChange = (nextImages: UploadedImage[]) => {
-    const nextPrimary = nextImages.find((image) => image.role === "front") ?? nextImages.find((image) => image.role !== "ar");
-    const previousUrl = firstProductImage?.url;
     setImages(nextImages);
-
-    // New frame photography gets analyzed automatically. Reordering an
-    // already-analyzed image does not spend another free-model request.
-    if (nextPrimary?.url !== previousUrl) {
-      setAiAnalysisToken("");
-      if (nextPrimary) void generateAiDraft(nextPrimary);
-    }
+    setAiAnalysisToken("");
+    setAiState("idle");
+    setAiMessage("");
   };
 
   const validateCreate = (event: FormEvent<HTMLFormElement>) => {
@@ -537,7 +531,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-violet-950">AI product draft</h3>
-                <p className="mt-1 text-xs font-medium text-violet-800">Two free OpenRouter vision models analyze the uploaded product image, with automatic backup if the first is unavailable. It transcribes measurements only from clearly visible markings; it never invents price, SKU, stock, or policies.</p>
+                <p className="mt-1 text-xs font-medium text-violet-800">Click Generate after choosing the final product image. Three free OpenRouter vision models are tried in order, with automatic backup if one is unavailable. It transcribes measurements only from clearly visible markings; it never invents price, SKU, stock, or policies.</p>
               </div>
               <button
                 type="button"

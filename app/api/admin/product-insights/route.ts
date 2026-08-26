@@ -66,9 +66,17 @@ const instructions = [
 ].join(" ");
 
 const productEnrichmentModels = [
-  { id: "dots-studio/dots-3-note-preview:free", supportsStrictSchema: true },
-  { id: "stealth/ox-alpha", supportsStrictSchema: false }
+  { id: "google/gemma-4-31b-it:free" },
+  { id: "google/gemma-4-26b-a4b-it:free" },
+  { id: "minimax/minimax-m3:free" }
 ] as const;
+
+const emptyProductAiDraft: ProductAiDraft = {
+  name: "", brand: "", shortDescription: "", description: "", material: "", colour: "", finish: "", shape: "", rimType: "",
+  gender: "", ageGroup: "", size: "", measurements: "", weightGrams: null, frameWidth: null, lensWidth: null,
+  bridgeWidth: null, templeLength: null, frameHeight: null, pdRange: "", highlights: [], faceShapes: [], lensCompatibility: [],
+  seoTitle: "", seoDescription: "", seoKeywords: [], categoryHint: "", confidence: "low", needsReview: []
+};
 
 function requestedSiteUrl() {
   return process.env.OPENROUTER_SITE_URL || process.env.NEXT_PUBLIC_SITE_URL || process.env.AUTH_URL || "http://localhost:3000";
@@ -77,8 +85,9 @@ function requestedSiteUrl() {
 function parseDraft(text: string): ProductAiDraft | null {
   try {
     const json = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    const parsed = productAiDraftSchema.safeParse(JSON.parse(json));
-    return parsed.success ? parsed.data : null;
+    const partial = productAiDraftSchema.partial().safeParse(JSON.parse(json));
+    if (!partial.success || Object.keys(partial.data).length === 0) return null;
+    return { ...emptyProductAiDraft, ...partial.data };
   } catch {
     return null;
   }
@@ -101,16 +110,7 @@ async function generateWithOpenRouter(imageUrl: string) {
         body: JSON.stringify({
           model: candidate.id,
           provider: { require_parameters: true },
-          response_format: candidate.supportsStrictSchema
-            ? {
-                type: "json_schema",
-                json_schema: {
-                  name: "product_catalog_draft",
-                  strict: true,
-                  schema: productDraftJsonSchema
-                }
-              }
-            : { type: "json_object" },
+          response_format: { type: "json_object" },
           messages: [
             {
               role: "system",
@@ -124,10 +124,10 @@ async function generateWithOpenRouter(imageUrl: string) {
               ]
             }
           ],
-          max_tokens: 1_800,
+          max_tokens: 1_200,
           temperature: 0.1
         }),
-        signal: AbortSignal.timeout(30_000)
+        signal: AbortSignal.timeout(25_000)
       });
 
       if (!response.ok) {
