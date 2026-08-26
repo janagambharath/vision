@@ -80,11 +80,11 @@ function parseDraft(text: string): ProductAiDraft | null {
 
 async function generateWithOpenRouter(imageUrl: string) {
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OpenRouter fallback is not configured.");
+  if (!apiKey) throw new Error("OpenRouter product enrichment is not configured.");
 
   // OpenRouter's free router filters its live free-model pool for image input.
   // This avoids depending on a fixed free model that can be withdrawn.
-  const requestedModel = process.env.OPENROUTER_PRODUCT_ENRICHMENT_MODEL || "openrouter/free";
+  const requestedModel = "openrouter/free";
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -126,13 +126,24 @@ async function generateWithOpenRouter(imageUrl: string) {
   });
 
   if (!response.ok) {
-    console.warn("OpenRouter product enrichment fallback failed", { status: response.status, requestId: response.headers.get("x-request-id") });
-    throw new Error("OpenRouter fallback could not complete.");
+    console.warn("OpenRouter product enrichment request failed", {
+      status: response.status,
+      requestId: response.headers.get("x-request-id"),
+      model: requestedModel
+    });
+    throw new Error("OpenRouter product enrichment could not complete.");
   }
 
   const payload = await response.json();
-  const draft = parseDraft(openRouterChatText(payload) ?? "");
-  if (!draft) throw new Error("OpenRouter fallback returned an invalid product draft.");
+  const content = openRouterChatText(payload) ?? "";
+  const draft = parseDraft(content);
+  if (!draft) {
+    console.warn("OpenRouter product enrichment returned an invalid draft", {
+      model: openRouterResponseModel(payload, requestedModel),
+      responseLength: content.length
+    });
+    throw new Error("OpenRouter returned an invalid product draft.");
+  }
   return {
     draft,
     model: openRouterResponseModel(payload, requestedModel),
