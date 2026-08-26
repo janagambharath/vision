@@ -95,6 +95,17 @@ async function generateWithOpenRouter(imageUrl: string) {
     },
     body: JSON.stringify({
       model: requestedModel,
+      // The free router will select only a live model that supports image input
+      // and this strict structured-output request.
+      provider: { require_parameters: true },
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "product_catalog_draft",
+          strict: true,
+          schema: productDraftJsonSchema
+        }
+      },
       messages: [
         {
           role: "system",
