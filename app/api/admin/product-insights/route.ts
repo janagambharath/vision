@@ -60,6 +60,7 @@ const instructions = [
   "Return only the requested JSON schema. Never invent a price, SKU, barcode, stock quantity, warranty, return policy, or technical certification.",
   "Measurements are allowed only when a size marking is clearly visible and readable on the frame or image. Transcribe that marking exactly when possible; otherwise return empty strings and null numeric measurements. Never estimate physical dimensions or weight from pixels.",
   "Only name a brand when it is clearly readable on the frame or image. Leave uncertain fields as empty strings or empty arrays and explain uncertainty in needsReview.",
+  "The image can show the frame by itself or a person wearing it. When a person is present, analyse only the visible eyewear and its fit or styling as product context. Do not identify, describe, or infer personal attributes about the person.",
   "Describe visible product attributes conservatively. Lens compatibility and face-shape suggestions are editorial suggestions, not verified optical claims, and must be included in needsReview when present.",
   "Use Indian English. Keep marketing copy factual, concise, and suitable for a premium eyewear catalog."
 ].join(" ");
@@ -118,7 +119,7 @@ async function generateWithOpenRouter(imageUrl: string) {
             {
               role: "user",
               content: [
-                { type: "text", text: "Inspect this uploaded eyewear frame image and create a catalog draft for staff review." },
+                { type: "text", text: "Inspect this uploaded eyewear image and create a catalog draft for staff review. It may be a standalone frame or a person wearing the frame; analyse the eyewear only." },
                 { type: "image_url", image_url: { url: imageUrl } }
               ]
             }
