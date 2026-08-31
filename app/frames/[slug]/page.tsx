@@ -3,6 +3,7 @@ import Link from "next/link";
 import { permanentRedirect, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { AlertTriangle, Camera, CheckCircle2, Ruler, ShieldCheck, Sparkles, Truck, Star, Clock } from "lucide-react";
+import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { ProductGallery } from "@/components/product-gallery";
 import { ProductCard } from "@/components/product-card";
@@ -288,6 +289,11 @@ export default async function ProductPage({
                 👤 <strong>Best fit:</strong> Matches {product.faceShapes.join(", ")} faces
               </div>
             )}
+
+            {/* Find My Frame Size CTA */}
+            <div className="mt-4">
+              <FindFrameSizeCTA variant="inline" />
+            </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {product.highlights.map((highlight) => (

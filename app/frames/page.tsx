@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/product-card";
 import { getStoreProducts, getStoreProductsCount, getFeaturedProducts, normalizeCatalogPage, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 import { toPublicStoreProduct } from "@/lib/inventory";
+import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
 
 export const metadata: Metadata = {
   title: "Frames Store",
@@ -103,6 +104,8 @@ export default async function FramesPage({
           </div>
         </section>
       ) : null}
+
+      {currentPage === 1 ? <FindFrameSizeCTA /> : null}
 
       {!hasFilters && currentPage === 1 && featured.length > 0 ? (
         <section className="vv-section bg-white">

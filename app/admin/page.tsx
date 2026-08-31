@@ -106,7 +106,8 @@ export default async function AdminDashboardPage() {
     { href: "/admin/leads", label: "Leads Generation", icon: Users, count: leadCount },
     { href: "/admin/inventory", label: "Inventory Stock", icon: Boxes },
     { href: "/admin/try-at-home", label: "Try-at-Home Visits", icon: Calendar },
-    { href: "/admin/reviews", label: "Customer Reviews", icon: Star }
+    { href: "/admin/reviews", label: "Customer Reviews", icon: Star },
+    { href: "/admin/face-scanner", label: "Face Scanner", icon: TrendingUp }
   ];
 
   return (

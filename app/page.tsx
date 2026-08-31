@@ -29,7 +29,16 @@ import { SectionHeading } from "@/components/section-heading";
 import { SiteHeader } from "@/components/site-header";
 import { FadeIn, StaggerContainer, StaggerItem } from "@/components/fade-in";
 import { AppointmentForm } from "@/components/appointment-form";
-import { CLINIC_NAME, CLINIC_PHONE, CLINIC_WHATSAPP_NUMBER, SITE_URL } from "@/lib/constants";
+import {
+  CLINIC_NAME,
+  CLINIC_PHONE,
+  CLINIC_WHATSAPP_NUMBER,
+  CLINIC_ADDRESS,
+  CLINIC_POSTAL_CODE,
+  CLINIC_HOURS,
+  CLINIC_GOOGLE_MAPS_URL,
+  SITE_URL
+} from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { serializeJsonLd } from "@/lib/json-ld";
 import { headers } from "next/headers";
@@ -40,15 +49,30 @@ import { LOCAL_HOME_TRIAL_PROMISE, LOCAL_SERVICE_AREA_LABEL } from "@/lib/local-
 export const dynamic = "force-dynamic";
 
 export default function ClinicHomePage() {
+  // MedicalOrganization + LocalBusiness combined schema for local SEO.
+  // When CLINIC_ADDRESS is configured, Google can create a Knowledge Panel.
   const schema = {
     "@context": "https://schema.org",
-    "@type": "MedicalOrganization",
+    "@type": ["MedicalOrganization", "LocalBusiness"],
     name: CLINIC_NAME,
     url: SITE_URL,
     areaServed: { "@type": "City", name: "Hyderabad, Telangana" },
     telephone: `+91 ${CLINIC_PHONE}`,
     image: `${SITE_URL}/assets/vision-vistara-hero.png`,
     medicalSpecialty: ["Optometry", "Ophthalmology"],
+    priceRange: "₹₹",
+    ...(CLINIC_ADDRESS ? {
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: CLINIC_ADDRESS,
+        addressLocality: "Hyderabad",
+        addressRegion: "Telangana",
+        postalCode: CLINIC_POSTAL_CODE || undefined,
+        addressCountry: "IN"
+      }
+    } : {}),
+    ...(CLINIC_HOURS ? { openingHours: CLINIC_HOURS } : {}),
+    ...(CLINIC_GOOGLE_MAPS_URL ? { hasMap: CLINIC_GOOGLE_MAPS_URL } : {}),
     contactPoint: {
       "@type": "ContactPoint",
       telephone: `+91 ${CLINIC_PHONE}`,

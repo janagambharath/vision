@@ -945,3 +945,28 @@ model SearchLog {
   @@index([query])
   @@index([createdAt])
 }
+
+// ─── FACE MEASUREMENT (camera-based face scan results) ───
+model FaceMeasurement {
+  id                    String   @id @default(cuid())
+  sessionId             String
+  userId                String?
+  faceWidthMm           Float?
+  faceHeightMm          Float?
+  estimatedPdMm         Float?
+  interocularWidthMm    Float?
+  noseWidthMm           Float?
+  faceShape             String?
+  recommendedSize       String?
+  measurementQuality    String?   // "Good", "Fair", "Approximate"
+  calibrationMethod     String?   // "card", "heuristic"
+  calibrationConfidence Float?
+  measurementVersion    String    @default("1.0")
+  metadata              Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([createdAt])
+}

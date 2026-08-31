@@ -11,8 +11,17 @@ import { formatMoney } from "@/lib/money";
 import type { PublicStoreProduct } from "@/lib/inventory";
 import { useCompare } from "@/components/compare-context";
 import { addToWishlist, removeFromWishlist } from "@/lib/wishlist";
+import { FitBadge } from "@/components/face-scanner/FitBadge";
+import type { FitResult, FaceMeasurements } from "@/lib/frame-fit";
+import { calculateFrameFit } from "@/lib/frame-fit";
 
-export function ProductCard({ product }: { product: PublicStoreProduct }) {
+export function ProductCard({
+  product,
+  fitResult
+}: {
+  product: PublicStoreProduct;
+  fitResult?: FitResult | null;
+}) {
   const sellable = product.sellable;
   const frontImage = product.images.find((image) => image.role === "front") ?? product.images[0];
   const angleImage = product.images.find((image) => image.role === "angle" || image.role === "gallery");
@@ -27,6 +36,31 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
 
   const { compareSlugs, addToCompare, removeFromCompare } = useCompare();
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [computedFit, setComputedFit] = useState<FitResult | null>(fitResult ?? null);
+
+  useEffect(() => {
+    if (fitResult !== undefined) {
+      setComputedFit(fitResult);
+      return;
+    }
+    const stored = localStorage.getItem("vv_face_measurements");
+    if (stored) {
+      try {
+        const face: FaceMeasurements = JSON.parse(stored);
+        const fit = calculateFrameFit(face, {
+          frameWidth: product.frameWidth ?? null,
+          lensWidth: product.lensWidth ?? null,
+          bridgeWidth: product.bridgeWidth ?? null,
+          templeLength: product.templeLength ?? null,
+          frameHeight: product.frameHeight ?? null,
+          faceShapes: product.faceShapes ?? []
+        });
+        setComputedFit(fit);
+      } catch {
+        // Ignore parsing errors
+      }
+    }
+  }, [fitResult, product]);
 
   useEffect(() => {
     const stored = localStorage.getItem("vv_wishlist_slugs");
@@ -83,7 +117,10 @@ export function ProductCard({ product }: { product: PublicStoreProduct }) {
         </div>
 
         {/* Badges */}
-        <div className="absolute left-3 top-3 flex flex-col gap-1">
+        <div className="absolute left-3 top-3 flex flex-col gap-1 items-start">
+          {computedFit && (
+            <FitBadge fitLevel={computedFit.fitLevel} fitScore={computedFit.fitScore} size="sm" showScore />
+          )}
           {product.featured ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-retail px-2.5 py-0.5 text-[10px] font-extrabold text-white">
               <Star className="h-2.5 w-2.5 fill-white" />
