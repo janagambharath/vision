@@ -150,13 +150,30 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     }
 
     try {
-      // Load MediaPipe model in parallel with camera
       setModelLoading(true);
+
+      const getCameraStream = async () => {
+        const attempts = [
+          { video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+          { video: { facingMode: "user" }, audio: false },
+          { video: true, audio: false }
+        ];
+        let lastErr: unknown = null;
+        for (const constraints of attempts) {
+          try {
+            return await navigator.mediaDevices.getUserMedia(constraints);
+          } catch (e) {
+            lastErr = e;
+            if (e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")) {
+              throw e;
+            }
+          }
+        }
+        throw lastErr;
+      };
+
       const [stream, landmarker] = await Promise.all([
-        navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
-          audio: false,
-        }),
+        getCameraStream(),
         loadFaceLandmarker(),
       ]);
       landmarkerRef.current = landmarker;
@@ -195,11 +212,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       });
     } catch (err) {
       setModelLoading(false);
-      const detail = err instanceof DOMException && err.name === "NotAllowedError"
-        ? "Camera permission was denied."
-        : "Unable to access your camera.";
-      setError(`${detail} Check your browser settings.`);
-      trackEvent("camera_permission_denied", { reason: detail });
+      const isDenied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+      const detail = isDenied
+        ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser URL bar above to allow camera access, then try again."
+        : "Unable to access your camera. Please check your camera settings and try again.";
+      setError(detail);
+      trackEvent("camera_permission_denied", { reason: isDenied ? "denied" : "unavailable" });
       setStep("intro");
     }
   };

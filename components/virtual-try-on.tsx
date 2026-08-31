@@ -161,19 +161,36 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     }
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1080 } },
-        audio: false
-      });
+      const attempts = [
+        { video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1080 } }, audio: false },
+        { video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+        { video: { facingMode: "user" }, audio: false },
+        { video: true, audio: false }
+      ];
+      let stream: MediaStream | null = null;
+      let lastErr: unknown = null;
+      for (const constraints of attempts) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          break;
+        } catch (e) {
+          lastErr = e;
+          if (e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")) {
+            throw e;
+          }
+        }
+      }
+      if (!stream) throw lastErr;
       streamRef.current = stream;
       // Transition to the camera step — the useEffect above will reliably
       // attach the stream once the <video> element is mounted by React.
       setStep("camera");
     } catch (cameraError) {
-      const detail = cameraError instanceof DOMException && cameraError.name === "NotAllowedError"
-        ? "Camera permission was denied."
-        : "Unable to access your camera.";
-      setError(`${detail} Check browser permissions or use the phone-photo option instead.`);
+      const isDenied = cameraError instanceof DOMException && (cameraError.name === "NotAllowedError" || cameraError.name === "PermissionDeniedError");
+      const detail = isDenied
+        ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser address bar to allow camera, or use the phone-photo upload option below."
+        : "Unable to access your camera. Check browser permissions or use the phone-photo option instead.";
+      setError(detail);
       setStep("idle");
     }
   };

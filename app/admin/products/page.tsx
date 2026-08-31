@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Edit, Eye, Star, Search, Filter, AlertTriangle, Archive, Copy, Trash2, CheckCircle, XCircle, Camera } from "lucide-react";
+import { Plus, Edit, Eye, Star, Search, Filter, AlertTriangle, Archive, Copy, Trash2, CheckCircle, XCircle, Camera, Upload } from "lucide-react";
 import { getAdminRole, isManagerOrOwner, requireAdmin } from "@/lib/admin-auth";
 import { formatMoney } from "@/lib/money";
 import { getStoreProducts, getStoreProductsCount } from "@/lib/store-data";
@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Admin Products" };
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 
 export default async function AdminProductsPage({
   searchParams
@@ -32,8 +32,13 @@ export default async function AdminProductsPage({
     sort: "new" as const
   };
 
-  const products = await getStoreProducts(options);
-  const totalCount = await getStoreProductsCount({ includeDrafts: true, query: params.q, status });
+  const [products, totalCount, totalActiveCount, totalDraftCount, totalArchivedCount] = await Promise.all([
+    getStoreProducts(options),
+    getStoreProductsCount({ includeDrafts: true, query: params.q, status }),
+    getStoreProductsCount({ includeDrafts: false, status: "ACTIVE" }),
+    getStoreProductsCount({ includeDrafts: true, status: "DRAFT" }),
+    getStoreProductsCount({ includeDrafts: true, status: "ARCHIVED" }),
+  ]);
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -72,9 +77,10 @@ export default async function AdminProductsPage({
   }
 
   const activeProducts = products.filter(p => p.status === "ACTIVE");
-  const activeCount = activeProducts.length;
-  const draftCount = products.filter(p => p.status === "DRAFT").length;
-  const archivedCount = products.filter(p => p.status === "ARCHIVED").length;
+  // Use database-level counts so stats are accurate regardless of pagination.
+  const activeCount = totalActiveCount;
+  const draftCount = totalDraftCount;
+  const archivedCount = totalArchivedCount;
   const imageUrlCounts: Record<string, number> = {};
   activeProducts.forEach(p => {
     p.images
@@ -133,10 +139,16 @@ export default async function AdminProductsPage({
             </p>
           </div>
           {canManage ? (
-            <Link href="/admin/products/new" className="vv-button-retail inline-flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add New Product
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/admin/products/import" className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-bold text-slate-700 hover:border-teal-400 hover:text-teal-700 transition inline-flex items-center gap-1.5 shadow-sm">
+                <Upload className="h-4 w-4 text-teal-600" />
+                Import CSV
+              </Link>
+              <Link href="/admin/products/new" className="vv-button-retail inline-flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add New Product
+              </Link>
+            </div>
           ) : null}
         </div>
 
@@ -173,8 +185,8 @@ export default async function AdminProductsPage({
 
         <div className="mb-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-vv border border-slate-200 bg-white p-4">
-            <span className="text-xs font-extrabold uppercase text-slate-500">Active products on page</span>
-            <strong className="mt-1 block text-2xl text-slate-900">{activeProducts.length}</strong>
+            <span className="text-xs font-extrabold uppercase text-slate-500">Active products</span>
+            <strong className="mt-1 block text-2xl text-slate-900">{activeCount}</strong>
           </div>
           <div className="rounded-vv border border-slate-200 bg-white p-4">
             <span className="text-xs font-extrabold uppercase text-slate-500">Try-on ready</span>
