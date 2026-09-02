@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Scan } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Scan, Sparkles } from "lucide-react";
 import dynamic from "next/dynamic";
 
 const FaceScannerModal = dynamic(() => import("./FaceScannerModal"), { ssr: false });
@@ -12,9 +12,11 @@ interface FindFrameSizeCTAProps {
 
 export function FindFrameSizeCTA({ variant = "banner" }: FindFrameSizeCTAProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasMeasurements, setHasMeasurements] = useState(false);
 
-  // Check if user already has measurements stored
-  const hasMeasurements = typeof window !== "undefined" && localStorage.getItem("vv_face_measurements");
+  useEffect(() => {
+    setHasMeasurements(Boolean(localStorage.getItem("vv_face_measurements")));
+  }, []);
 
   if (variant === "compact") {
     return (
@@ -60,19 +62,20 @@ export function FindFrameSizeCTA({ variant = "banner" }: FindFrameSizeCTAProps) 
   // Default: banner
   return (
     <>
-      <section className="border-b border-teal-100 bg-gradient-to-r from-teal-50 via-emerald-50 to-cyan-50">
+      <section className="border-y border-teal-100/80 bg-gradient-to-r from-teal-50 via-emerald-50 to-cyan-50">
         <div className="vv-container py-4 sm:py-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-sm">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-[0_10px_20px_-10px_rgba(13,148,136,0.75)]">
                 <Scan className="h-5 w-5" />
               </div>
-              <div>
-                <p className="text-sm font-extrabold text-slate-800">
-                  Not sure which size fits you?
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-sm font-extrabold text-slate-900">
+                  Find your frame size in about 30 seconds
+                  <Sparkles className="h-3.5 w-3.5 text-teal-600" aria-hidden="true" />
                 </p>
-                <p className="text-xs text-slate-500">
-                  Use your camera to estimate face measurements and discover frames that may fit you.
+                <p className="mt-0.5 text-xs text-slate-600">
+                  A quick camera scan helps identify a useful starting frame size.
                 </p>
               </div>
             </div>
@@ -84,7 +87,7 @@ export function FindFrameSizeCTA({ variant = "banner" }: FindFrameSizeCTAProps) 
                 id="find-frame-size-cta"
               >
                 <Scan className="h-4 w-4" />
-                {hasMeasurements ? "Re-measure My Face" : "Find My Frame Size"}
+                {hasMeasurements ? "Update My Size" : "Find My Frame Size"}
               </button>
             </div>
           </div>

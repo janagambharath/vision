@@ -6,6 +6,7 @@
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { CART_COOKIE } from "@/lib/constants";
+import { getAdminAccess } from "@/lib/admin-auth";
 import type { FaceMeasurements, FitResult, ProductMeasurements } from "@/lib/frame-fit";
 import { calculateFrameFit } from "@/lib/frame-fit";
 
@@ -172,6 +173,13 @@ export interface FaceScannerStats {
 }
 
 export async function getFaceScannerStats(): Promise<FaceScannerStats> {
+  // The page that renders these analytics is protected, but server actions
+  // are independently callable. Enforce the same active-admin check here so
+  // recent scan data cannot be read by invoking the action directly.
+  if (!(await getAdminAccess())) {
+    throw new Error("Unauthorized");
+  }
+
   const [
     totalScans,
     avgConfidence,

@@ -12,7 +12,6 @@ interface FaceProfileCardProps {
   recommendedSize: FrameSize | null;
   measurementQuality: MeasurementQuality;
   calibrationMethod: "card" | "heuristic";
-  matchCount: number;
   onExploreFrames: () => void;
   onSeeAll: () => void;
 }
@@ -41,7 +40,6 @@ export function FaceProfileCard({
   recommendedSize,
   measurementQuality,
   calibrationMethod,
-  matchCount,
   onExploreFrames,
   onSeeAll,
 }: FaceProfileCardProps) {
@@ -118,18 +116,6 @@ export function FaceProfileCard({
         </span>
       </div>
 
-      {/* Recommendation summary */}
-      {matchCount > 0 && (
-        <div className="rounded-xl border border-teal-500/30 bg-teal-950/50 p-4 mb-5 text-center backdrop-blur-sm">
-          <p className="text-lg font-extrabold text-teal-300">
-            {matchCount} frame{matchCount !== 1 ? "s" : ""} may fit you
-          </p>
-          <p className="mt-1 text-xs text-teal-400/70">
-            Based on your estimated measurements
-          </p>
-        </div>
-      )}
-
       {/* Actions */}
       <div className="grid gap-3">
         <button
@@ -137,7 +123,7 @@ export function FaceProfileCard({
           onClick={onExploreFrames}
           className="vv-button flex w-full justify-center gap-2 border-0 bg-gradient-to-r from-teal-500 to-emerald-600 py-3.5 font-extrabold text-white shadow-lg hover:shadow-teal-500/25"
         >
-          Explore Recommended Frames
+          Explore frames
           <ArrowRight className="h-4 w-4" />
         </button>
         <button

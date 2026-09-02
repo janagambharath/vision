@@ -6,10 +6,12 @@ import {
   AlertCircle,
   Camera,
   ChevronRight,
+  Clock3,
   CreditCard,
   Loader2,
   RotateCcw,
   Scan,
+  ShieldCheck,
   SkipForward,
   X,
 } from "lucide-react";
@@ -56,10 +58,10 @@ async function loadFaceLandmarker() {
     const { FaceLandmarker, FilesetResolver } = vision;
 
     const filesetResolver = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm"
     );
 
-    faceLandmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, {
+    const options = {
       baseOptions: {
         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
         delegate: "GPU",
@@ -68,7 +70,17 @@ async function loadFaceLandmarker() {
       numFaces: 1,
       outputFaceBlendshapes: false,
       outputFacialTransformationMatrixes: false,
-    });
+    } as const;
+
+    try {
+      faceLandmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, options);
+    } catch (gpuError) {
+      console.warn("GPU face-landmarking is unavailable; falling back to CPU.", gpuError);
+      faceLandmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, {
+        ...options,
+        baseOptions: { ...options.baseOptions, delegate: "CPU" },
+      });
+    }
 
     return faceLandmarkerInstance;
   } catch (err) {
@@ -109,7 +121,6 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
 
   // Results
   const [measurement, setMeasurement] = useState<FaceMeasurementResult | null>(null);
-  const [matchCount, setMatchCount] = useState(0);
 
   // Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -149,6 +160,8 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       return;
     }
 
+    let stream: MediaStream | null = null;
+
     try {
       setModelLoading(true);
 
@@ -172,10 +185,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         throw lastErr;
       };
 
-      const [stream, landmarker] = await Promise.all([
-        getCameraStream(),
-        loadFaceLandmarker(),
-      ]);
+      // Load the model first so a model error cannot leave the camera active.
+      const landmarker = await loadFaceLandmarker();
+      stream = await getCameraStream();
       landmarkerRef.current = landmarker;
       setModelLoading(false);
 
@@ -212,12 +224,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       });
     } catch (err) {
       setModelLoading(false);
+      stream?.getTracks().forEach((track) => track.stop());
       const isDenied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
       const detail = isDenied
         ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser URL bar above to allow camera access, then try again."
-        : "Unable to access your camera. Please check your camera settings and try again.";
+        : "Unable to start the face scanner. Please try again in a moment.";
+      console.error("Failed to start face scanner:", err);
       setError(detail);
-      trackEvent("camera_permission_denied", { reason: isDenied ? "denied" : "unavailable" });
+      trackEvent("camera_permission_denied", { reason: isDenied ? "denied" : "scanner_initialization_failed" });
       setStep("intro");
     }
   };
@@ -332,7 +346,6 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         }).catch(() => {});
 
         // Count approximate matches (placeholder — real count comes from product query)
-        setMatchCount(0); // Will be updated from server
         stopCamera();
         setStep("results");
       } catch {
@@ -389,9 +402,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
 
   // ─── NAVIGATE ───
   const handleExploreFrames = () => {
-    trackEvent("recommendations_viewed");
+    trackEvent("frame_size_results_viewed");
     onClose();
-    router.push("/frames?recommended=true");
+    router.push("/frames");
   };
 
   const handleSeeAll = () => {
@@ -401,12 +414,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
 
   // ─── RENDER ───
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-md">
       {/* Close button */}
       <button
         type="button"
         onClick={() => { stopCamera(); onClose(); }}
-        className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900/80 text-slate-400 transition hover:border-slate-500 hover:text-white"
+        className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-white/50 bg-white/90 text-slate-500 shadow-sm transition hover:border-teal-200 hover:text-teal-700"
         aria-label="Close scanner"
       >
         <X className="h-5 w-5" />
@@ -444,19 +457,23 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
 
       {/* ──── INTRO SCREEN ──── */}
       {step === "intro" && (
-        <div className="mx-4 max-w-lg text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-2xl shadow-teal-500/20">
-            <Scan className="h-10 w-10" />
+        <div className="w-full max-w-xl rounded-[2rem] bg-white px-6 py-8 text-center shadow-2xl shadow-slate-950/30 sm:px-10">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-500/25">
+            <Scan className="h-8 w-8" />
           </div>
-          <h2 className="text-2xl font-extrabold text-white sm:text-3xl">
-            Find your recommended frame size
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-teal-700">
+            <Clock3 className="h-4 w-4" />
+            Takes about 30 seconds
+          </div>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
+            Let&apos;s find your frame size
           </h2>
-          <p className="mx-auto mt-3 max-w-md text-sm text-slate-400 leading-relaxed">
-            Use your camera to estimate your face measurements and discover frames that may fit you.
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-600">
+            A quick face scan estimates a useful starting size for browsing frames.
           </p>
 
           {/* Instructions */}
-          <div className="mx-auto mt-8 grid max-w-sm gap-3 text-left">
+          <div className="mx-auto mt-6 grid max-w-md gap-2 text-left sm:grid-cols-2">
             {[
               { icon: "👓", text: "Remove your glasses" },
               { icon: "📱", text: "Face the camera directly at eye level" },
@@ -464,19 +481,24 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               { icon: "😐", text: "Keep your face inside the guide" },
               { icon: "🤚", text: "Hold still during scanning" },
             ].map((item) => (
-              <div key={item.text} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+              <div key={item.text} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 sm:last:col-span-2">
                 <span className="text-lg">{item.icon}</span>
-                <span className="text-sm font-semibold text-slate-300">{item.text}</span>
+                <span className="text-sm font-semibold text-slate-700">{item.text}</span>
               </div>
             ))}
           </div>
 
-          <div className="mt-8 grid gap-3">
+          <div className="mt-5 flex items-center justify-center gap-2 text-xs font-medium text-slate-500">
+            <ShieldCheck className="h-4 w-4 text-teal-600" />
+            Your camera is used only while you scan.
+          </div>
+
+          <div className="mt-6 grid gap-3">
             <button
               type="button"
               onClick={startCamera}
               disabled={modelLoading}
-              className="vv-button flex w-full justify-center gap-2 border-0 bg-gradient-to-r from-teal-500 to-emerald-600 py-4 text-base font-extrabold text-white shadow-lg hover:shadow-teal-500/25 disabled:opacity-50"
+              className="vv-button-retail flex w-full justify-center gap-2 py-4 text-base"
             >
               {modelLoading ? (
                 <>
@@ -486,14 +508,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               ) : (
                 <>
                   <Camera className="h-5 w-5" />
-                  Start Measuring
+                  Start face scan
                 </>
               )}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="text-sm font-bold text-slate-500 hover:text-slate-300 transition"
+              className="text-sm font-bold text-slate-500 transition hover:text-slate-800"
             >
               Not now
             </button>
@@ -654,7 +676,6 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
             recommendedSize={measurement.recommendedSize}
             measurementQuality={measurement.measurementQuality}
             calibrationMethod={measurement.calibrationMethod}
-            matchCount={matchCount}
             onExploreFrames={handleExploreFrames}
             onSeeAll={handleSeeAll}
           />
