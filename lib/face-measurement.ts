@@ -133,9 +133,12 @@ export function calibrateWithCard(
   const leftEdge = distance2D(cardCorners.topLeft, cardCorners.bottomLeft);
   const rightEdge = distance2D(cardCorners.topRight, cardCorners.bottomRight);
 
-  // Determine which edges are width vs height
-  const avgLong = (Math.max(topEdge, bottomEdge) + Math.max(leftEdge, rightEdge)) / 2;
-  const avgShort = (Math.min(topEdge, bottomEdge) + Math.min(leftEdge, rightEdge)) / 2;
+  // Determine which pair is the width and which is the height. Comparing the
+  // two averaged edge pairs preserves the card's 1.586:1 aspect ratio.
+  const horizontalEdge = (topEdge + bottomEdge) / 2;
+  const verticalEdge = (leftEdge + rightEdge) / 2;
+  const avgLong = Math.max(horizontalEdge, verticalEdge);
+  const avgShort = Math.min(horizontalEdge, verticalEdge);
 
   // Check aspect ratio to validate it's a real card
   const aspect = avgLong / avgShort;
@@ -149,10 +152,7 @@ export function calibrateWithCard(
   else confidence = 0.35;
 
   // Use the longer dimension as card width
-  const cardWidthPx = Math.max(
-    (topEdge + bottomEdge) / 2,
-    (leftEdge + rightEdge) / 2
-  );
+  const cardWidthPx = avgLong;
 
   const pixelsPerMm = cardWidthPx / STANDARD_CARD.widthMm;
 

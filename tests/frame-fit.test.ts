@@ -9,6 +9,20 @@ import {
   type FaceMeasurements,
   type ProductMeasurements,
 } from "../lib/frame-fit";
+import { calibrateWithCard } from "../lib/face-measurement";
+
+test("calibrateWithCard uses a standard horizontal card width and validates its aspect ratio", () => {
+  const calibration = calibrateWithCard({
+    topLeft: { x: 0, y: 0 },
+    topRight: { x: 428, y: 0 },
+    bottomLeft: { x: 0, y: 270 },
+    bottomRight: { x: 428, y: 270 },
+  });
+
+  assert.equal(calibration.method, "card");
+  assert.ok(Math.abs(calibration.pixelsPerMm - 5) < 0.01);
+  assert.equal(calibration.confidence, 0.95);
+});
 
 test("calculateFrameFit scores matching frame width highly", () => {
   const face: FaceMeasurements = {

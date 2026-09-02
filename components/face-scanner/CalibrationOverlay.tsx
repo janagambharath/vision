@@ -79,7 +79,7 @@ export function CalibrationOverlay({ status, message }: CalibrationOverlayProps)
           <p className="text-sm font-bold">{message}</p>
           {!isDetected && !isError && (
             <p className="mt-1 text-[11px] opacity-60">
-              Align your bank card / ID inside the guide box
+              Keep your face above the card and fit all four card corners inside the guide
             </p>
           )}
         </div>
