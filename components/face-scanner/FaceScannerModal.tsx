@@ -129,10 +129,13 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const landmarkerRef = useRef<any>(null);
   const latestLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
   const readyFrameCountRef = useRef(0);
+  const detectionRunningRef = useRef(false);
+  const videoDimensionsRef = useRef({ width: 0, height: 0 });
 
   // ─── CLEANUP ───
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    detectionRunningRef.current = false;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setCameraReady(false);
@@ -253,9 +256,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   };
 
   // ─── FACE DETECTION LOOP ───
-  const startDetectionLoop = () => {
+  const startDetectionLoop = useCallback(() => {
+    if (detectionRunningRef.current) return;
+
     const landmarker = landmarkerRef.current;
     if (!landmarker) return;
+    detectionRunningRef.current = true;
 
     let lastTimestamp = -1;
 
@@ -264,6 +270,10 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       if (!video || !streamRef.current || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
         animFrameRef.current = requestAnimationFrame(detect);
         return;
+      }
+
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        videoDimensionsRef.current = { width: video.videoWidth, height: video.videoHeight };
       }
 
       const now = performance.now();
@@ -300,14 +310,54 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     };
 
     animFrameRef.current = requestAnimationFrame(detect);
-  };
+  }, []);
+
+  // The video node is deliberately unmounted between camera, calibration, and
+  // scanning views. Reattach the existing stream whenever a video view mounts;
+  // otherwise Safari shows a black preview and the landmark loop has no frames.
+  useEffect(() => {
+    const needsVideo = step === "camera" || step === "calibration";
+    if (!needsVideo) return;
+
+    let cancelled = false;
+    let frameId = 0;
+
+    const attachStream = () => {
+      const video = videoRef.current;
+      const stream = streamRef.current;
+      if (!video || !stream) {
+        frameId = requestAnimationFrame(attachStream);
+        return;
+      }
+
+      if (video.srcObject !== stream) video.srcObject = stream;
+      video.play().then(() => {
+        if (cancelled) return;
+        setCameraReady(true);
+        startDetectionLoop();
+      }).catch(() => {
+        if (!cancelled) frameId = requestAnimationFrame(attachStream);
+      });
+    };
+
+    attachStream();
+    return () => {
+      cancelled = true;
+      if (frameId) cancelAnimationFrame(frameId);
+    };
+  }, [calibrationMode, startDetectionLoop, step]);
 
   // ─── CAPTURE & MEASURE ───
-  const performMeasurement = useCallback(() => {
+  const performMeasurement = useCallback((calibrationOverride?: CalibrationResult) => {
     const video = videoRef.current;
     const landmarks = latestLandmarksRef.current;
-    if (!video || !landmarks || landmarks.length < 468) {
-      setError("Could not detect face landmarks. Please try again.");
+    const videoWidth = video?.videoWidth || videoDimensionsRef.current.width;
+    const videoHeight = video?.videoHeight || videoDimensionsRef.current.height;
+    if (!video || !videoWidth || !videoHeight || !landmarks || landmarks.length < 468) {
+      setError("Face landmarks were lost. Center your face in the guide and try again.");
+      setLandmarksReady(false);
+      readyFrameCountRef.current = 0;
+      setStep("camera");
       return;
     }
 
@@ -315,14 +365,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     trackEvent("calibration_completed", { method: calibrationResult?.method ?? "heuristic" });
 
     // Use calibration result or fall back to iris heuristic
-    const cal = calibrationResult ?? calibrateWithIris(landmarks, video.videoWidth, video.videoHeight);
+    const cal = calibrationOverride ?? calibrationResult ?? calibrateWithIris(landmarks, videoWidth, videoHeight);
 
     setTimeout(() => {
       try {
         const result = computeFaceMeasurements(
           landmarks,
-          video.videoWidth,
-          video.videoHeight,
+          videoWidth,
+          videoHeight,
           cal
         );
 
@@ -379,8 +429,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     const landmarks = latestLandmarksRef.current;
     const video = videoRef.current;
     if (landmarks && video) {
-      const cal = calibrateWithIris(landmarks, video.videoWidth, video.videoHeight);
+      const cal = calibrateWithIris(
+        landmarks,
+        video.videoWidth || videoDimensionsRef.current.width,
+        video.videoHeight || videoDimensionsRef.current.height
+      );
       setCalibrationResult(cal);
+      performMeasurement(cal);
+      return;
     }
     performMeasurement();
   };
@@ -396,10 +452,16 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       const video = videoRef.current;
       if (landmarks && video) {
         // Enhanced calibration: use iris + boost confidence for card presence
-        const cal = calibrateWithIris(landmarks, video.videoWidth, video.videoHeight);
+        const cal = calibrateWithIris(
+          landmarks,
+          video.videoWidth || videoDimensionsRef.current.width,
+          video.videoHeight || videoDimensionsRef.current.height
+        );
         cal.confidence = Math.min(1, cal.confidence + 0.15);
         cal.method = "card";
         setCalibrationResult(cal);
+        performMeasurement(cal);
+        return;
       }
       performMeasurement();
     }, 2000);
@@ -413,6 +475,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     setLandmarksReady(false);
     readyFrameCountRef.current = 0;
     setError(null);
+    stopCamera();
     startCamera();
   };
 
@@ -570,6 +633,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               type="button"
               onClick={() => {
                 if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+                detectionRunningRef.current = false;
                 setStep("calibration");
               }}
               disabled={!landmarksReady}
@@ -592,6 +656,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       {/* ──── CALIBRATION CHOICE ──── */}
       {step === "calibration" && calibrationMode === "choosing" && (
         <div className="mx-4 max-w-lg text-center">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            aria-hidden="true"
+            className="pointer-events-none absolute h-px w-px opacity-0"
+          />
           <h3 className="text-xl font-extrabold text-white">Improve accuracy</h3>
           <p className="mt-2 text-sm text-slate-400">
             Hold a standard bank card next to your face for better measurements, or continue with estimated calibration.
