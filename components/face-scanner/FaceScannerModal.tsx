@@ -161,6 +161,8 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     }
 
     let stream: MediaStream | null = null;
+    let cameraPromise: Promise<MediaStream> | null = null;
+    let initializationStage: "camera" | "model" = "camera";
 
     try {
       setModelLoading(true);
@@ -185,9 +187,16 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         throw lastErr;
       };
 
-      // Load the model first so a model error cannot leave the camera active.
-      const landmarker = await loadFaceLandmarker();
-      stream = await getCameraStream();
+      // Safari can require getUserMedia to be initiated directly from the
+      // button tap. Start it immediately while the model loads in parallel.
+      cameraPromise = getCameraStream();
+      initializationStage = "model";
+      const landmarkerPromise = loadFaceLandmarker();
+
+      initializationStage = "camera";
+      stream = await cameraPromise;
+      initializationStage = "model";
+      const landmarker = await landmarkerPromise;
       landmarkerRef.current = landmarker;
       setModelLoading(false);
 
@@ -225,13 +234,20 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     } catch (err) {
       setModelLoading(false);
       stream?.getTracks().forEach((track) => track.stop());
+      // The camera can resolve after the model fails. Stop that late stream
+      // too, so a failed start never leaves an iPhone camera indicator active.
+      cameraPromise?.then((lateStream) => {
+        if (lateStream !== stream) lateStream.getTracks().forEach((track) => track.stop());
+      }).catch(() => {});
       const isDenied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
       const detail = isDenied
         ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser URL bar above to allow camera access, then try again."
-        : "Unable to start the face scanner. Please try again in a moment.";
-      console.error("Failed to start face scanner:", err);
+        : initializationStage === "model"
+          ? "We couldn't load face detection. Check your connection and try again."
+          : "We couldn't access your camera. Check browser camera permission and try again.";
+      console.error("Failed to start face scanner:", { initializationStage, err });
       setError(detail);
-      trackEvent("camera_permission_denied", { reason: isDenied ? "denied" : "scanner_initialization_failed" });
+      trackEvent("camera_permission_denied", { reason: isDenied ? "denied" : `scanner_${initializationStage}_initialization_failed` });
       setStep("intro");
     }
   };
