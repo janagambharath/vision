@@ -58,7 +58,7 @@ async function loadFaceLandmarker() {
     const { FaceLandmarker, FilesetResolver } = vision;
 
     const filesetResolver = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm"
+      "/mediapipe"
     );
 
     const options = {
