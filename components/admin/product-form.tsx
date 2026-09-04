@@ -84,7 +84,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
   const [brand, setBrand] = useState(product?.brand ?? "");
   const [aiState, setAiState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [aiMessage, setAiMessage] = useState("");
-  const [aiAnalysisToken, setAiAnalysisToken] = useState("");
   const [submitError, setSubmitError] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -113,11 +112,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
     }
   };
 
-  const fillNumberField = (fieldName: string, value: number | null) => {
-    if (value === null || !fieldIsBlank(fieldName)) return;
-    fillTextField(fieldName, String(value));
-  };
-
   const applyAiDraft = (draft: ProductAiDraft, provider: string, fallbackUsed: boolean) => {
     if (!name.trim() && draft.name) setName(draft.name);
     if (!brand.trim() && draft.brand) setBrand(draft.brand);
@@ -137,17 +131,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
     fillTextField("rimType", draft.rimType);
     fillTextField("gender", draft.gender);
     fillTextField("ageGroup", draft.ageGroup);
-    fillTextField("size", draft.size);
-    fillTextField("measurements", draft.measurements);
-    fillNumberField("weightGrams", draft.weightGrams);
-    fillNumberField("frameWidth", draft.frameWidth);
-    fillNumberField("lensWidth", draft.lensWidth);
-    fillNumberField("bridgeWidth", draft.bridgeWidth);
-    fillNumberField("templeLength", draft.templeLength);
-    fillNumberField("frameHeight", draft.frameHeight);
-    fillTextField("pdRange", draft.pdRange);
     fillTextField("highlights", draft.highlights.join("\n"));
-    fillTextField("faceShapes", draft.faceShapes.join(", "));
     fillTextField("lensCompatibility", draft.lensCompatibility.join("\n"));
     fillTextField("seoTitle", draft.seoTitle);
     fillTextField("seoDescription", draft.seoDescription);
@@ -159,7 +143,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       ...draft.needsReview
     ].filter(Boolean).join(" ");
     setAiState("ready");
-    setAiMessage(`${fallbackUsed ? "The primary free image model was unavailable, so the backup completed this draft. " : `${provider === "openrouter" ? "OpenRouter's free image model" : "AI"} completed this draft. `}${reviewSummary} AI filled empty fields only; verify every suggestion before publishing.`);
+    setAiMessage(`${fallbackUsed ? "The primary free image model was unavailable, so the backup completed this draft. " : `${provider === "openrouter" ? "OpenRouter's free image model" : "AI"} completed this draft. `}${reviewSummary} AI filled empty descriptive fields only; enter frame measurements manually.`);
   };
 
   const generateAiDraft = async (image = firstProductImage) => {
@@ -178,8 +162,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
         body: JSON.stringify({ imageUrl: image.url })
       });
       const result = await response.json();
-      if (!response.ok || !result.draft || !result.analysisToken) throw new Error(result.error || "AI product enrichment failed.");
-      setAiAnalysisToken(String(result.analysisToken));
+      if (!response.ok || !result.draft) throw new Error(result.error || "AI product enrichment failed.");
       applyAiDraft(result.draft as ProductAiDraft, String(result.provider ?? "AI"), Boolean(result.fallbackUsed));
     } catch (error) {
       setAiState("error");
@@ -189,7 +172,6 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
   const handleImagesChange = (nextImages: UploadedImage[]) => {
     setImages(nextImages);
-    setAiAnalysisToken("");
     setAiState("idle");
     setAiMessage("");
   };
@@ -218,10 +200,9 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
 
   return (
     <form ref={formRef} action={action} onSubmit={validateCreate} noValidate className="grid gap-6">
-      <input type="hidden" name="aiAnalysisToken" value={aiAnalysisToken} />
       <section className="rounded-vv border border-teal-200 bg-teal-50/60 p-4 text-sm text-teal-950">
         <strong className="block font-extrabold">Fast catalog workflow</strong>
-        <p className="mt-1">Upload a clear front image, let AI draft visual details, then confirm the essentials: name, brand, description, price, stock, category, and image. The product is not created until these are complete; its SKU is issued automatically.</p>
+        <p className="mt-1">Upload a clear front image, let AI draft visual details, then confirm the essentials: name, brand, description, price, stock, category, image, and any frame measurements. The product is not created until the required fields are complete; its SKU is issued automatically.</p>
       </section>
       {/* Tab navigation */}
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200 pb-0 [scrollbar-width:thin]">
@@ -423,57 +404,57 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
               <input className="store-input" type="text" name="rimType"
                 defaultValue={product?.rimType ?? ""} placeholder="e.g. Full Rim / Rimless" />
             </label>
-            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
-              AI-detected weight (grams)
-              <input className="store-input bg-slate-50 text-slate-500" type="number" name="weightGrams" readOnly tabIndex={-1}
-                defaultValue={product?.weightGrams ?? ""} placeholder="Visible marking required" />
-            </label>
           </div>
 
-          <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm font-medium text-violet-950">
-            Measurements are analyzed automatically after the first product image is uploaded. The server accepts them only from the matching AI analysis; if a marking is not visible, they remain blank.
+          <div className="rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm font-medium text-teal-950">
+            Enter measurements from the frame's printed marking or your supplier specification sheet. These fields are optional, but they are never generated or changed by AI.
           </div>
-          <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2 mt-2">AI-analyzed frame measurements</h2>
+          <h2 className="text-xl font-extrabold border-b border-slate-100 pb-2 mt-2">Frame measurements</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Size marking
-              <input className="store-input bg-slate-50 text-slate-500" type="text" name="size" readOnly tabIndex={-1}
-                defaultValue={product?.size ?? ""} placeholder="AI reads visible marking" />
+              <input className="store-input" type="text" name="size" maxLength={80}
+                defaultValue={product?.size ?? ""} placeholder="e.g. 52-18-140" />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Measurement summary
-              <input className="store-input bg-slate-50 text-slate-500" type="text" name="measurements" readOnly tabIndex={-1}
-                defaultValue={product?.measurements ?? ""} placeholder="AI reads visible marking" />
+              <input className="store-input" type="text" name="measurements" maxLength={140}
+                defaultValue={product?.measurements ?? ""} placeholder="e.g. 52-18-140 / Medium" />
+            </label>
+            <label className="grid gap-1 text-sm font-extrabold text-slate-600">
+              Weight (grams)
+              <input className="store-input" type="number" name="weightGrams" min="0" max="500" step="1"
+                defaultValue={product?.weightGrams ?? ""} placeholder="e.g. 18" />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Frame Width (mm)
-              <input className="store-input bg-slate-50 text-slate-500" type="number" name="frameWidth" readOnly tabIndex={-1}
+              <input className="store-input" type="number" name="frameWidth" min="0" max="300" step="1"
                 defaultValue={product?.frameWidth ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Lens Width (mm)
-              <input className="store-input bg-slate-50 text-slate-500" type="number" name="lensWidth" readOnly tabIndex={-1}
+              <input className="store-input" type="number" name="lensWidth" min="0" max="200" step="1"
                 defaultValue={product?.lensWidth ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Bridge Width (mm)
-              <input className="store-input bg-slate-50 text-slate-500" type="number" name="bridgeWidth" readOnly tabIndex={-1}
+              <input className="store-input" type="number" name="bridgeWidth" min="0" max="100" step="1"
                 defaultValue={product?.bridgeWidth ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Temple Length (mm)
-              <input className="store-input bg-slate-50 text-slate-500" type="number" name="templeLength" readOnly tabIndex={-1}
+              <input className="store-input" type="number" name="templeLength" min="0" max="250" step="1"
                 defaultValue={product?.templeLength ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               Frame Height (mm)
-              <input className="store-input bg-slate-50 text-slate-500" type="number" name="frameHeight" readOnly tabIndex={-1}
+              <input className="store-input" type="number" name="frameHeight" min="0" max="200" step="1"
                 defaultValue={product?.frameHeight ?? ""} />
             </label>
             <label className="grid gap-1 text-sm font-extrabold text-slate-600">
               PD Range
-              <input className="store-input bg-slate-50 text-slate-500" type="text" name="pdRange" readOnly tabIndex={-1}
-                defaultValue={product?.pdRange ?? ""} placeholder="AI reads visible marking" />
+              <input className="store-input" type="text" name="pdRange" maxLength={40}
+                defaultValue={product?.pdRange ?? ""} placeholder="e.g. 58-68 mm" />
             </label>
           </div>
 
@@ -531,7 +512,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-violet-950">AI product draft</h3>
-                <p className="mt-1 text-xs font-medium text-violet-800">Click Generate after choosing the final product image. Three free OpenRouter vision models are tried in order, with automatic backup if one is unavailable. It transcribes measurements only from clearly visible markings; it never invents price, SKU, stock, or policies.</p>
+                <p className="mt-1 text-xs font-medium text-violet-800">Click Generate after choosing the final product image. Three free OpenRouter vision models are tried in order, with automatic backup if one is unavailable. AI can draft visual and descriptive fields only; it never fills frame measurements, price, SKU, stock, or policies.</p>
               </div>
               <button
                 type="button"

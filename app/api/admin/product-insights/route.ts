@@ -9,7 +9,6 @@ import {
   productAiRequestSchema,
   type ProductAiDraft
 } from "@/lib/product-ai";
-import { createProductAnalysisToken } from "@/lib/product-ai-analysis";
 
 export const runtime = "nodejs";
 
@@ -18,8 +17,7 @@ const productDraftJsonSchema = {
   additionalProperties: false,
   required: [
     "name", "brand", "shortDescription", "description", "material", "colour", "finish", "shape", "rimType",
-    "gender", "ageGroup", "size", "measurements", "weightGrams", "frameWidth", "lensWidth", "bridgeWidth",
-    "templeLength", "frameHeight", "pdRange", "highlights", "faceShapes", "lensCompatibility", "seoTitle",
+    "gender", "ageGroup", "highlights", "lensCompatibility", "seoTitle",
     "seoDescription", "seoKeywords", "categoryHint", "confidence", "needsReview"
   ],
   properties: {
@@ -34,17 +32,7 @@ const productDraftJsonSchema = {
     rimType: { type: "string", maxLength: 600 },
     gender: { type: "string", enum: ["", "Men", "Women", "Unisex", "Kids"] },
     ageGroup: { type: "string", enum: ["", "Adult", "Teen", "Kids"] },
-    size: { type: "string", maxLength: 80 },
-    measurements: { type: "string", maxLength: 140 },
-    weightGrams: { type: ["number", "null"], minimum: 0, maximum: 500 },
-    frameWidth: { type: ["number", "null"], minimum: 0, maximum: 300 },
-    lensWidth: { type: ["number", "null"], minimum: 0, maximum: 200 },
-    bridgeWidth: { type: ["number", "null"], minimum: 0, maximum: 100 },
-    templeLength: { type: ["number", "null"], minimum: 0, maximum: 250 },
-    frameHeight: { type: ["number", "null"], minimum: 0, maximum: 200 },
-    pdRange: { type: "string", maxLength: 40 },
     highlights: { type: "array", items: { type: "string", maxLength: 180 }, maxItems: 6 },
-    faceShapes: { type: "array", items: { type: "string", maxLength: 80 }, maxItems: 12 },
     lensCompatibility: { type: "array", items: { type: "string", maxLength: 80 }, maxItems: 12 },
     seoTitle: { type: "string", maxLength: 70 },
     seoDescription: { type: "string", maxLength: 180 },
@@ -58,10 +46,10 @@ const productDraftJsonSchema = {
 const instructions = [
   "You prepare a first draft of an optical ecommerce product listing from one frame photograph.",
   "Return only the requested JSON schema. Never invent a price, SKU, barcode, stock quantity, warranty, return policy, or technical certification.",
-  "Measurements are allowed only when a size marking is clearly visible and readable on the frame or image. Transcribe that marking exactly when possible; otherwise return empty strings and null numeric measurements. Never estimate physical dimensions or weight from pixels.",
+  "Do not generate, infer, or transcribe physical frame measurements, size markings, PD ranges, or weight. Staff enter verified frame specifications manually.",
   "Only name a brand when it is clearly readable on the frame or image. Leave uncertain fields as empty strings or empty arrays and explain uncertainty in needsReview.",
   "The image can show the frame by itself or a person wearing it. When a person is present, analyse only the visible eyewear and its fit or styling as product context. Do not identify, describe, or infer personal attributes about the person.",
-  "Describe visible product attributes conservatively. Lens compatibility and face-shape suggestions are editorial suggestions, not verified optical claims, and must be included in needsReview when present.",
+  "Describe visible product attributes conservatively. Lens compatibility suggestions are editorial suggestions, not verified optical claims, and must be included in needsReview when present.",
   "Use Indian English. Keep marketing copy factual, concise, and suitable for a premium eyewear catalog."
 ].join(" ");
 
@@ -73,8 +61,7 @@ const productEnrichmentModels = [
 
 const emptyProductAiDraft: ProductAiDraft = {
   name: "", brand: "", shortDescription: "", description: "", material: "", colour: "", finish: "", shape: "", rimType: "",
-  gender: "", ageGroup: "", size: "", measurements: "", weightGrams: null, frameWidth: null, lensWidth: null,
-  bridgeWidth: null, templeLength: null, frameHeight: null, pdRange: "", highlights: [], faceShapes: [], lensCompatibility: [],
+  gender: "", ageGroup: "", highlights: [], lensCompatibility: [],
   seoTitle: "", seoDescription: "", seoKeywords: [], categoryHint: "", confidence: "low", needsReview: []
 };
 
@@ -191,8 +178,7 @@ export async function POST(request: NextRequest) {
     const result = await generateWithOpenRouter(parsedRequest.data.imageUrl);
     return NextResponse.json({
       ...result,
-      provider: "openrouter",
-      analysisToken: createProductAnalysisToken({ imageUrl: parsedRequest.data.imageUrl, draft: result.draft })
+      provider: "openrouter"
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("OpenRouter product enrichment failed", error instanceof Error ? error.message : error);

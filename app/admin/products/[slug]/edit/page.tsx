@@ -8,18 +8,77 @@ import { invalidateProductCache } from "@/lib/inventory-actions";
 import { ProductForm } from "@/components/admin/product-form";
 import { getPublishBlockersForDraft } from "@/lib/product-publishing";
 import { isTrustedProductImageUrl } from "@/lib/product-ai";
-import { readVerifiedProductAnalysis } from "@/lib/product-ai-analysis";
 
 export const metadata = { title: "Edit Product | Admin" };
 
 const errorMessages: Record<string, string> = {
   "missing-fields": "Name and brand are required.",
   "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
-  "invalid-values": "Check prices, inventory, and AI-derived values. Values must be valid non-negative numbers.",
+  "invalid-values": "Check prices, inventory, and manual frame specifications. Measurements must be whole numbers within the allowed range.",
   "duplicate-slug": "Another product already uses that slug.",
   "reserved-stock": "Stock cannot be set below units currently reserved by open checkouts.",
   "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
+
+type ManualFrameMeasurements = {
+  size: string | null;
+  measurements: string | null;
+  weightGrams: number | null;
+  frameWidth: number | null;
+  lensWidth: number | null;
+  bridgeWidth: number | null;
+  templeLength: number | null;
+  frameHeight: number | null;
+  pdRange: string | null;
+};
+
+function readManualFrameMeasurements(formData: FormData): ManualFrameMeasurements | null {
+  const readOptionalText = (field: string, maxLength: number): string | null | undefined => {
+    const value = String(formData.get(field) ?? "").trim();
+    if (!value) return null;
+    return value.length <= maxLength ? value : undefined;
+  };
+  const readOptionalWholeNumber = (field: string, max: number): number | null | undefined => {
+    const rawValue = String(formData.get(field) ?? "").trim();
+    if (!rawValue) return null;
+    const value = Number(rawValue);
+    return Number.isInteger(value) && value >= 0 && value <= max ? value : undefined;
+  };
+
+  const size = readOptionalText("size", 80);
+  const measurements = readOptionalText("measurements", 140);
+  const weightGrams = readOptionalWholeNumber("weightGrams", 500);
+  const frameWidth = readOptionalWholeNumber("frameWidth", 300);
+  const lensWidth = readOptionalWholeNumber("lensWidth", 200);
+  const bridgeWidth = readOptionalWholeNumber("bridgeWidth", 100);
+  const templeLength = readOptionalWholeNumber("templeLength", 250);
+  const frameHeight = readOptionalWholeNumber("frameHeight", 200);
+  const pdRange = readOptionalText("pdRange", 40);
+
+  if (
+    size === undefined ||
+    measurements === undefined ||
+    weightGrams === undefined ||
+    frameWidth === undefined ||
+    lensWidth === undefined ||
+    bridgeWidth === undefined ||
+    templeLength === undefined ||
+    frameHeight === undefined ||
+    pdRange === undefined
+  ) return null;
+
+  return {
+    size,
+    measurements,
+    weightGrams,
+    frameWidth,
+    lensWidth,
+    bridgeWidth,
+    templeLength,
+    frameHeight,
+    pdRange
+  };
+}
 
 function slugify(value: string) {
   return value
@@ -134,9 +193,11 @@ export default async function EditProductPage({
     const highlights = String(formData.get("highlights") ?? "").split("\n").map(h => h.trim()).filter(Boolean);
     const faceShapes = String(formData.get("faceShapes") ?? "").split(",").map(f => f.trim()).filter(Boolean);
     const lensCompatibility = String(formData.get("lensCompatibility") ?? "").split("\n").map(l => l.trim()).filter(Boolean);
+    const manualMeasurements = readManualFrameMeasurements(formData);
 
     if (!name || !brand || !sku) redirect(`/admin/products/${currentSlug}/edit?error=missing-fields`);
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect(`/admin/products/${currentSlug}/edit?error=invalid-slug`);
+    if (!manualMeasurements) redirect(`/admin/products/${currentSlug}/edit?error=invalid-values`);
     if (
       [pricePaise, compareAtPaise, costPricePaise]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
@@ -152,19 +213,17 @@ export default async function EditProductPage({
     const candidateImages = readImages(formData, product!.id, brand, name, arImageUrl);
     const imageRoles = candidateImages.map((image) => image.role);
     const tryOnEligible = candidateImages.some((image) => image.role !== "ar");
-    const analysis = readVerifiedProductAnalysis(
-      String(formData.get("aiAnalysisToken") ?? ""),
-      candidateImages.map((image) => image.url)
-    );
-    const size = analysis?.size || product!.size;
-    const measurements = analysis?.measurements || product!.measurements;
-    const weightGrams = analysis?.weightGrams ?? product!.weightGrams;
-    const frameWidth = analysis?.frameWidth ?? product!.frameWidth;
-    const lensWidth = analysis?.lensWidth ?? product!.lensWidth;
-    const bridgeWidth = analysis?.bridgeWidth ?? product!.bridgeWidth;
-    const templeLength = analysis?.templeLength ?? product!.templeLength;
-    const frameHeight = analysis?.frameHeight ?? product!.frameHeight;
-    const pdRange = analysis?.pdRange || product!.pdRange;
+    const {
+      size,
+      measurements,
+      weightGrams,
+      frameWidth,
+      lensWidth,
+      bridgeWidth,
+      templeLength,
+      frameHeight,
+      pdRange
+    } = manualMeasurements;
     const categoryCount = selectedCategories.length
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;

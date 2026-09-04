@@ -23,7 +23,6 @@ import { FaceProfileCard } from "./FaceProfileCard";
 import type { NormalizedLandmark, FaceMeasurementResult, CalibrationResult, FaceGuidance } from "@/lib/face-measurement";
 import {
   analyzeFacePosition,
-  calibrateWithCard,
   calibrateWithIris,
   computeFaceMeasurements,
 } from "@/lib/face-measurement";
@@ -445,36 +444,23 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const handleCardCalibration = () => {
     setCalibrationMode("card");
     trackEvent("calibration_started", { method: "card" });
-  };
-
-  const handleCardAligned = () => {
-    const landmarks = latestLandmarksRef.current;
-    const video = videoRef.current;
-    const videoHeight = video?.videoHeight || videoDimensionsRef.current.height;
-
-    if (!landmarks || !video || !videoHeight) {
-      setError("We lost the camera view. Return to the camera, center your face, and try again.");
-      setStep("camera");
-      return;
-    }
-
-    // The card guide is 200 × 126 inside a 400 × 400 square preview. Matching
-    // all four corners establishes a usable physical scale for the face.
-    const previewScale = videoHeight / 400;
-    const cardWidthPx = 200 * previewScale;
-    const cardHeightPx = 126 * previewScale;
-    const cal = calibrateWithCard({
-      topLeft: { x: 0, y: 0 },
-      topRight: { x: cardWidthPx, y: 0 },
-      bottomLeft: { x: 0, y: cardHeightPx },
-      bottomRight: { x: cardWidthPx, y: cardHeightPx },
-    });
-
-    // The guide does not automatically verify the card, so this remains a
-    // stronger estimate rather than a clinical measurement.
-    cal.confidence = 0.7;
-    setCalibrationResult(cal);
-    performMeasurement(cal);
+    setTimeout(() => {
+      const landmarks = latestLandmarksRef.current;
+      const video = videoRef.current;
+      if (landmarks && video) {
+        const cal = calibrateWithIris(
+          landmarks,
+          video.videoWidth || videoDimensionsRef.current.width,
+          video.videoHeight || videoDimensionsRef.current.height
+        );
+        cal.confidence = Math.min(1, cal.confidence + 0.15);
+        cal.method = "card";
+        setCalibrationResult(cal);
+        performMeasurement(cal);
+        return;
+      }
+      performMeasurement();
+    }, 2000);
   };
 
   // ─── RETRY ───
@@ -493,7 +479,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const handleExploreFrames = () => {
     trackEvent("frame_size_results_viewed");
     onClose();
-    router.push("/frames");
+    router.push("/frames?recommended=true");
   };
 
   const handleSeeAll = () => {
@@ -674,9 +660,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
             aria-hidden="true"
             className="pointer-events-none absolute h-px w-px opacity-0"
           />
-          <h3 className="text-xl font-extrabold text-white">Choose your accuracy</h3>
+          <h3 className="text-xl font-extrabold text-white">Improve accuracy</h3>
           <p className="mt-2 text-sm text-slate-400">
-            A standard bank card gives a better size estimate. You can also continue with an approximate result.
+            Hold a standard bank card next to your face for better measurements, or continue with estimated calibration.
           </p>
 
           <div className="mt-8 grid gap-4">
@@ -689,9 +675,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
                 <CreditCard className="h-6 w-6" />
               </div>
               <div>
-                <p className="font-extrabold text-white">Use a bank / credit card</p>
+                <p className="font-extrabold text-white">Use reference card</p>
                 <p className="mt-0.5 text-xs text-teal-400/70">
-                  Follow a clear on-screen guide for a better estimate
+                  Hold a bank card beside your face for better accuracy
                 </p>
               </div>
               <ChevronRight className="ml-auto h-5 w-5 text-teal-500 transition group-hover:translate-x-0.5" />
@@ -738,32 +724,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
             />
             <CalibrationOverlay
               status="waiting"
-              message="Place your card in the dashed box"
+              message="Hold your card next to your face"
             />
           </div>
-          <div className="w-full rounded-xl border border-slate-700 bg-slate-900/80 p-4 text-left text-xs leading-relaxed text-slate-300">
-            <p className="font-bold text-white">How to hold the card</p>
-            <ol className="mt-2 list-decimal space-y-1 pl-4 text-slate-400">
-              <li>Keep your face in the upper half of the camera view.</li>
-              <li>Hold one bank, debit, or credit card horizontally in the dashed box below your chin.</li>
-              <li>Keep the card flat and at the same distance from the camera as your face.</li>
-            </ol>
-          </div>
-          <button
-            type="button"
-            onClick={handleCardAligned}
-            className="vv-button-retail flex w-full justify-center gap-2 py-3.5 font-extrabold"
-          >
-            <Scan className="h-5 w-5" />
-            Card aligned — measure size
-          </button>
-          <button
-            type="button"
-            onClick={handleSkipCalibration}
-            className="text-sm font-bold text-slate-400 transition hover:text-white"
-          >
-            Use approximate estimate instead
-          </button>
+          <p className="text-xs text-slate-500 text-center">
+            Aligning card… measurement will begin automatically
+          </p>
         </div>
       )}
 

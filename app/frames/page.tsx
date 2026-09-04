@@ -7,6 +7,7 @@ import { getStoreProducts, getStoreProductsCount, getFeaturedProducts, normalize
 import { SITE_URL } from "@/lib/constants";
 import { toPublicStoreProduct } from "@/lib/inventory";
 import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
+import { RecommendedFrames } from "@/components/face-scanner/RecommendedFrames";
 
 export const metadata: Metadata = {
   title: "Frames Store",
@@ -33,9 +34,23 @@ const AGE_GROUP_TILES = [
 export default async function FramesPage({
   searchParams
 }: {
-  searchParams?: Promise<{ q?: string; ageGroup?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; ageGroup?: string; page?: string; recommended?: string }>;
 }) {
   const params = (await searchParams) ?? {};
+  const showRecommendations = params.recommended === "true";
+
+  if (showRecommendations) {
+    // getStoreProducts defaults to active storefront products. The client
+    // filters to frames whose manually entered frame width can be scored.
+    const products = await getStoreProducts({ limit: 100 });
+
+    return (
+      <main>
+        <RecommendedFrames products={products.map(toPublicStoreProduct)} />
+      </main>
+    );
+  }
+
   const requestedPage = normalizeCatalogPage(params.page);
   const hasFilters = Boolean(params.q?.trim() || params.ageGroup);
   const ageGroupLabel = params.ageGroup === "Kids" ? "kids" : "adults";

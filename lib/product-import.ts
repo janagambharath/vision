@@ -34,12 +34,6 @@ function generateSearchText(row: CsvRow) {
     .toLowerCase();
 }
 
-function parseNum(value: string | undefined): number | null {
-  if (!value || value.trim() === "") return null;
-  const n = Number(value.trim());
-  return Number.isFinite(n) ? n : null;
-}
-
 function parseIntStrict(value: string | undefined): number | null {
   if (!value || value.trim() === "") return null;
   const n = parseInt(value.trim(), 10);
@@ -197,12 +191,14 @@ export async function importProducts(rows: CsvRow[], validationResults: ImportVa
               shape: row.shape?.trim() || null,
               rimType: row.rimType?.trim() || null,
               size: row.size?.trim() || null,
+              measurements: row.measurements?.trim() || null,
               weightGrams: parseIntStrict(row.weightGrams),
               frameWidth: parseIntStrict(row.frameWidth),
               lensWidth: parseIntStrict(row.lensWidth),
               bridgeWidth: parseIntStrict(row.bridgeWidth),
               templeLength: parseIntStrict(row.templeLength),
               frameHeight: parseIntStrict(row.frameHeight),
+              pdRange: row.pdRange?.trim() || null,
               warranty: row.warranty?.trim() || null,
               returnPolicy: row.returnPolicy?.trim() || null,
               deliveryEstimate: row.deliveryEstimate?.trim() || "3–5 business days",
@@ -262,7 +258,7 @@ export function generateCsvTemplate(): string {
     "name", "brand", "sku", "category", "gender", "ageGroup",
     "material", "colour", "finish", "shape", "rimType",
     "pricePaise", "compareAtPaise", "costPricePaise", "stock",
-    "lensWidth", "bridgeWidth", "templeLength", "frameWidth", "frameHeight", "weightGrams",
+    "size", "measurements", "lensWidth", "bridgeWidth", "templeLength", "frameWidth", "frameHeight", "weightGrams", "pdRange",
     "description", "shortDescription", "warranty", "returnPolicy", "deliveryEstimate",
     "seoTitle", "seoDescription",
     "prescriptionCompatible", "blueLightCompatible", "springHinges", "tryAtHomeEligible",
@@ -274,7 +270,7 @@ export function generateCsvTemplate(): string {
     "Classic Aviator", "Ray-Ban", "RB-3025-GOLD", "men", "Men", "Adult",
     "Metal", "Gold", "Polished", "Aviator", "Full Rim",
     "149900", "199900", "60000", "10",
-    "58", "14", "140", "138", "50", "28",
+    "58-14-140", "58-14-140", "58", "14", "140", "138", "50", "28", "62-66 mm",
     "Classic aviator sunglasses with premium metal frame", "Iconic aviator design", "1 Year", "15 days return", "3–5 business days",
     "Ray-Ban Classic Aviator Gold | Vision Vistara", "Shop Ray-Ban Classic Aviator in Gold at Vision Vistara",
     "true", "false", "false", "true",

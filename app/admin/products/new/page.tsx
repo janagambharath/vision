@@ -8,7 +8,6 @@ import { invalidateProductCache } from "@/lib/inventory-actions";
 import { ProductForm } from "@/components/admin/product-form";
 import { getCreateBlockersForDraft, getPublishBlockersForDraft } from "@/lib/product-publishing";
 import { isTrustedProductImageUrl } from "@/lib/product-ai";
-import { readVerifiedProductAnalysis } from "@/lib/product-ai-analysis";
 import { createProductSku } from "@/lib/product-sku";
 
 export const metadata = { title: "New Product | Admin" };
@@ -16,10 +15,70 @@ export const metadata = { title: "New Product | Admin" };
 const errorMessages: Record<string, string> = {
   "missing-fields": "Complete the name, brand, description, selling price, stock quantity, category, and image before creating the product.",
   "invalid-slug": "Slug must use lowercase letters, numbers, and hyphens only.",
-  "invalid-values": "Check prices, inventory, and AI-derived values. Values must be valid non-negative numbers.",
+  "invalid-values": "Check prices, inventory, and manual frame specifications. Measurements must be whole numbers within the allowed range.",
   "duplicate-slug": "Another product already uses that slug.",
   "publish-incomplete": "This product cannot go live until all publish checklist items are completed. Save it as a draft or complete the missing essentials."
 };
+
+type ManualFrameMeasurements = {
+  size: string | null;
+  measurements: string | null;
+  weightGrams: number | null;
+  frameWidth: number | null;
+  lensWidth: number | null;
+  bridgeWidth: number | null;
+  templeLength: number | null;
+  frameHeight: number | null;
+  pdRange: string | null;
+};
+
+function readManualFrameMeasurements(formData: FormData): ManualFrameMeasurements | null {
+  const readOptionalText = (field: string, maxLength: number): string | null | undefined => {
+    const value = String(formData.get(field) ?? "").trim();
+    if (!value) return null;
+    return value.length <= maxLength ? value : undefined;
+  };
+  const readOptionalWholeNumber = (field: string, max: number): number | null | undefined => {
+    const rawValue = String(formData.get(field) ?? "").trim();
+    if (!rawValue) return null;
+    const value = Number(rawValue);
+    return Number.isInteger(value) && value >= 0 && value <= max ? value : undefined;
+  };
+
+  const size = readOptionalText("size", 80);
+  const measurements = readOptionalText("measurements", 140);
+  const weightGrams = readOptionalWholeNumber("weightGrams", 500);
+  const frameWidth = readOptionalWholeNumber("frameWidth", 300);
+  const lensWidth = readOptionalWholeNumber("lensWidth", 200);
+  const bridgeWidth = readOptionalWholeNumber("bridgeWidth", 100);
+  const templeLength = readOptionalWholeNumber("templeLength", 250);
+  const frameHeight = readOptionalWholeNumber("frameHeight", 200);
+  const pdRange = readOptionalText("pdRange", 40);
+
+  if (
+    size === undefined ||
+    measurements === undefined ||
+    weightGrams === undefined ||
+    frameWidth === undefined ||
+    lensWidth === undefined ||
+    bridgeWidth === undefined ||
+    templeLength === undefined ||
+    frameHeight === undefined ||
+    pdRange === undefined
+  ) return null;
+
+  return {
+    size,
+    measurements,
+    weightGrams,
+    frameWidth,
+    lensWidth,
+    bridgeWidth,
+    templeLength,
+    frameHeight,
+    pdRange
+  };
+}
 
 function slugify(value: string) {
   return value
@@ -116,9 +175,11 @@ export default async function NewProductPage({
     const highlights = String(formData.get("highlights") ?? "").split("\n").map(h => h.trim()).filter(Boolean);
     const faceShapes = String(formData.get("faceShapes") ?? "").split(",").map(f => f.trim()).filter(Boolean);
     const lensCompatibility = String(formData.get("lensCompatibility") ?? "").split("\n").map(l => l.trim()).filter(Boolean);
+    const manualMeasurements = readManualFrameMeasurements(formData);
 
     if (!name || !brand || !description || !pricePaise || pricePaise <= 0 || !quantityValue) redirect("/admin/products/new?error=missing-fields");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) redirect("/admin/products/new?error=invalid-slug");
+    if (!manualMeasurements) redirect("/admin/products/new?error=invalid-values");
     if (
       [pricePaise, compareAtPaise, costPricePaise]
         .some((value) => value !== null && (!Number.isFinite(value) || value < 0)) ||
@@ -131,19 +192,17 @@ export default async function NewProductPage({
     const candidateImages = readImages(formData, "", brand, name, arImageUrl);
     const imageRoles = candidateImages.map((image) => image.role);
     const tryOnEligible = candidateImages.some((image) => image.role !== "ar");
-    const analysis = readVerifiedProductAnalysis(
-      String(formData.get("aiAnalysisToken") ?? ""),
-      candidateImages.map((image) => image.url)
-    );
-    const size = analysis?.size || null;
-    const measurements = analysis?.measurements || null;
-    const weightGrams = analysis?.weightGrams ?? null;
-    const frameWidth = analysis?.frameWidth ?? null;
-    const lensWidth = analysis?.lensWidth ?? null;
-    const bridgeWidth = analysis?.bridgeWidth ?? null;
-    const templeLength = analysis?.templeLength ?? null;
-    const frameHeight = analysis?.frameHeight ?? null;
-    const pdRange = analysis?.pdRange || null;
+    const {
+      size,
+      measurements,
+      weightGrams,
+      frameWidth,
+      lensWidth,
+      bridgeWidth,
+      templeLength,
+      frameHeight,
+      pdRange
+    } = manualMeasurements;
     const categoryCount = selectedCategories.length
       ? await prisma.category.count({ where: { slug: { in: selectedCategories } } })
       : 0;
