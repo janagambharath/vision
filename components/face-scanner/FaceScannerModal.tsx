@@ -444,23 +444,25 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const handleCardCalibration = () => {
     setCalibrationMode("card");
     trackEvent("calibration_started", { method: "card" });
-    setTimeout(() => {
-      const landmarks = latestLandmarksRef.current;
-      const video = videoRef.current;
-      if (landmarks && video) {
-        const cal = calibrateWithIris(
-          landmarks,
-          video.videoWidth || videoDimensionsRef.current.width,
-          video.videoHeight || videoDimensionsRef.current.height
-        );
-        cal.confidence = Math.min(1, cal.confidence + 0.15);
-        cal.method = "card";
-        setCalibrationResult(cal);
-        performMeasurement(cal);
-        return;
-      }
-      performMeasurement();
-    }, 2000);
+  };
+
+  const handleCardAligned = () => {
+    const landmarks = latestLandmarksRef.current;
+    const video = videoRef.current;
+    if (landmarks && video) {
+      const cal = calibrateWithIris(
+        landmarks,
+        video.videoWidth || videoDimensionsRef.current.width,
+        video.videoHeight || videoDimensionsRef.current.height
+      );
+      cal.confidence = Math.min(1, cal.confidence + 0.15);
+      cal.method = "card";
+      setCalibrationResult(cal);
+      performMeasurement(cal);
+      return;
+    }
+    setError("We lost the camera view. Return to the camera and try again.");
+    setStep("camera");
   };
 
   // ─── RETRY ───
@@ -728,8 +730,23 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
             />
           </div>
           <p className="text-xs text-slate-500 text-center">
-            Aligning card… measurement will begin automatically
+            Align the card, then tap below when all four corners are inside the guide.
           </p>
+          <button
+            type="button"
+            onClick={handleCardAligned}
+            className="vv-button-retail flex w-full justify-center gap-2 py-3.5 font-extrabold"
+          >
+            <Scan className="h-5 w-5" />
+            Card aligned — measure size
+          </button>
+          <button
+            type="button"
+            onClick={() => setCalibrationMode("choosing")}
+            className="text-sm font-bold text-slate-400 transition hover:text-white"
+          >
+            Back to calibration choices
+          </button>
         </div>
       )}
 
