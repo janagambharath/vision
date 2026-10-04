@@ -34,6 +34,13 @@ type SeedProduct = {
   inventoryStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "PRICE_REQUIRED";
   categories: string[];
   images: Array<{ url: string; alt: string; role: string; sortOrder: number }>;
+  // Frame measurement fields for face-scanner recommendations
+  frameWidth: number | null;
+  lensWidth: number | null;
+  bridgeWidth: number | null;
+  templeLength: number | null;
+  frameHeight: number | null;
+  weightGrams: number | null;
 };
 
 const seedProducts: SeedProduct[] = [
@@ -54,7 +61,15 @@ const seedProducts: SeedProduct[] = [
     shape: "Oval",
     rimType: "Full Rim",
     size: "48-20-140",
-    measurements: "48-20-140",
+    measurements: "48-20-140 / Small",
+    // Frame specs: lens 48, bridge 20, temple 140
+    // frameWidth = (lensWidth × 2) + bridgeWidth = 48×2 + 20 = 116mm
+    frameWidth: 116,
+    lensWidth: 48,
+    bridgeWidth: 20,
+    templeLength: 140,
+    frameHeight: 40,
+    weightGrams: 16,
     gender: "Women",
     ageGroup: "Adult",
     description: "Soft pink oval frame with rose-gold metal accents. Lightweight alloy build for comfortable all-day wear. Adjustable silicone nose pads ensure a secure fit.",
@@ -91,7 +106,15 @@ const seedProducts: SeedProduct[] = [
     shape: "Aviator",
     rimType: "Full Rim",
     size: "55-16-145",
-    measurements: "55-16-145",
+    measurements: "55-16-145 / Medium",
+    // Frame specs: lens 55, bridge 16, temple 145
+    // frameWidth = (lensWidth × 2) + bridgeWidth = 55×2 + 16 = 126mm
+    frameWidth: 126,
+    lensWidth: 55,
+    bridgeWidth: 16,
+    templeLength: 145,
+    frameHeight: 46,
+    weightGrams: 22,
     gender: "Unisex",
     ageGroup: "Adult",
     description: "Classic gunmetal aviator with a double bridge design. Durable metal alloy frame with adjustable nose pads. Perfect for everyday prescription or sun lens pairing.",
@@ -163,6 +186,12 @@ async function main() {
         rimType: product.rimType,
         size: product.size,
         measurements: product.measurements,
+        frameWidth: product.frameWidth,
+        lensWidth: product.lensWidth,
+        bridgeWidth: product.bridgeWidth,
+        templeLength: product.templeLength,
+        frameHeight: product.frameHeight,
+        weightGrams: product.weightGrams,
         gender: product.gender,
         ageGroup: product.ageGroup,
         description: product.description,
@@ -192,6 +221,12 @@ async function main() {
         rimType: product.rimType,
         size: product.size,
         measurements: product.measurements,
+        frameWidth: product.frameWidth,
+        lensWidth: product.lensWidth,
+        bridgeWidth: product.bridgeWidth,
+        templeLength: product.templeLength,
+        frameHeight: product.frameHeight,
+        weightGrams: product.weightGrams,
         gender: product.gender,
         ageGroup: product.ageGroup,
         description: product.description,
