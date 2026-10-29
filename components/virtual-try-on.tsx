@@ -188,7 +188,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
       if (requestId !== cameraRequestRef.current) return;
       const isDenied = cameraError instanceof DOMException && (cameraError.name === "NotAllowedError" || cameraError.name === "PermissionDeniedError");
       const detail = isDenied
-        ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser address bar to allow camera, or use the phone-photo upload option below."
+        ? "Camera permission was denied. Tap the lock or settings icon in your browser address bar to allow camera, or use the phone-photo upload option below."
         : facing === "environment" ? "Back camera unavailable. Try the front camera or use the phone-photo option." : "Unable to access your camera. Check browser permissions or use the phone-photo option instead.";
       setError(detail);
       setStep("idle");

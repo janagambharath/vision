@@ -133,8 +133,8 @@ export function ProductCard({
             </span>
           ) : null}
           {product.tryAtHomeEligible ? (
-            <span className="rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
-              🏠 Home trial
+            <span className="inline-flex items-center gap-1 rounded-full bg-teal-600 px-2.5 py-0.5 text-[10px] font-extrabold text-white">
+              <Home className="h-2.5 w-2.5" aria-hidden="true" /> Home trial
             </span>
           ) : null}
           {hasTryOnReference ? (

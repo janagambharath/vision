@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Circle, CircleDot, CircleDashed, type LucideIcon } from "lucide-react";
 import type { FitLevel } from "@/lib/frame-fit";
 
 interface FitBadgeProps {
@@ -9,30 +10,30 @@ interface FitBadgeProps {
   showScore?: boolean;
 }
 
-const BADGE_STYLES: Record<FitLevel, { bg: string; text: string; ring: string; icon: string }> = {
+const BADGE_STYLES: Record<FitLevel, { bg: string; text: string; ring: string; icon: LucideIcon }> = {
   "Excellent": {
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     ring: "ring-emerald-200",
-    icon: "✓",
+    icon: Check,
   },
   "Good": {
     bg: "bg-teal-50",
     text: "text-teal-700",
     ring: "ring-teal-200",
-    icon: "●",
+    icon: CircleDot,
   },
   "Possible": {
     bg: "bg-amber-50",
     text: "text-amber-700",
     ring: "ring-amber-200",
-    icon: "◐",
+    icon: CircleDashed,
   },
   "Less Suitable": {
     bg: "bg-slate-100",
     text: "text-slate-500",
     ring: "ring-slate-200",
-    icon: "○",
+    icon: Circle,
   },
 };
 
@@ -47,7 +48,7 @@ export function FitBadge({ fitLevel, fitScore, size = "sm", showScore = false }:
       className={`inline-flex items-center rounded-full font-bold ring-1 ${style.bg} ${style.text} ${style.ring} ${sizeClasses}`}
       title={fitScore != null ? `Fit score: ${fitScore}/100` : undefined}
     >
-      <span className="leading-none">{style.icon}</span>
+      <style.icon className={size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5"} aria-hidden="true" />
       <span>{fitLevel}{showScore && fitScore != null ? ` · ${fitScore}` : ""}</span>
     </span>
   );

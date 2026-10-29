@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { permanentRedirect, redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { AlertTriangle, Camera, CheckCircle2, Ruler, ShieldCheck, Sparkles, Truck, Star, Clock } from "lucide-react";
+import { AlertTriangle, UserRound, Camera, CheckCircle2, Ruler, ShieldCheck, Sparkles, Truck, Star, Clock } from "lucide-react";
 import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { ProductGallery } from "@/components/product-gallery";
@@ -102,7 +102,7 @@ export default async function ProductPage({
       });
     }
   } catch (err) {
-    console.warn("⚠️ Database connection error while fetching reviews:", err);
+    console.warn("Database connection error while fetching reviews:", err);
   }
 
   const avgRating = reviews.length
@@ -286,7 +286,7 @@ export default async function ProductPage({
             {/* Face Shape Fit Matches */}
             {product.faceShapes && product.faceShapes.length > 0 && (
               <div className="mt-4 p-3 rounded-vv border border-slate-100 bg-slate-50/50 text-xs font-semibold text-slate-700">
-                👤 <strong>Best fit:</strong> Matches {product.faceShapes.join(", ")} faces
+                <UserRound className="mr-1 inline h-4 w-4" aria-hidden="true" /> <strong>Best fit:</strong> Matches {product.faceShapes.join(", ")} faces
               </div>
             )}
 

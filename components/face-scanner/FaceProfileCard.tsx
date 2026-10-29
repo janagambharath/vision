@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Ruler, Scan, ShieldCheck } from "lucide-react";
+import { ArrowRight, Ruler, Scan, ShieldCheck, Circle, Square, Heart, Diamond, RectangleVertical, Triangle, type LucideIcon } from "lucide-react";
 import type { FaceShape, FrameSize, MeasurementQuality } from "@/lib/frame-fit";
 import { getFaceShapeGuide, recommendedFrameWidthRange } from "@/lib/frame-fit";
 
@@ -16,14 +16,14 @@ interface FaceProfileCardProps {
   onSeeAll: () => void;
 }
 
-const SHAPE_ICONS: Record<FaceShape, string> = {
-  Oval: "⬮",
-  Round: "●",
-  Square: "■",
-  Heart: "♥",
-  Diamond: "◆",
-  Oblong: "▬",
-  Triangle: "▲",
+const SHAPE_ICONS: Record<FaceShape, LucideIcon> = {
+  Oval: Circle,
+  Round: Circle,
+  Square,
+  Heart,
+  Diamond,
+  Oblong: RectangleVertical,
+  Triangle,
 };
 
 const QUALITY_STYLES: Record<MeasurementQuality, { bg: string; text: string; label: string }> = {
@@ -44,6 +44,7 @@ export function FaceProfileCard({
   onSeeAll,
 }: FaceProfileCardProps) {
   const quality = QUALITY_STYLES[measurementQuality];
+  const ShapeIcon = faceShape ? SHAPE_ICONS[faceShape] : null;
   const shapeGuide = faceShape ? getFaceShapeGuide(faceShape) : null;
   const widthRange = faceWidthMm ? recommendedFrameWidthRange(faceWidthMm) : null;
 
@@ -62,7 +63,7 @@ export function FaceProfileCard({
       {faceShape && (
         <div className="rounded-2xl border border-slate-700 bg-slate-800/80 p-5 mb-4 backdrop-blur-sm">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{SHAPE_ICONS[faceShape]}</span>
+            {ShapeIcon && <ShapeIcon className={`h-8 w-8 shrink-0 text-teal-400 ${faceShape === "Oval" ? "scale-x-75" : ""}`} strokeWidth={1.75} aria-hidden="true" />}
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-teal-400">Face Shape</p>
               <p className="text-xl font-extrabold text-white">{faceShape}</p>

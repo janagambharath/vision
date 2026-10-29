@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   Camera,
+  Glasses,
+  Smartphone,
+  Sun,
+  ScanFace,
+  Hand,
   SwitchCamera,
   ChevronRight,
   Clock3,
@@ -236,7 +241,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       if (!mountedRef.current || requestId !== cameraRequestRef.current) return;
       const isDenied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
       const detail = isDenied
-        ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser URL bar above to allow camera access, then try again."
+        ? "Camera permission was denied. Tap the lock or settings icon in your browser URL bar above to allow camera access, then try again."
         : initializationStage === "model"
           ? "We couldn't load face detection. Check your connection and try again."
           : facing === "environment" ? "Back camera unavailable. Try the front camera or check camera permissions." : "We couldn't access your camera. Check browser camera permission and try again.";
@@ -574,14 +579,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
           {/* Instructions */}
           <div className="mx-auto mt-6 grid max-w-md gap-2 text-left sm:grid-cols-2">
             {[
-              { icon: "👓", text: "Remove your glasses" },
-              { icon: "📱", text: "Face the camera directly at eye level" },
-              { icon: "💡", text: "Use good, even lighting" },
-              { icon: "😐", text: "Keep your face inside the guide" },
-              { icon: "🤚", text: "Hold still during scanning" },
+              { icon: Glasses, text: "Remove your glasses" },
+              { icon: Smartphone, text: "Face the camera directly at eye level" },
+              { icon: Sun, text: "Use good, even lighting" },
+              { icon: ScanFace, text: "Keep your face inside the guide" },
+              { icon: Hand, text: "Hold still during scanning" },
             ].map((item) => (
               <div key={item.text} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 sm:last:col-span-2">
-                <span className="text-lg">{item.icon}</span>
+                <item.icon className="h-5 w-5 shrink-0 text-teal-700" strokeWidth={1.75} aria-hidden="true" />
                 <span className="text-sm font-semibold text-slate-700">{item.text}</span>
               </div>
             ))}
