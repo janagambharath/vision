@@ -183,3 +183,54 @@ test("captured face and card measurements flow into ranked recommendations", () 
   assert.ok(ranked[0].fit.fitScore >= 90);
   assert.ok(ranked[1].fit.fitScore < ranked[0].fit.fitScore);
 });
+
+
+test("recommendations include every measured frame regardless of purchase availability", async () => {
+  const { recommendMeasuredFrames } = await import("../lib/frame-recommendations");
+  const face: FaceMeasurements = { faceWidthMm: 138, faceHeightMm: 180, estimatedPdMm: 63,
+    interocularWidthMm: 63, noseWidthMm: 30, faceShape: "Oval", recommendedSize: "Large",
+    measurementQuality: "Fair", calibrationMethod: "card" };
+  const candidates = Array.from({ length: 125 }, (_, index) => ({
+    name: `Frame ${index}`, featured: false, frameWidth: index === 124 ? 138 : 155,
+    lensWidth: 52, bridgeWidth: 18, templeLength: 140, frameHeight: 40, faceShapes: [],
+    sellable: index === 0, codAvailable: index === 0, inventoryQuantity: index === 0 ? 1 : 0
+  }));
+  const ranked = recommendMeasuredFrames(face, candidates);
+  assert.equal(ranked.length, 125);
+  assert.equal(ranked[0].product.name, "Frame 124");
+  assert.equal(ranked[0].product.sellable, false);
+  assert.equal(ranked[0].product.codAvailable, false);
+  assert.equal(ranked[0].product.inventoryQuantity, 0);
+  assert.ok(ranked[0].fit.fitScore > ranked[124].fit.fitScore);
+  assert.equal(recommendMeasuredFrames(face, [{ ...candidates[0], frameWidth: 0, lensWidth: null }]).length, 0);
+});
+
+
+test("standard saved text markings become sizing inputs without inventing total width", async () => {
+  const { resolveFrameSpecifications, hasFrameSizing } = await import("../lib/frame-specifications");
+  for (const measurements of ["50-20-140", "48[]18-138", "SP-88988 49\u25a118-145", "1313 55 17 144"]) {
+    const specs = resolveFrameSpecifications({ measurements });
+    assert.ok(specs.lensWidth);
+    assert.ok(specs.bridgeWidth);
+    assert.ok(specs.templeLength);
+    assert.equal(specs.frameWidth, null);
+    assert.equal(hasFrameSizing({ measurements }), true);
+  }
+  assert.equal(hasFrameSizing({ measurements: "Fit check required" }), false);
+  assert.equal(hasFrameSizing({ measurements: "M-135-54" }), false);
+  assert.equal(resolveFrameSpecifications({ measurements: "50-20-140", lensWidth: 52, frameWidth: 138 }).lensWidth, 52);
+});
+
+test("frames with only saved text measurements are ranked alongside total-width frames", async () => {
+  const { recommendMeasuredFrames } = await import("../lib/frame-recommendations");
+  const face: FaceMeasurements = { faceWidthMm: 138, faceHeightMm: 180, estimatedPdMm: 63, interocularWidthMm: 63,
+    noseWidthMm: 30, faceShape: "Oval", recommendedSize: "Large", measurementQuality: "Fair", calibrationMethod: "card" };
+  const base = { featured: false, frameWidth: null, lensWidth: null, bridgeWidth: null, templeLength: null, frameHeight: null, faceShapes: [] };
+  const ranked = recommendMeasuredFrames(face, [
+    { ...base, name: "Saved marking", measurements: "52-18-140" },
+    { ...base, name: "Measured total", frameWidth: 138 },
+    { ...base, name: "No measurements" }
+  ]);
+  assert.equal(ranked.length, 2);
+  assert.ok(ranked.some(item => item.product.name === "Saved marking" && item.fit.fitScore > 0));
+});

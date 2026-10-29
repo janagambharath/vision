@@ -26,3 +26,26 @@ test("legacy active inventory remains sellable without a landed-cost record", ()
     inventoryStatus: "LOW_STOCK"
   }), true);
 });
+
+
+test("recommendation catalog reads all active measured frames without storefront pagination", async (context) => {
+  const { prisma } = await import("../lib/db");
+  const { getMeasuredStoreProducts } = await import("../lib/store-data");
+  const previousDatabaseUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = "postgresql://test:test@localhost/test";
+  context.after(() => {
+    if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousDatabaseUrl;
+  });
+  // Prisma delegates are proxies without method property descriptors.
+  const originalFindMany = prisma.product.findMany;
+  const query = context.mock.fn(async (_options?: Parameters<typeof originalFindMany>[0]) => []);
+  prisma.product.findMany = query as typeof originalFindMany;
+  context.after(() => { prisma.product.findMany = originalFindMany; });
+  assert.deepEqual(await getMeasuredStoreProducts(), []);
+  assert.equal(query.mock.calls.length, 1);
+  const options = query.mock.calls[0].arguments[0];
+  assert.deepEqual(options?.where, { status: "ACTIVE", deletedAt: null });
+  assert.equal(options?.take, undefined);
+  assert.equal(options?.skip, undefined);
+});

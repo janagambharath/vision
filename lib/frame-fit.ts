@@ -135,14 +135,16 @@ export function calculateFrameFit(
   product: ProductMeasurements
 ): FitResult {
   // Generic temple length or style alone cannot establish personalised size fit.
+  const hasFrameWidth = typeof product.frameWidth === "number" && Number.isFinite(product.frameWidth) && product.frameWidth > 0;
+  const hasLensWidth = typeof product.lensWidth === "number" && Number.isFinite(product.lensWidth) && product.lensWidth > 0;
   if (!Number.isFinite(face.faceWidthMm) || !face.faceWidthMm || face.faceWidthMm <= 0 ||
-      !Number.isFinite(product.frameWidth) || !product.frameWidth || product.frameWidth <= 0) {
+      (!hasFrameWidth && !hasLensWidth)) {
     return { fitScore: 0, fitLevel: "Less Suitable", reasons: ["Insufficient measurement data to calculate fit"] };
   }
   const scores: { weight: number; score: number; reason: string }[] = [];
 
   // 1. Frame width vs face width (most important)
-  if (face.faceWidthMm != null && product.frameWidth != null) {
+  if (face.faceWidthMm != null && hasFrameWidth && product.frameWidth != null) {
     const diff = Math.abs(product.frameWidth - face.faceWidthMm);
     const isWider = product.frameWidth > face.faceWidthMm;
     const isNarrower = product.frameWidth < face.faceWidthMm;
@@ -172,7 +174,7 @@ export function calculateFrameFit(
   }
 
   // 2. Lens width check
-  if (product.lensWidth != null && (face.faceWidthMm != null || face.estimatedPdMm != null)) {
+  if (hasLensWidth && product.lensWidth != null && (face.faceWidthMm != null || face.estimatedPdMm != null)) {
     // Proportional optical standard: lens width is ~38% of face width (e.g. 138mm face -> ~52mm lens)
     const idealLensWidth = face.faceWidthMm != null ? face.faceWidthMm * 0.38 : (face.estimatedPdMm! - 18) * 1.15;
     const diff = Math.abs(product.lensWidth - idealLensWidth);

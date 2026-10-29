@@ -6,17 +6,15 @@ import { ArrowLeft, Ruler, Scan, Sparkles } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
 import type { PublicStoreProduct } from "@/lib/inventory";
-import { calculateFrameFit, type FaceMeasurements } from "@/lib/frame-fit";
+import { type FaceMeasurements } from "@/lib/frame-fit";
 
+import { recommendMeasuredFrames } from "@/lib/frame-recommendations";
+import { hasFrameSizing } from "@/lib/frame-specifications";
 import { parseStoredFaceMeasurements } from "@/lib/face-profile";
 
 interface RecommendedFramesProps {
-  /** Active storefront products. Products without a frame width are excluded client-side. */
+  /** Active storefront products. Products without recorded sizing are excluded client-side. */
   products: PublicStoreProduct[];
-}
-
-function hasFrameWidth(product: PublicStoreProduct) {
-  return typeof product.frameWidth === "number" && Number.isFinite(product.frameWidth) && product.frameWidth > 0;
 }
 
 export function RecommendedFrames({ products }: RecommendedFramesProps) {
@@ -40,31 +38,14 @@ export function RecommendedFrames({ products }: RecommendedFramesProps) {
   }, []);
 
   const measuredProducts = useMemo(
-    () => products.filter((product) => product.sellable && hasFrameWidth(product)),
+    () => products.filter(hasFrameSizing),
     [products]
   );
 
   const recommendations = useMemo(() => {
     if (!faceMeasurements) return [];
 
-    return measuredProducts
-      .map((product) => ({
-        product,
-        fit: calculateFrameFit(faceMeasurements, {
-          frameWidth: product.frameWidth ?? null,
-          lensWidth: product.lensWidth ?? null,
-          bridgeWidth: product.bridgeWidth ?? null,
-          templeLength: product.templeLength ?? null,
-          frameHeight: product.frameHeight ?? null,
-          faceShapes: product.faceShapes ?? [],
-        }),
-      }))
-      .sort((left, right) => {
-        const scoreDifference = right.fit.fitScore - left.fit.fitScore;
-        if (scoreDifference !== 0) return scoreDifference;
-        if (left.product.featured !== right.product.featured) return Number(right.product.featured) - Number(left.product.featured);
-        return left.product.name.localeCompare(right.product.name);
-      });
+    return recommendMeasuredFrames(faceMeasurements, measuredProducts);
   }, [faceMeasurements, measuredProducts]);
 
   if (faceMeasurements === undefined) {
@@ -116,7 +97,7 @@ export function RecommendedFrames({ products }: RecommendedFramesProps) {
             <p className="vv-kicker mt-5 text-retail">Recommendations are coming soon</p>
             <h1 className="mt-2 text-3xl font-extrabold text-slate-950">We need frame-size details before we can rank the collection.</h1>
             <p className="mx-auto mt-3 max-w-xl text-slate-600">
-              Your profile is saved. As frame widths are added to the catalog, this page will automatically rank the best matches for you.
+              Your profile is saved. As frame measurements are added to the catalog, this page will automatically rank the best matches for you.
             </p>
             <Link href="/frames" className="vv-button-retail mt-6">
               Browse all frames
@@ -143,7 +124,10 @@ export function RecommendedFrames({ products }: RecommendedFramesProps) {
             </p>
             <h1 className="mt-2 text-3xl font-extrabold text-slate-950">Best fits from our measured frames.</h1>
             <p className="mt-2 max-w-2xl text-slate-600">
-              Ranked using your saved profile and each frame&apos;s recorded width and available dimensions.
+              {recommendations.length} measured {recommendations.length === 1 ? "frame" : "frames"}, ranked using your saved profile and each frame&apos;s recorded dimensions.
+            </p>
+            <p className="mt-2 max-w-2xl text-sm text-slate-500">
+              Uses total frame width when recorded, otherwise lens and bridge sizing. Matches without total width are less complete estimates.
             </p>
             {profileSummary.length > 0 ? (
               <p className="mt-3 text-sm font-bold text-teal-800">Profile: {profileSummary.join(" · ")}</p>

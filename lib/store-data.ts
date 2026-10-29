@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { type StoreImage, type StoreProduct, type StoreProductStatus } from "@/lib/inventory";
 import { getCache, setCache } from "@/lib/redis";
+import { hasFrameSizing, resolveFrameSpecifications } from "@/lib/frame-specifications";
 
 const hasDatabaseUrl = () => Boolean(process.env.DATABASE_URL);
 
@@ -93,10 +94,7 @@ function mapDbProduct(product: DbStoreProduct): StoreProduct {
     size: product.size ?? product.measurements ?? "Fit check required",
     measurements: product.measurements ?? "Fit check required",
     weightGrams: product.weightGrams,
-    frameWidth: product.frameWidth,
-    lensWidth: product.lensWidth,
-    bridgeWidth: product.bridgeWidth,
-    templeLength: product.templeLength,
+    ...resolveFrameSpecifications(product),
     frameHeight: product.frameHeight,
     pdRange: product.pdRange,
     springHinges: product.springHinges,
@@ -335,6 +333,17 @@ export async function getStoreProductsCount(options: GetStoreProductsOptions = {
   if (!hasDatabaseUrl()) return 0;
 
   return prisma.product.count({ where: storeProductWhere(normalizeStoreProductOptions(options)) });
+}
+
+/** Rank the full measured catalog, independent of checkout availability or list caches. */
+export async function getMeasuredStoreProducts() {
+  if (!hasDatabaseUrl()) return [];
+  const products = await prisma.product.findMany({
+    where: { status: "ACTIVE", deletedAt: null },
+    include: PRODUCT_INCLUDE,
+    orderBy: storeProductOrderBy("name")
+  });
+  return products.map(mapDbProduct).filter(hasFrameSizing);
 }
 
 export async function getStoreProduct(slug: string) {

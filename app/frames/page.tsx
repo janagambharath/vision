@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 import { ArrowRight, CalendarCheck, Filter, Sparkles, Star, Truck } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
-import { getStoreProducts, getStoreProductsCount, getFeaturedProducts, normalizeCatalogPage, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
+import { getStoreProducts, getStoreProductsCount, getMeasuredStoreProducts, getFeaturedProducts, normalizeCatalogPage, PUBLIC_CATALOG_PAGE_SIZE } from "@/lib/store-data";
 import { SITE_URL } from "@/lib/constants";
 import { toPublicStoreProduct } from "@/lib/inventory";
 import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
@@ -40,9 +40,7 @@ export default async function FramesPage({
   const showRecommendations = params.recommended === "true";
 
   if (showRecommendations) {
-    // getStoreProducts defaults to active storefront products. The client
-    // filters to frames whose manually entered frame width can be scored.
-    const products = await getStoreProducts({ limit: 100 });
+    const products = await getMeasuredStoreProducts();
 
     return (
       <main>

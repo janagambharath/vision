@@ -9,6 +9,7 @@ import { CART_COOKIE } from "@/lib/constants";
 import { getAdminAccess } from "@/lib/admin-auth";
 import type { FaceMeasurements, FitResult, ProductMeasurements } from "@/lib/frame-fit";
 import { calculateFrameFit } from "@/lib/frame-fit";
+import { getMeasuredStoreProducts } from "@/lib/store-data";
 
 // ─── TYPES ───
 
@@ -82,47 +83,16 @@ export async function saveFaceMeasurement(input: SaveMeasurementInput): Promise<
 export async function getRecommendedProducts(
   faceMeasurements: FaceMeasurements
 ): Promise<RecommendedProduct[]> {
-  // Only fetch products that have at least a frame width defined
-  const products = await prisma.product.findMany({
-    where: {
-      status: "ACTIVE",
-      deletedAt: null,
-      pricePaise: { not: null },
-      frameWidth: { not: null },
-    },
-    select: {
-      slug: true,
-      name: true,
-      brand: true,
-      pricePaise: true,
-      compareAtPaise: true,
-      material: true,
-      shape: true,
-      size: true,
-      frameWidth: true,
-      lensWidth: true,
-      bridgeWidth: true,
-      templeLength: true,
-      frameHeight: true,
-      faceShapes: true,
-      images: {
-        orderBy: { sortOrder: "asc" },
-        take: 1,
-        select: { url: true, alt: true },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const products = await getMeasuredStoreProducts();
 
   // Score each product
   const scored: RecommendedProduct[] = products.map((product) => {
     const productMeasurements: ProductMeasurements = {
-      frameWidth: product.frameWidth,
-      lensWidth: product.lensWidth,
-      bridgeWidth: product.bridgeWidth,
-      templeLength: product.templeLength,
-      frameHeight: product.frameHeight,
+      frameWidth: product.frameWidth ?? null,
+      lensWidth: product.lensWidth ?? null,
+      bridgeWidth: product.bridgeWidth ?? null,
+      templeLength: product.templeLength ?? null,
+      frameHeight: product.frameHeight ?? null,
       faceShapes: product.faceShapes,
     };
 
@@ -133,15 +103,15 @@ export async function getRecommendedProducts(
       name: product.name,
       brand: product.brand,
       pricePaise: product.pricePaise,
-      compareAtPaise: product.compareAtPaise,
+      compareAtPaise: product.compareAtPaise ?? null,
       material: product.material,
       shape: product.shape,
       size: product.size,
-      frameWidth: product.frameWidth,
-      lensWidth: product.lensWidth,
-      bridgeWidth: product.bridgeWidth,
-      templeLength: product.templeLength,
-      frameHeight: product.frameHeight,
+      frameWidth: product.frameWidth ?? null,
+      lensWidth: product.lensWidth ?? null,
+      bridgeWidth: product.bridgeWidth ?? null,
+      templeLength: product.templeLength ?? null,
+      frameHeight: product.frameHeight ?? null,
       faceShapes: product.faceShapes,
       image: product.images[0] ?? null,
       fit,
