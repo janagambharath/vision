@@ -8,6 +8,7 @@ import {
   AlertCircle,
   ArrowLeftRight,
   Camera,
+  SwitchCamera,
   Check,
   ChevronDown,
   Download,
@@ -19,6 +20,8 @@ import {
   Sparkles,
   X
 } from "lucide-react";
+
+import { openCamera, activeCameraFacing, type CameraFacing } from "@/lib/camera";
 
 interface TryOnFrame {
   slug: string;
@@ -59,6 +62,10 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>("user");
+  const [cameraVersion, setCameraVersion] = useState(0);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const cameraRequestRef = useRef(0);
   const [isFramePickerOpen, setIsFramePickerOpen] = useState(false);
 
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -70,6 +77,8 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   const selectedFrame = tryOnFrames[selectedIndex];
 
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current++;
+    setCameraStarting(false);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setCameraReady(false);
@@ -81,6 +90,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   }, [productSlug, tryOnFrames]);
 
   useEffect(() => () => {
+    cameraRequestRef.current++;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     abortRef.current?.abort();
   }, []);
@@ -89,7 +99,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
   // This replaces the previous setTimeout(0) which raced against React's render
   // commit and frequently left videoElementRef.current as null.
   useEffect(() => {
-    if (step !== "camera" || !streamRef.current) return;
+    if (step !== "camera" || cameraStarting || !streamRef.current) return;
 
     let cancelled = false;
 
@@ -123,7 +133,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     requestAnimationFrame(tryAttach);
 
     return () => { cancelled = true; };
-  }, [step]);
+  }, [step, cameraVersion, cameraStarting]);
 
   // The site-wide WhatsApp button otherwise sits on top of the primary
   // generation action on small screens.
@@ -149,7 +159,9 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     return () => window.clearInterval(timer);
   }, [step]);
 
-  const startCamera = async () => {
+  const startCamera = async (facing: CameraFacing = cameraFacing) => {
+    stopCamera();
+    const requestId = cameraRequestRef.current;
     setError(null);
     setCapturedPhoto(null);
     setResultPhoto(null);
@@ -160,38 +172,28 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
       return;
     }
     try {
-      stopCamera();
-      const attempts = [
-        { video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1080 } }, audio: false },
-        { video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
-        { video: { facingMode: "user" }, audio: false },
-        { video: true, audio: false }
-      ];
-      let stream: MediaStream | null = null;
-      let lastErr: unknown = null;
-      for (const constraints of attempts) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-          break;
-        } catch (e) {
-          lastErr = e;
-          if (e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")) {
-            throw e;
-          }
-        }
+      setCameraStarting(true);
+      const stream = await openCamera(facing);
+      if (requestId !== cameraRequestRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
       }
-      if (!stream) throw lastErr;
+      setCameraFacing(activeCameraFacing(stream, facing));
+      setCameraVersion(version => version + 1);
       streamRef.current = stream;
       // Transition to the camera step — the useEffect above will reliably
       // attach the stream once the <video> element is mounted by React.
       setStep("camera");
     } catch (cameraError) {
+      if (requestId !== cameraRequestRef.current) return;
       const isDenied = cameraError instanceof DOMException && (cameraError.name === "NotAllowedError" || cameraError.name === "PermissionDeniedError");
       const detail = isDenied
         ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser address bar to allow camera, or use the phone-photo upload option below."
-        : "Unable to access your camera. Check browser permissions or use the phone-photo option instead.";
+        : facing === "environment" ? "Back camera unavailable. Try the front camera or use the phone-photo option." : "Unable to access your camera. Check browser permissions or use the phone-photo option instead.";
       setError(detail);
       setStep("idle");
+    } finally {
+      if (requestId === cameraRequestRef.current) setCameraStarting(false);
     }
   };
 
@@ -209,8 +211,10 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
     canvas.width = dimensions.width;
     canvas.height = dimensions.height;
     context.save();
-    context.translate(canvas.width, 0);
-    context.scale(-1, 1);
+    if (cameraFacing === "user") {
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
+    }
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     context.restore();
     setCapturedPhoto(canvas.toDataURL("image/jpeg", 0.88));
@@ -452,7 +456,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
           <div className="grid justify-items-center gap-5 py-8 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full bg-teal-500/10"><Camera className="h-10 w-10 text-teal-400" /></div>
             <div><h3 className="text-xl font-extrabold text-white">Try {selectedFrame.name} with AI</h3><p className="mt-2 max-w-sm text-sm text-slate-400">Take one selfie. We use this product&apos;s catalog image automatically to generate your preview.</p></div>
-            <button type="button" onClick={startCamera} className="vv-button-retail flex w-full max-w-xs justify-center gap-2 py-3"><Camera className="h-5 w-5" /> Open camera</button>
+            <button type="button" onClick={() => void startCamera()} disabled={cameraStarting} className="vv-button-retail flex w-full max-w-xs justify-center gap-2 py-3"><Camera className="h-5 w-5" /> Open camera</button>
             <button type="button" onClick={() => selfieFileInputRef.current?.click()} className="vv-button flex w-full max-w-xs justify-center gap-2 border-slate-600 py-3 text-slate-200"><Camera className="h-5 w-5" /> Use phone camera or photo</button>
           </div>
         ) : null}
@@ -460,7 +464,11 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
         {step === "camera" ? (
           <>
             <div className="relative aspect-square w-full max-w-lg overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-2xl">
-              <video ref={videoElementRef} autoPlay playsInline muted className="h-full w-full scale-x-[-1] object-cover" />
+              <video ref={videoElementRef} autoPlay playsInline muted className={`h-full w-full object-cover ${cameraFacing === "user" ? "scale-x-[-1]" : ""}`} />
+              <button type="button" disabled={!cameraReady || cameraStarting} onClick={() => void startCamera(cameraFacing === "user" ? "environment" : "user")}
+                className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
+                <SwitchCamera className="h-4 w-4" /> {cameraFacing === "user" ? "Back camera" : "Front camera"}
+              </button>
               {!cameraReady ? (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-900/80 backdrop-blur-sm">
                   <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
@@ -470,7 +478,7 @@ export default function VirtualTryOn({ productSlug = "", frames }: VirtualTryOnP
               <div className="pointer-events-none absolute inset-[13%_22%] rounded-[45%] border-2 border-dashed border-teal-300/70" />
               <p className="absolute bottom-3 left-3 right-3 rounded-lg bg-black/60 px-3 py-2 text-center text-xs font-bold text-white backdrop-blur-sm">{CAMERA_GUIDANCE}</p>
             </div>
-            <div className="mt-6 flex gap-3"><button type="button" onClick={capturePhoto} disabled={!cameraReady} className="vv-button bg-white text-slate-900 border-white disabled:opacity-50 disabled:cursor-not-allowed"><Camera className="h-4 w-4" /> Capture selfie</button><button type="button" onClick={() => { stopCamera(); setStep("idle"); }} className="vv-button border-slate-700 text-slate-300">Cancel</button></div>
+            <div className="mt-6 flex gap-3"><button type="button" onClick={capturePhoto} disabled={!cameraReady} className="vv-button bg-white text-slate-900 border-white disabled:opacity-50 disabled:cursor-not-allowed"><Camera className="h-4 w-4" /> Capture photo</button><button type="button" onClick={() => { stopCamera(); setStep("idle"); }} className="vv-button border-slate-700 text-slate-300">Cancel</button></div>
           </>
         ) : null}
 

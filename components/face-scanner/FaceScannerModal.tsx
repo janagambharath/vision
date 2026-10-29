@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   Camera,
+  SwitchCamera,
   ChevronRight,
   Clock3,
   CreditCard,
@@ -27,6 +28,7 @@ import {
   computeFaceMeasurements,
 } from "@/lib/face-measurement";
 import type { FaceMeasurements } from "@/lib/frame-fit";
+import { openCamera, activeCameraFacing, type CameraFacing } from "@/lib/camera";
 import { saveFaceMeasurement } from "@/lib/face-measurement-actions";
 
 // ─── TYPES ───
@@ -109,6 +111,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const [step, setStep] = useState<ScannerStep>("intro");
   const [error, setError] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraFacing, setCameraFacing] = useState<CameraFacing>("user");
+  const [cameraVersion, setCameraVersion] = useState(0);
+  const cameraRequestRef = useRef(0);
   const [modelLoading, setModelLoading] = useState(false);
 
   // Face detection state
@@ -138,6 +143,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
 
   // ─── CLEANUP ───
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current++;
     if (measurementTimerRef.current) clearTimeout(measurementTimerRef.current);
     measurementTimerRef.current = null;
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -161,7 +167,15 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   }, [stopCamera]);
 
   // ─── START CAMERA ───
-  const startCamera = async () => {
+  const startCamera = async (facing: CameraFacing = cameraFacing) => {
+    stopCamera();
+    const requestId = cameraRequestRef.current;
+    latestLandmarksRef.current = null;
+    latestFaceCountRef.current = 0;
+    readyFrameCountRef.current = 0;
+    setLandmarksReady(false);
+    setCalibrationResult(null);
+    setCalibrationMode("choosing");
     setError(null);
     setCameraReady(false);
 
@@ -178,29 +192,17 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     try {
       setModelLoading(true);
 
-      const getCameraStream = async () => {
-        const attempts = [
-          { video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
-          { video: { facingMode: "user" }, audio: false },
-          { video: true, audio: false }
-        ];
-        let lastErr: unknown = null;
-        for (const constraints of attempts) {
-          try {
-            return await navigator.mediaDevices.getUserMedia(constraints);
-          } catch (e) {
-            lastErr = e;
-            if (e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")) {
-              throw e;
-            }
-          }
-        }
-        throw lastErr;
-      };
-
       // Safari can require getUserMedia to be initiated directly from the
       // button tap. Start it immediately while the model loads in parallel.
-      cameraPromise = getCameraStream();
+      cameraPromise = openCamera(facing).then(cameraStream => {
+        if (!mountedRef.current || requestId !== cameraRequestRef.current) {
+          cameraStream.getTracks().forEach(track => track.stop());
+        } else {
+          // Make a camera opened during model loading available to close/switch cleanup.
+          streamRef.current = cameraStream;
+        }
+        return cameraStream;
+      });
       initializationStage = "model";
       const landmarkerPromise = loadFaceLandmarker();
 
@@ -209,7 +211,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         landmarkerPromise.catch((err) => { initializationStage = "model"; throw err; })
       ]);
       stream = cameraStream;
-      if (!mountedRef.current) {
+      if (!mountedRef.current || requestId !== cameraRequestRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
@@ -217,6 +219,8 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       setModelLoading(false);
 
       streamRef.current = stream;
+      setCameraFacing(activeCameraFacing(stream, facing));
+      setCameraVersion(version => version + 1);
       trackEvent("camera_permission_granted");
 
       // Transition to camera step — attach stream in effect
@@ -229,13 +233,13 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       cameraPromise?.then((lateStream) => {
         if (lateStream !== stream) lateStream.getTracks().forEach((track) => track.stop());
       }).catch(() => {});
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || requestId !== cameraRequestRef.current) return;
       const isDenied = err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
       const detail = isDenied
         ? "Camera permission was denied. Tap the 🔒 lock or settings icon in your browser URL bar above to allow camera access, then try again."
         : initializationStage === "model"
           ? "We couldn't load face detection. Check your connection and try again."
-          : "We couldn't access your camera. Check browser camera permission and try again.";
+          : facing === "environment" ? "Back camera unavailable. Try the front camera or check camera permissions." : "We couldn't access your camera. Check browser camera permission and try again.";
       console.error("Failed to start face scanner:", { initializationStage, err });
       setError(detail);
       trackEvent("camera_permission_denied", { reason: isDenied ? "denied" : `scanner_${initializationStage}_initialization_failed` });
@@ -314,6 +318,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       detectionRunningRef.current = false;
       return;
     }
+    if (modelLoading) return;
 
     let cancelled = false;
     let frameId = 0;
@@ -343,7 +348,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       detectionRunningRef.current = false;
     };
-  }, [calibrationMode, startDetectionLoop, step]);
+  }, [calibrationMode, cameraVersion, modelLoading, startDetectionLoop, step]);
 
   // ─── CAPTURE & MEASURE ───
   const performMeasurement = useCallback((calibrationOverride?: CalibrationResult, captured?: { width: number; height: number; landmarks: NormalizedLandmark[] }) => {
@@ -590,7 +595,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
           <div className="mt-6 grid gap-3">
             <button
               type="button"
-              onClick={startCamera}
+              onClick={() => void startCamera()}
               disabled={modelLoading}
               className="vv-button-retail flex w-full justify-center gap-2 py-4 text-base"
             >
@@ -626,8 +631,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               autoPlay
               playsInline
               muted
-              className="h-full w-full scale-x-[-1] object-cover"
+              className={`h-full w-full object-cover ${cameraFacing === "user" ? "scale-x-[-1]" : ""}`}
             />
+            <button type="button" disabled={!cameraReady || modelLoading} onClick={() => void startCamera(cameraFacing === "user" ? "environment" : "user")}
+              className="absolute right-3 top-3 z-30 flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
+              <SwitchCamera className="h-4 w-4" /> {cameraFacing === "user" ? "Back camera" : "Front camera"}
+            </button>
             {!cameraReady && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-900/90 backdrop-blur-sm">
                 <Loader2 className="h-8 w-8 animate-spin text-teal-400" />
@@ -739,8 +748,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               autoPlay
               playsInline
               muted
-              className="h-full w-full scale-x-[-1] object-cover"
+              className={`h-full w-full object-cover ${cameraFacing === "user" ? "scale-x-[-1]" : ""}`}
             />
+            <button type="button" disabled={!cameraReady || modelLoading} onClick={() => void startCamera(cameraFacing === "user" ? "environment" : "user")}
+              className="absolute right-3 top-3 z-30 flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
+              <SwitchCamera className="h-4 w-4" /> {cameraFacing === "user" ? "Back camera" : "Front camera"}
+            </button>
           </div>
           <p className="text-xs text-slate-500 text-center">
             Hold a standard bank card horizontally beside your cheek, at the same distance as your face. Keep it flat, show all four corners, and leave both eyes visible. Use a blank card of the same size or cover printed details.
@@ -748,6 +761,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
           <button
             type="button"
             onClick={handleCardAligned}
+            disabled={!cameraReady || modelLoading}
             className="vv-button-retail flex w-full justify-center gap-2 py-3.5 font-extrabold"
           >
             <Scan className="h-5 w-5" />
