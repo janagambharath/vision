@@ -6,6 +6,7 @@ import {
   openRouterChatText,
   openRouterResponseModel,
   productAiDraftSchema,
+  productEnrichmentModels,
   productAiRequestSchema,
   type ProductAiDraft
 } from "@/lib/product-ai";
@@ -53,12 +54,6 @@ const instructions = [
   "Use Indian English. Keep marketing copy factual, concise, and suitable for a premium eyewear catalog."
 ].join(" ");
 
-const productEnrichmentModels = [
-  { id: "google/gemma-4-31b-it:free" },
-  { id: "google/gemma-4-26b-a4b-it:free" },
-  { id: "minimax/minimax-m3:free" }
-] as const;
-
 const emptyProductAiDraft: ProductAiDraft = {
   name: "", brand: "", shortDescription: "", description: "", material: "", colour: "", finish: "", shape: "", rimType: "",
   gender: "", ageGroup: "", highlights: [], lensCompatibility: [],
@@ -84,7 +79,8 @@ async function generateWithOpenRouter(imageUrl: string) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OpenRouter product enrichment is not configured.");
 
-  for (const [index, candidate] of productEnrichmentModels.entries()) {
+  let lastFailure = "The image models are temporarily unavailable. Try again shortly.";
+  for (const [index, model] of productEnrichmentModels().entries()) {
     try {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -95,8 +91,7 @@ async function generateWithOpenRouter(imageUrl: string) {
           "X-Title": "Vision Vistara Product Enrichment"
         },
         body: JSON.stringify({
-          model: candidate.id,
-          provider: { require_parameters: true },
+          model,
           response_format: { type: "json_object" },
           messages: [
             {
@@ -111,17 +106,23 @@ async function generateWithOpenRouter(imageUrl: string) {
               ]
             }
           ],
-          max_tokens: 1_200,
+          max_tokens: 4_096,
           temperature: 0.1
         }),
         signal: AbortSignal.timeout(25_000)
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("OpenRouter rejected access. Check the API key and model access settings.");
+        }
+        lastFailure = response.status === 429
+          ? "OpenRouter image models are rate limited. Wait a minute and try again, or configure another vision model."
+          : "The configured image models are unavailable. Check the OpenRouter model settings or try again shortly.";
         console.warn("OpenRouter product enrichment request failed", {
           status: response.status,
           requestId: response.headers.get("x-request-id"),
-          model: candidate.id
+          model
         });
         continue;
       }
@@ -131,7 +132,7 @@ async function generateWithOpenRouter(imageUrl: string) {
       const draft = parseDraft(content);
       if (!draft) {
         console.warn("OpenRouter product enrichment returned an invalid draft", {
-          model: openRouterResponseModel(payload, candidate.id),
+          model: openRouterResponseModel(payload, model),
           responseLength: content.length
         });
         continue;
@@ -139,18 +140,19 @@ async function generateWithOpenRouter(imageUrl: string) {
 
       return {
         draft,
-        model: openRouterResponseModel(payload, candidate.id),
+        model: openRouterResponseModel(payload, model),
         fallbackUsed: index > 0
       };
     } catch (error) {
+      if (error instanceof Error && error.message.startsWith("OpenRouter rejected access")) throw error;
       console.warn("OpenRouter product enrichment request threw", {
-        model: candidate.id,
+        model,
         message: error instanceof Error ? error.message : String(error)
       });
     }
   }
 
-  throw new Error("Neither configured free image model could complete the product draft.");
+  throw new Error(lastFailure);
 }
 
 export async function POST(request: NextRequest) {
@@ -182,7 +184,6 @@ export async function POST(request: NextRequest) {
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("OpenRouter product enrichment failed", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : "AI product enrichment could not complete. Try again shortly." }, { status: 502 });
   }
-
-  return NextResponse.json({ error: "AI product enrichment could not complete. Try again shortly." }, { status: 502 });
 }

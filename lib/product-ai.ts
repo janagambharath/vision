@@ -76,3 +76,12 @@ export function openRouterResponseModel(payload: unknown, requestedModel: string
   const model = (payload as { model?: unknown }).model;
   return typeof model === "string" && model ? model : requestedModel;
 }
+
+/** Read model settings per request so deployments can replace unavailable providers. */
+export function productEnrichmentModels(env: Record<string, string | undefined> = process.env) {
+  return [...new Set([
+    env.OPENROUTER_PRODUCT_ENRICHMENT_MODEL?.trim() || "google/gemma-4-31b-it:free",
+    env.OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL?.trim() || "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3.5-super-vl:free"
+  ])];
+}

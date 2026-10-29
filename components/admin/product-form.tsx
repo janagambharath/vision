@@ -143,7 +143,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
       ...draft.needsReview
     ].filter(Boolean).join(" ");
     setAiState("ready");
-    setAiMessage(`${fallbackUsed ? "The primary free image model was unavailable, so the backup completed this draft. " : `${provider === "openrouter" ? "OpenRouter's free image model" : "AI"} completed this draft. `}${reviewSummary} AI filled empty descriptive fields only; enter frame measurements manually.`);
+    setAiMessage(`${fallbackUsed ? "The primary image model was unavailable, so the backup completed this draft. " : `${provider === "openrouter" ? "OpenRouter's image model" : "AI"} completed this draft. `}${reviewSummary} AI filled empty descriptive fields only; enter frame measurements manually.`);
   };
 
   const generateAiDraft = async (image = firstProductImage) => {
@@ -161,7 +161,9 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageUrl: image.url })
       });
-      const result = await response.json();
+      const result = await response.json().catch(() => ({
+        error: `AI product enrichment could not complete (HTTP ${response.status}). Try again shortly.`
+      }));
       if (!response.ok || !result.draft) throw new Error(result.error || "AI product enrichment failed.");
       applyAiDraft(result.draft as ProductAiDraft, String(result.provider ?? "AI"), Boolean(result.fallbackUsed));
     } catch (error) {
@@ -512,7 +514,7 @@ export function ProductForm({ product, categories, brands, action, submitLabel }
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-extrabold text-violet-950">AI product draft</h3>
-                <p className="mt-1 text-xs font-medium text-violet-800">Click Generate after choosing the final product image. Three free OpenRouter vision models are tried in order, with automatic backup if one is unavailable. AI can draft visual and descriptive fields only; it never fills frame measurements, price, SKU, stock, or policies.</p>
+                <p className="mt-1 text-xs font-medium text-violet-800">Click Generate after choosing the final product image. OpenRouter vision models are tried with automatic backup if one is unavailable. AI can draft visual and descriptive fields only; it never fills frame measurements, price, SKU, stock, or policies.</p>
               </div>
               <button
                 type="button"
