@@ -124,7 +124,7 @@ export function RecommendedFrames({ products }: RecommendedFramesProps) {
             </p>
             <h1 className="mt-2 text-3xl font-extrabold text-slate-950">Best fits from our measured frames.</h1>
             <p className="mt-2 max-w-2xl text-slate-600">
-              {recommendations.length} measured {recommendations.length === 1 ? "frame" : "frames"}, ranked using your saved profile and each frame&apos;s recorded dimensions.
+              Ranked using your saved profile and each frame&apos;s recorded dimensions.
             </p>
             <p className="mt-2 max-w-2xl text-sm text-slate-500">
               Uses total frame width when recorded, otherwise lens and bridge sizing. Matches without total width are less complete estimates.

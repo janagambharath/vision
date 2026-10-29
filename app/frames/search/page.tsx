@@ -65,7 +65,7 @@ export default async function SearchPage({
         <div>
           <div className="mb-6 flex items-center justify-between">
             <p className="text-sm font-bold text-slate-600">
-              {hasQuery ? `${totalCount} result${totalCount !== 1 ? "s" : ""} found` : `${totalCount} frames in collection`}
+              {hasQuery ? "Search results" : "Explore the collection"}
             </p>
           </div>
 

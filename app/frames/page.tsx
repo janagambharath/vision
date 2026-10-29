@@ -151,14 +151,11 @@ export default async function FramesPage({
             <div>
               <p className="vv-kicker text-retail">{hasFilters ? "Filtered frames" : "All frames"}</p>
               <h2 className="text-3xl font-extrabold">
-                {hasFilters ? `${totalCount} frame${totalCount !== 1 ? "s" : ""} found` : "Complete collection"}
+                {hasFilters ? "Matching frames" : "Complete collection"}
               </h2>
               {params.q ? <p className="mt-2 text-slate-600">Showing results for &quot;{params.q}&quot;</p> : null}
               {params.ageGroup ? <p className="mt-2 text-slate-600">Showing frames for {ageGroupLabel}.</p> : null}
             </div>
-            <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-extrabold text-slate-600">
-              {totalCount} frames
-            </span>
           </div>
 
           {products.length ? (

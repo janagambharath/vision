@@ -89,7 +89,6 @@ export default async function CategoryPage({
         <div className="mb-8">
           <p className="vv-kicker text-retail">{label}</p>
           <h1 className="text-4xl font-extrabold">{label} Frames</h1>
-          <p className="mt-2 text-slate-600">{totalCount} frame{totalCount !== 1 ? "s" : ""} available in this category.</p>
           {currentCat?.description && (
             <p className="mt-1 text-sm text-slate-500">{currentCat.description}</p>
           )}
