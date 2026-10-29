@@ -3,7 +3,7 @@
 import { type PointerEvent, useRef, useState } from "react";
 import Image from "next/image";
 import type { StoreImage } from "@/lib/inventory";
-import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
+import { Maximize2, X } from "lucide-react";
 
 export function ProductGallery({ images: productImages }: { images: StoreImage[] }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -38,23 +38,23 @@ export function ProductGallery({ images: productImages }: { images: StoreImage[]
   const swipeHandlers = {
     onPointerDown,
     onPointerUp,
+    onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget || images.length < 2) return;
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        changeImage(event.key === "ArrowLeft" ? -1 : 1);
+      }
+    },
+    tabIndex: 0,
+    role: "group",
+    "aria-label": "Product images. Swipe or use left and right arrow keys to change image.",
     onPointerCancel: () => { gesture.current = null; },
     onLostPointerCapture: () => { gesture.current = null; }
   };
-  const navigation = (zoomed = false) => images.length > 1 ? (
-    <>
-      <button type="button" aria-label="Previous product image" onClick={() => changeImage(-1)}
-        className={`absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full p-2 shadow-soft ${zoomed ? "bg-black/50 text-white" : "bg-white/90 text-slate-800"}`}>
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button type="button" aria-label="Next product image" onClick={() => changeImage(1)}
-        className={`absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full p-2 shadow-soft ${zoomed ? "bg-black/50 text-white" : "bg-white/90 text-slate-800"}`}>
-        <ChevronRight className="h-5 w-5" />
-      </button>
-      <span aria-live="polite" className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs text-slate-800">
-        {currentIdx + 1} / {images.length}
-      </span>
-    </>
+  const imageCounter = images.length > 1 ? (
+    <span aria-live="polite" className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs text-slate-800">
+      {currentIdx + 1} / {images.length} ? Swipe to view
+    </span>
   ) : null;
 
   return (
@@ -70,7 +70,7 @@ export function ProductGallery({ images: productImages }: { images: StoreImage[]
           sizes="(max-width: 900px) 100vw, 55vw"
           className="object-contain p-3 transition-transform duration-300 group-hover:scale-105 sm:p-6 lg:p-8"
         />
-        {navigation()}
+        {imageCounter}
         <button
           onClick={() => setIsZoomed(true)}
           className="absolute bottom-3 right-3 rounded-full bg-white/80 p-2 text-slate-800 backdrop-blur hover:bg-white transition shadow-soft"
@@ -122,7 +122,7 @@ export function ProductGallery({ images: productImages }: { images: StoreImage[]
               sizes="90vw"
               priority
             />
-            {navigation(true)}
+            {imageCounter}
           </div>
         </div>
       ) : null}
