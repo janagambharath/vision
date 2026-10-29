@@ -78,7 +78,7 @@ export default async function FramesPage({
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="vv-kicker mb-1 text-retail">Shop by age group</p>
-                <h1 className="bg-gradient-to-r from-blue-800 via-blue-600 to-cyan-500 bg-clip-text text-2xl font-extrabold text-transparent sm:text-3xl">Frames for every stage.</h1>
+                <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Frames for adults and kids</h1>
               </div>
               {hasFilters ? (
                 <Link href="/frames" className="text-sm font-extrabold text-teal-700 hover:text-teal-900">
@@ -121,7 +121,7 @@ export default async function FramesPage({
       {currentPage === 1 ? <FindFrameSizeCTA /> : null}
 
       {!hasFilters && currentPage === 1 && featured.length > 0 ? (
-        <section className="vv-section bg-white">
+        <section className="bg-white py-8 sm:py-10">
           <div className="vv-container">
             <div className="mb-8 flex items-end justify-between gap-4">
               <div>
@@ -145,9 +145,9 @@ export default async function FramesPage({
         </section>
       ) : null}
 
-      <section className="vv-section bg-paper">
+      <section className="bg-paper py-8 sm:py-10">
         <div className="vv-container">
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="vv-kicker text-retail">{hasFilters ? "Filtered frames" : "All frames"}</p>
               <h2 className="text-3xl font-extrabold">
