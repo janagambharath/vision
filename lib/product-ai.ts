@@ -82,6 +82,7 @@ export function productEnrichmentModels(env: Record<string, string | undefined> 
   return [...new Set([
     env.OPENROUTER_PRODUCT_ENRICHMENT_MODEL?.trim() || "google/gemma-4-31b-it:free",
     env.OPENROUTER_PRODUCT_ENRICHMENT_FALLBACK_MODEL?.trim() || "google/gemma-4-26b-a4b-it:free",
-    "nvidia/nemotron-3.5-super-vl:free"
+    "google/gemma-4-31b-it:free",
+    "openrouter/free"
   ])];
 }
