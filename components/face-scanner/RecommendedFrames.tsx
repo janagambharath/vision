@@ -6,55 +6,13 @@ import { ArrowLeft, Ruler, Scan, Sparkles } from "lucide-react";
 import { ProductCard } from "@/components/product-card";
 import { FindFrameSizeCTA } from "@/components/face-scanner/FindFrameSizeCTA";
 import type { PublicStoreProduct } from "@/lib/inventory";
-import { calculateFrameFit, type CalibrationMethod, type FaceMeasurements, type FaceShape, type FrameSize, type MeasurementQuality } from "@/lib/frame-fit";
+import { calculateFrameFit, type FaceMeasurements } from "@/lib/frame-fit";
+
+import { parseStoredFaceMeasurements } from "@/lib/face-profile";
 
 interface RecommendedFramesProps {
   /** Active storefront products. Products without a frame width are excluded client-side. */
   products: PublicStoreProduct[];
-}
-
-const FACE_SHAPES: FaceShape[] = ["Oval", "Round", "Square", "Heart", "Diamond", "Oblong", "Triangle"];
-const FRAME_SIZES: FrameSize[] = ["Small", "Medium", "Large", "Extra Large"];
-const MEASUREMENT_QUALITIES: MeasurementQuality[] = ["Good", "Fair", "Approximate"];
-const CALIBRATION_METHODS: CalibrationMethod[] = ["card", "heuristic"];
-
-function isOneOf<T extends string>(value: unknown, options: readonly T[]): value is T {
-  return typeof value === "string" && options.includes(value as T);
-}
-
-function nullableNumber(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function parseStoredFaceMeasurements(value: string): FaceMeasurements | null {
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!parsed || typeof parsed !== "object") return null;
-
-    const stored = parsed as Record<string, unknown>;
-    const measurements: FaceMeasurements = {
-      faceWidthMm: nullableNumber(stored.faceWidthMm),
-      faceHeightMm: nullableNumber(stored.faceHeightMm),
-      estimatedPdMm: nullableNumber(stored.estimatedPdMm),
-      interocularWidthMm: nullableNumber(stored.interocularWidthMm),
-      noseWidthMm: nullableNumber(stored.noseWidthMm),
-      faceShape: isOneOf(stored.faceShape, FACE_SHAPES) ? stored.faceShape : null,
-      recommendedSize: isOneOf(stored.recommendedSize, FRAME_SIZES) ? stored.recommendedSize : null,
-      measurementQuality: isOneOf(stored.measurementQuality, MEASUREMENT_QUALITIES) ? stored.measurementQuality : "Approximate",
-      calibrationMethod: isOneOf(stored.calibrationMethod, CALIBRATION_METHODS) ? stored.calibrationMethod : "heuristic",
-    };
-
-    const hasUsefulProfileData =
-      measurements.faceWidthMm != null ||
-      measurements.estimatedPdMm != null ||
-      measurements.noseWidthMm != null ||
-      measurements.faceShape != null ||
-      measurements.recommendedSize != null;
-
-    return hasUsefulProfileData ? measurements : null;
-  } catch {
-    return null;
-  }
 }
 
 function hasFrameWidth(product: PublicStoreProduct) {
@@ -65,7 +23,20 @@ export function RecommendedFrames({ products }: RecommendedFramesProps) {
   const [faceMeasurements, setFaceMeasurements] = useState<FaceMeasurements | null | undefined>(undefined);
 
   useEffect(() => {
-    setFaceMeasurements(parseStoredFaceMeasurements(window.localStorage.getItem("vv_face_measurements") ?? ""));
+    const refreshProfile = () => {
+      try {
+        setFaceMeasurements(parseStoredFaceMeasurements(window.localStorage.getItem("vv_face_measurements") ?? ""));
+      } catch {
+        setFaceMeasurements(null);
+      }
+    };
+    refreshProfile();
+    window.addEventListener("storage", refreshProfile);
+    window.addEventListener("vv-face-measurements-updated", refreshProfile);
+    return () => {
+      window.removeEventListener("storage", refreshProfile);
+      window.removeEventListener("vv-face-measurements-updated", refreshProfile);
+    };
   }, []);
 
   const measuredProducts = useMemo(

@@ -133,6 +133,22 @@ export function calibrateWithCard(
   const leftEdge = distance2D(cardCorners.topLeft, cardCorners.bottomLeft);
   const rightEdge = distance2D(cardCorners.topRight, cardCorners.bottomRight);
 
+  const corners = [cardCorners.topLeft, cardCorners.topRight, cardCorners.bottomRight, cardCorners.bottomLeft];
+  const crosses = corners.map((p, i) => {
+    const q = corners[(i + 1) % 4], r = corners[(i + 2) % 4];
+    return (q.x - p.x) * (r.y - q.y) - (q.y - p.y) * (r.x - q.x);
+  });
+  if (!corners.every(p => Number.isFinite(p.x) && Number.isFinite(p.y)) ||
+      !crosses.every(c => c > 0) || Math.min(topEdge, bottomEdge, leftEdge, rightEdge) < 30) {
+    throw new Error("Mark all four corners clockwise, starting at top-left. Move closer if the card is too small.");
+  }
+  if (Math.abs(topEdge - bottomEdge) / Math.max(topEdge, bottomEdge) > 0.12 ||
+      Math.abs(leftEdge - rightEdge) / Math.max(leftEdge, rightEdge) > 0.12 ||
+      Math.abs(distance2D(corners[0], corners[2]) - distance2D(corners[1], corners[3])) /
+        Math.max(distance2D(corners[0], corners[2]), distance2D(corners[1], corners[3])) > 0.10) {
+    throw new Error("The card is tilted. Retake with the card flat and parallel to the camera.");
+  }
+
   // Determine which pair is the width and which is the height. Comparing the
   // two averaged edge pairs preserves the card's 1.586:1 aspect ratio.
   const horizontalEdge = (topEdge + bottomEdge) / 2;
@@ -144,6 +160,7 @@ export function calibrateWithCard(
   const aspect = avgLong / avgShort;
   const expectedAspect = STANDARD_CARD.widthMm / STANDARD_CARD.heightMm;
   const aspectError = Math.abs(aspect - expectedAspect) / expectedAspect;
+  if (aspectError > 0.10) throw new Error("The corners do not match a standard bank card. Check the points or retake the photo.");
 
   let confidence: number;
   if (aspectError < 0.05) confidence = 0.95;
@@ -224,6 +241,15 @@ export function computeFaceMeasurements(
   calibration: CalibrationResult
 ): FaceMeasurementResult {
   const { pixelsPerMm, method: calibrationMethod } = calibration;
+  if (!Number.isFinite(pixelsPerMm) || pixelsPerMm <= 0 || !Number.isFinite(calibration.confidence) || calibration.confidence < 0.55) {
+    throw new Error("The image is too unclear to estimate size. Retake in even lighting or use card calibration.");
+  }
+
+  if (landmarks.length < 468 || !Number.isFinite(imageWidth) || imageWidth <= 0 ||
+      !Number.isFinite(imageHeight) || imageHeight <= 0 ||
+      !landmarks.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))) {
+    throw new Error("Face landmarks are incomplete. Retake the photo.");
+  }
 
   // Get pixel coordinates for key landmarks
   const leftCheek = toPixelCoords(landmarks[LANDMARK.leftCheek], imageWidth, imageHeight);
@@ -404,7 +430,7 @@ export function analyzeFacePosition(
   landmarks: NormalizedLandmark[] | null,
   faceCount: number
 ): FaceGuidance {
-  if (faceCount === 0 || !landmarks || landmarks.length === 0) {
+  if (faceCount === 0 || !landmarks || landmarks.length < 468 || !landmarks.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))) {
     return { status: "no_face", message: "Position your face inside the guide", confidence: 0 };
   }
 

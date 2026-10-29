@@ -134,6 +134,11 @@ export function calculateFrameFit(
   face: FaceMeasurements,
   product: ProductMeasurements
 ): FitResult {
+  // Generic temple length or style alone cannot establish personalised size fit.
+  if (!Number.isFinite(face.faceWidthMm) || !face.faceWidthMm || face.faceWidthMm <= 0 ||
+      !Number.isFinite(product.frameWidth) || !product.frameWidth || product.frameWidth <= 0) {
+    return { fitScore: 0, fitLevel: "Less Suitable", reasons: ["Insufficient measurement data to calculate fit"] };
+  }
   const scores: { weight: number; score: number; reason: string }[] = [];
 
   // 1. Frame width vs face width (most important)
@@ -189,26 +194,8 @@ export function calculateFrameFit(
     });
   }
 
-  // 3. Bridge width vs nose width
-  if (face.noseWidthMm != null && product.bridgeWidth != null) {
-    const diff = Math.abs(product.bridgeWidth - face.noseWidthMm);
-
-    let score: number;
-    if (diff <= FIT_THRESHOLDS.bridgeWidthIdealToleranceMm) {
-      score = 100;
-    } else if (diff <= FIT_THRESHOLDS.bridgeWidthAcceptableToleranceMm) {
-      const range = FIT_THRESHOLDS.bridgeWidthAcceptableToleranceMm - FIT_THRESHOLDS.bridgeWidthIdealToleranceMm;
-      score = 100 - ((diff - FIT_THRESHOLDS.bridgeWidthIdealToleranceMm) / range) * 50;
-    } else {
-      score = Math.max(0, 50 - (diff - FIT_THRESHOLDS.bridgeWidthAcceptableToleranceMm) * 5);
-    }
-
-    scores.push({
-      weight: FIT_THRESHOLDS.bridgeWidthWeight,
-      score,
-      reason: score >= 80 ? "Bridge width fits your nose well" : "Bridge width may feel uncomfortable"
-    });
-  }
+  // The scanner measures outer nose width, not the bridge contact width.
+  // Do not compare that landmark distance directly with a frame's bridge size.
 
   // 4. Temple length (general comfort)
   if (product.templeLength != null) {
