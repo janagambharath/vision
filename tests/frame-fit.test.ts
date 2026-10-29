@@ -8,7 +8,7 @@ import {
   type FaceMeasurements,
   type ProductMeasurements,
 } from "../lib/frame-fit";
-import { analyzeFacePosition, calibrateWithCard, computeFaceMeasurements } from "../lib/face-measurement";
+import { advanceFaceStability, analyzeFacePosition, calibrateWithCard, computeFaceMeasurements } from "../lib/face-measurement";
 
 test("calibrateWithCard uses a standard horizontal card width and validates its aspect ratio", () => {
   const calibration = calibrateWithCard({
@@ -233,4 +233,50 @@ test("frames with only saved text measurements are ranked alongside total-width 
   ]);
   assert.equal(ranked.length, 2);
   assert.ok(ranked.some(item => item.product.name === "Saved marking" && item.fit.fitScore > 0));
+});
+
+
+function alignedFace() {
+  const points = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
+  points[234].x = 0.27; points[454].x = 0.73;
+  points[10].y = 0.18; points[152].y = 0.82;
+  points[33] = { x: 0.38, y: 0.4, z: 0 }; points[133] = { x: 0.45, y: 0.4, z: 0 };
+  points[263] = { x: 0.62, y: 0.4, z: 0 }; points[362] = { x: 0.55, y: 0.4, z: 0 };
+  points[159] = { x: 0.415, y: 0.39, z: 0 }; points[145] = { x: 0.415, y: 0.41, z: 0 };
+  points[386] = { x: 0.585, y: 0.39, z: 0 }; points[374] = { x: 0.585, y: 0.41, z: 0 };
+  return points;
+}
+
+test("strict face guidance rejects turned, tilted, blinking and clipped captures", () => {
+  assert.equal(analyzeFacePosition(alignedFace(), 1, 1280, 720).status, "ready");
+  assert.equal(analyzeFacePosition(alignedFace(), 2).status, "multiple_faces");
+  const turned = alignedFace(); turned[1].x = 0.56;
+  assert.equal(analyzeFacePosition(turned, 1).status, "head_turned");
+  const tilted = alignedFace(); tilted[263].y = 0.43;
+  assert.equal(analyzeFacePosition(tilted, 1).status, "head_tilted");
+  const blink = alignedFace(); blink[159].y = blink[145].y;
+  assert.equal(analyzeFacePosition(blink, 1).status, "eyes_closed");
+  const clipped = alignedFace(); clipped[10].y = -0.01;
+  assert.equal(analyzeFacePosition(clipped, 1).status, "face_clipped");
+  const distant = alignedFace(); distant[234].x = 0.36; distant[454].x = 0.64;
+  assert.equal(analyzeFacePosition(distant, 1).status, "too_far");
+});
+
+test("steady tracking requires both enough frames and elapsed time, and resets after motion", () => {
+  const points = alignedFace();
+  let result = advanceFaceStability(null, points, 0);
+  for (let index = 1; index <= 25; index++) result = advanceFaceStability(result.state, points, index * 10);
+  assert.equal(result.ready, false);
+  result = advanceFaceStability(result.state, points, 1250);
+  assert.equal(result.ready, true);
+  const moved = alignedFace(); moved[1].x += 0.02;
+  result = advanceFaceStability(result.state, moved, 1300);
+  assert.equal(result.ready, false);
+  assert.equal(result.state.frames, 1);
+  assert.equal(advanceFaceStability(null, points, 2000).ready, false);
+});
+
+test("weak but previously accepted calibration is now rejected", () => {
+  assert.throws(() => computeFaceMeasurements(alignedFace(), 1280, 720,
+    { pixelsPerMm: 5, confidence: 0.60, method: "heuristic" }), /unclear/);
 });
