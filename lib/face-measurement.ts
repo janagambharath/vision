@@ -212,7 +212,7 @@ export function calibrateWithIris(
   const rightIrisDiameterPx = distance2D(rightIrisLeft, rightIrisRight);
   const avgIrisDiameterPx = (leftIrisDiameterPx + rightIrisDiameterPx) / 2;
 
-  if (avgIrisDiameterPx < 10) {
+  if (avgIrisDiameterPx < 6) {
     // Too small to be reliable
     return { pixelsPerMm: 1, confidence: 0.2, method: "heuristic" };
   }
@@ -241,7 +241,7 @@ export function computeFaceMeasurements(
   calibration: CalibrationResult
 ): FaceMeasurementResult {
   const { pixelsPerMm, method: calibrationMethod } = calibration;
-  if (!Number.isFinite(pixelsPerMm) || pixelsPerMm <= 0 || !Number.isFinite(calibration.confidence) || calibration.confidence < 0.68 || calibration.confidence > 1) {
+  if (!Number.isFinite(pixelsPerMm) || pixelsPerMm <= 0 || !Number.isFinite(calibration.confidence) || calibration.confidence < 0.55 || calibration.confidence > 1) {
     throw new Error("The image is too unclear to estimate size. Retake in even lighting or use card calibration.");
   }
 
@@ -453,18 +453,18 @@ export function analyzeFacePosition(
   const noseTip = landmarks[LANDMARK.noseTip];
 
   // Check horizontal position
-  if (noseTip.x < 0.35) {
+  if (noseTip.x < 0.3) {
     return { status: "too_left", message: "Move slightly to the right", confidence: 0.4 };
   }
-  if (noseTip.x > 0.65) {
+  if (noseTip.x > 0.7) {
     return { status: "too_right", message: "Move slightly to the left", confidence: 0.4 };
   }
 
   // Check vertical position
-  if (noseTip.y < 0.35) {
+  if (noseTip.y < 0.3) {
     return { status: "too_high", message: "Move your face down a bit", confidence: 0.4 };
   }
-  if (noseTip.y > 0.65) {
+  if (noseTip.y > 0.7) {
     return { status: "too_low", message: "Move your face up a bit", confidence: 0.4 };
   }
 
@@ -473,10 +473,10 @@ export function analyzeFacePosition(
   const rightCheek = landmarks[LANDMARK.rightCheek];
   const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
 
-  if (faceWidth < 0.30) {
+  if (faceWidth < 0.25) {
     return { status: "too_far", message: "Move closer to the camera", confidence: 0.5 };
   }
-  if (faceWidth > 0.65) {
+  if (faceWidth > 0.75) {
     return { status: "too_close", message: "Move further from the camera", confidence: 0.5 };
   }
 
@@ -485,7 +485,7 @@ export function analyzeFacePosition(
   const rightEye = landmarks[LANDMARK.rightEyeOuter];
   const eyeGap = Math.abs(leftEye.x - rightEye.x) * imageWidth;
   const eyeTilt = Math.abs(leftEye.y - rightEye.y) * imageHeight;
-  if (eyeGap <= 0 || eyeTilt / eyeGap > 0.08) {
+  if (eyeGap <= 0 || eyeTilt / eyeGap > 0.18) {
     return { status: "head_tilted", message: "Keep your head straight", confidence: 0.5 };
   }
 
@@ -496,14 +496,14 @@ export function analyzeFacePosition(
   const leftDistance = Math.abs(noseTip.x - leftEye.x);
   const rightDistance = Math.abs(noseTip.x - rightEye.x);
   const symmetry = Math.min(leftDistance, rightDistance) / Math.max(leftDistance, rightDistance);
-  if (!Number.isFinite(symmetry) || symmetry < 0.65) {
+  if (!Number.isFinite(symmetry) || symmetry < 0.45) {
     return { status: "head_turned", message: "Turn to face the camera straight on", confidence: 0.4 };
   }
   const eyeOpenings = [[159, 145, 33, 133], [386, 374, 263, 362]];
   if (eyeOpenings.some(([top, bottom, outer, inner]) => {
     const opening = distance2D(toPixelCoords(landmarks[top], imageWidth, imageHeight), toPixelCoords(landmarks[bottom], imageWidth, imageHeight));
     const width = distance2D(toPixelCoords(landmarks[outer], imageWidth, imageHeight), toPixelCoords(landmarks[inner], imageWidth, imageHeight));
-    return width <= 0 || opening / width < 0.10;
+    return width <= 0 || opening / width < 0.05;
   })) {
     return { status: "eyes_closed", message: "Keep both eyes open and clearly visible", confidence: 0.4 };
   }
@@ -517,12 +517,12 @@ export function analyzeFacePosition(
 
 export type FaceStability = { since: number; frames: number; anchors: { x: number; y: number }[] };
 
-/** Require sustained stillness, rather than a burst of fast camera frames. */
+/** Confirm a short steady hold without requiring high camera FPS or perfect stillness. */
 export function advanceFaceStability(previous: FaceStability | null, landmarks: NormalizedLandmark[], now: number) {
   const anchors = [1, 33, 263, 234, 454].map(index => ({ x: landmarks[index].x, y: landmarks[index].y }));
-  const moved = !previous || anchors.some((point, index) => distance2D(point, previous.anchors[index]) > 0.012);
+  const moved = !previous || anchors.some((point, index) => distance2D(point, previous.anchors[index]) > 0.025);
   const state: FaceStability = moved ? { since: now, frames: 1, anchors } : { ...previous, frames: previous.frames + 1 };
-  return { state, ready: state.frames >= 20 && now - state.since >= 1_200 };
+  return { state, ready: state.frames >= 4 && now - state.since >= 600 };
 }
 
 // ─── HELPERS ───

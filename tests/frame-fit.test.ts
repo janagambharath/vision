@@ -252,13 +252,13 @@ test("strict face guidance rejects turned, tilted, blinking and clipped captures
   assert.equal(analyzeFacePosition(alignedFace(), 2).status, "multiple_faces");
   const turned = alignedFace(); turned[1].x = 0.56;
   assert.equal(analyzeFacePosition(turned, 1).status, "head_turned");
-  const tilted = alignedFace(); tilted[263].y = 0.43;
+  const tilted = alignedFace(); tilted[263].y = 0.46;
   assert.equal(analyzeFacePosition(tilted, 1).status, "head_tilted");
   const blink = alignedFace(); blink[159].y = blink[145].y;
   assert.equal(analyzeFacePosition(blink, 1).status, "eyes_closed");
   const clipped = alignedFace(); clipped[10].y = -0.01;
   assert.equal(analyzeFacePosition(clipped, 1).status, "face_clipped");
-  const distant = alignedFace(); distant[234].x = 0.36; distant[454].x = 0.64;
+  const distant = alignedFace(); distant[234].x = 0.39; distant[454].x = 0.61;
   assert.equal(analyzeFacePosition(distant, 1).status, "too_far");
 });
 
@@ -269,14 +269,33 @@ test("steady tracking requires both enough frames and elapsed time, and resets a
   assert.equal(result.ready, false);
   result = advanceFaceStability(result.state, points, 1250);
   assert.equal(result.ready, true);
-  const moved = alignedFace(); moved[1].x += 0.02;
+  const moved = alignedFace(); moved[1].x += 0.04;
   result = advanceFaceStability(result.state, moved, 1300);
   assert.equal(result.ready, false);
   assert.equal(result.state.frames, 1);
   assert.equal(advanceFaceStability(null, points, 2000).ready, false);
 });
 
-test("weak but previously accepted calibration is now rejected", () => {
+test("unreliable calibration is still rejected", () => {
   assert.throws(() => computeFaceMeasurements(alignedFace(), 1280, 720,
-    { pixelsPerMm: 5, confidence: 0.60, method: "heuristic" }), /unclear/);
+    { pixelsPerMm: 5, confidence: 0.45, method: "heuristic" }), /unclear/);
+});
+
+
+test("readiness becomes available at phone camera FPS despite normal landmark jitter", () => {
+  let result = advanceFaceStability(null, alignedFace(), 0);
+  for (let frame = 1; frame <= 3; frame++) {
+    const points = alignedFace();
+    points[1].x += frame % 2 ? 0.015 : -0.008;
+    result = advanceFaceStability(result.state, points, frame * 250);
+  }
+  assert.equal(result.ready, true, "Next must unlock after a short steady hold on a 4 FPS camera");
+  assert.equal(result.state.frames, 4);
+});
+
+test("natural pose variation does not lock the capture controls", () => {
+  const points = alignedFace();
+  points[1].x = 0.53;
+  points[263].y = 0.42;
+  assert.equal(analyzeFacePosition(points, 1, 1280, 720).status, "ready");
 });

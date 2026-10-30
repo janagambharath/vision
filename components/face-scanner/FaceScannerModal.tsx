@@ -379,7 +379,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       return;
     }
 
-    if ((!captured && (!landmarksReady || performance.now() - lastDetectionAtRef.current > 400)) ||
+    if ((!captured && (!landmarksReady || performance.now() - lastDetectionAtRef.current > 1_500)) ||
         analyzeFacePosition(landmarks, captured ? 1 : latestFaceCountRef.current, videoWidth, videoHeight).status !== "ready") {
       setError("Center your face, keep your head straight, and try again.");
       setStep(captured ? "corners" : "camera");
@@ -478,7 +478,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
 
   const handleCardAligned = () => {
     const video = videoRef.current;
-    if (!video || !video.videoWidth || !video.videoHeight || !landmarkerRef.current || !landmarksReady || performance.now() - lastDetectionAtRef.current > 400) {
+    if (!video || !video.videoWidth || !video.videoHeight || !landmarkerRef.current || !landmarksReady || performance.now() - lastDetectionAtRef.current > 1_500) {
       setError("Hold still with your face centred before capturing.");
       return;
     }
