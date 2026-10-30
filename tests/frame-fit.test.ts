@@ -8,7 +8,7 @@ import {
   type FaceMeasurements,
   type ProductMeasurements,
 } from "../lib/frame-fit";
-import { advanceFaceStability, analyzeFacePosition, calibrateWithCard, computeFaceMeasurements, computeIrisMeasurementFromSamples } from "../lib/face-measurement";
+import { advanceFaceStability, analyzeFacePosition, calibrateWithCard, computeFaceMeasurements, computeIrisMeasurementFromSamples, prepareFaceScan } from "../lib/face-measurement";
 
 test("calibrateWithCard uses a standard horizontal card width and validates its aspect ratio", () => {
   const calibration = calibrateWithCard({
@@ -352,4 +352,32 @@ test("iris estimate asks for another scan when too few frames are usable", () =>
 test("iris estimate rejects unstable scales rather than saving a misleading result", () => {
   const samples = [30, 45, 60, 75, 95].map((diameter, index) => realisticIrisSample(diameter, index * 250));
   assert.throws(() => computeIrisMeasurementFromSamples(samples), /changed while scanning/);
+});
+
+
+test("calibration can use a frozen scan after the live video and tracking buffers are gone", () => {
+  const liveSamples = [58, 58.5, 59, 58.2].map((diameter, index) => realisticIrisSample(diameter, 1000 + index * 250));
+  const prepared = prepareFaceScan(liveSamples, 1800);
+  liveSamples.length = 0; // The camera view unmounts while the user chooses calibration.
+  assert.equal(prepared.samples.length, 4);
+  const result = computeIrisMeasurementFromSamples(prepared.samples);
+  assert.ok(Math.abs(result.result.faceWidthMm! - 139) < 3);
+  assert.equal(result.result.measurementQuality, "Approximate");
+});
+
+test("cannot freeze a stale or off-centre scan", () => {
+  const sample = realisticIrisSample(58, 1000);
+  assert.throws(() => prepareFaceScan([sample], 2501), /Hold still/);
+  const offCentre = realisticIrisSample(58, 1000);
+  offCentre.landmarks[1].x = 0.1;
+  assert.throws(() => prepareFaceScan([offCentre], 1100), /Hold still/);
+  assert.throws(() => prepareFaceScan([], 1100), /Hold still/);
+});
+
+test("frozen scan contains only recent frames from the same camera resolution", () => {
+  const frames = [realisticIrisSample(58, 1000), realisticIrisSample(58, 2100),
+    realisticIrisSample(58, 4900), realisticIrisSample(58, 5000)];
+  frames[1].width = 640;
+  const prepared = prepareFaceScan(frames, 5100);
+  assert.deepEqual(prepared.samples.map(frame => frame.capturedAt), [4900, 5000]);
 });

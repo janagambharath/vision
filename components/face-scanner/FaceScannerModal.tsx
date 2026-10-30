@@ -32,6 +32,7 @@ import {
   advanceFaceStability,
   type FaceStability,
   computeIrisMeasurementFromSamples,
+  prepareFaceScan,
   type FaceMeasurementSample,
   computeFaceMeasurements,
 } from "@/lib/face-measurement";
@@ -143,6 +144,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const latestLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
   const stableFaceRef = useRef<FaceStability | null>(null);
   const recentSamplesRef = useRef<FaceMeasurementSample[]>([]);
+  const preparedScanRef = useRef<ReturnType<typeof prepareFaceScan> | null>(null);
   const lastDetectionAtRef = useRef(0);
   const latestFaceCountRef = useRef(0);
   const detectionRunningRef = useRef(false);
@@ -152,6 +154,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   // ─── CLEANUP ───
   const stopCamera = useCallback(() => {
     cameraRequestRef.current++;
+    preparedScanRef.current = null;
     stableFaceRef.current = null;
     recentSamplesRef.current = [];
     if (measurementTimerRef.current) clearTimeout(measurementTimerRef.current);
@@ -330,7 +333,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   // scanning views. Reattach the existing stream whenever a video view mounts;
   // otherwise Safari shows a black preview and the landmark loop has no frames.
   useEffect(() => {
-    const needsVideo = step === "camera" || step === "calibration";
+    const needsVideo = step === "camera" || (step === "calibration" && calibrationMode === "card");
     if (!needsVideo) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       detectionRunningRef.current = false;
@@ -379,12 +382,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   }, [calibrationMode, cameraVersion, modelLoading, startDetectionLoop, step]);
 
   // ─── CAPTURE & MEASURE ───
-  const performMeasurement = useCallback((calibrationOverride?: CalibrationResult, captured?: { width: number; height: number; landmarks: NormalizedLandmark[] }) => {
+  const performMeasurement = useCallback((calibrationOverride?: CalibrationResult, captured?: { width: number; height: number; landmarks: NormalizedLandmark[] }, prepared?: ReturnType<typeof prepareFaceScan>) => {
     const video = videoRef.current;
-    const landmarks = captured?.landmarks ?? latestLandmarksRef.current;
-    const videoWidth = captured?.width ?? video?.videoWidth ?? 0;
-    const videoHeight = captured?.height ?? video?.videoHeight ?? 0;
-    if ((!video && !captured) || !videoWidth || !videoHeight || !landmarks || landmarks.length < 468) {
+    const landmarks = captured?.landmarks ?? prepared?.landmarks ?? latestLandmarksRef.current;
+    const videoWidth = captured?.width ?? prepared?.width ?? video?.videoWidth ?? 0;
+    const videoHeight = captured?.height ?? prepared?.height ?? video?.videoHeight ?? 0;
+    if ((!video && !captured && !prepared) || !videoWidth || !videoHeight || !landmarks || landmarks.length < 468) {
       setError("Face landmarks were lost. Center your face in the guide and try again.");
       setLandmarksReady(false);
       stableFaceRef.current = null;
@@ -392,8 +395,8 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       return;
     }
 
-    if ((!captured && (!landmarksReady || performance.now() - lastDetectionAtRef.current > 1_500)) ||
-        analyzeFacePosition(landmarks, captured ? 1 : latestFaceCountRef.current, videoWidth, videoHeight).status !== "ready") {
+    if ((!captured && !prepared && (!landmarksReady || performance.now() - lastDetectionAtRef.current > 1_500)) ||
+        analyzeFacePosition(landmarks, captured || prepared ? 1 : latestFaceCountRef.current, videoWidth, videoHeight).status !== "ready") {
       setError("Center your face, keep your head straight, and try again.");
       setStep(captured ? "corners" : "camera");
       return;
@@ -403,7 +406,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     trackEvent("calibration_completed", { method: calibrationOverride?.method ?? "heuristic" });
 
     // Freeze recent valid camera frames before the video view unmounts.
-    const samples = recentSamplesRef.current.filter(sample =>
+    const samples = prepared?.samples ?? recentSamplesRef.current.filter(sample =>
       performance.now() - sample.capturedAt <= 4_000 && sample.width === videoWidth && sample.height === videoHeight
     );
 
@@ -474,7 +477,13 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   // ─── CALIBRATION HANDLERS ───
   const handleSkipCalibration = () => {
     trackEvent("calibration_skipped");
-    performMeasurement();
+    const prepared = preparedScanRef.current;
+    if (!prepared) {
+      setError("Your scan is no longer available. Please scan again.");
+      setStep("camera");
+      return;
+    }
+    performMeasurement(undefined, undefined, prepared);
   };
 
   const handleCardCalibration = () => {
@@ -680,6 +689,14 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
             <button
               type="button"
               onClick={() => {
+                try {
+                  if (latestFaceCountRef.current !== 1) throw new Error("Keep one face in the guide before continuing.");
+                  preparedScanRef.current = prepareFaceScan(recentSamplesRef.current, performance.now());
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Please scan again.");
+                  return;
+                }
+                setError(null);
                 if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
                 detectionRunningRef.current = false;
                 setCameraReady(false);
@@ -707,20 +724,12 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       {/* ──── CALIBRATION CHOICE ──── */}
       {step === "calibration" && calibrationMode === "choosing" && (
         <div className="mx-4 max-w-lg text-center">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            aria-hidden="true"
-            className="pointer-events-none absolute h-px w-px opacity-0"
-          />
           <h3 className="text-xl font-extrabold text-white">Improve accuracy</h3>
           <p className="mt-2 text-sm text-slate-400">
             Capture your face with a standard bank card, then mark its corners to set the scale. Without a card, sizing uses an average iris diameter.
           </p>
 
-          {!landmarksReady && <p role="status" className="mt-3 text-sm text-amber-300">{faceGuidance.message}</p>}
+          <p className="mt-3 text-sm text-teal-300">Your scan is ready. Choose how to calibrate it.</p>
           <div className="mt-8 grid gap-4">
             <button
               type="button"
@@ -742,7 +751,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
             <button
               type="button"
               onClick={handleSkipCalibration}
-              disabled={!landmarksReady || !cameraReady}
+              disabled={!preparedScanRef.current}
               className="group flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-900/60 p-5 text-left transition hover:border-slate-600 hover:bg-slate-900/80 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-slate-400">

@@ -342,6 +342,23 @@ export type FaceMeasurementSample = {
   capturedAt: number;
 };
 
+/** Freeze the visible scan before leaving the camera, so calibration does not
+ * depend on a hidden video continuing to play on mobile browsers. */
+export function prepareFaceScan(samples: FaceMeasurementSample[], now: number) {
+  const latest = samples[samples.length - 1];
+  if (!latest || now - latest.capturedAt > 1_500 || now < latest.capturedAt ||
+      analyzeFacePosition(latest.landmarks, 1, latest.width, latest.height).status !== "ready") {
+    throw new Error("Hold still with your face centred before continuing.");
+  }
+  return {
+    width: latest.width,
+    height: latest.height,
+    landmarks: latest.landmarks,
+    samples: samples.filter(sample => now - sample.capturedAt <= 4_000 && sample.capturedAt <= now &&
+      sample.width === latest.width && sample.height === latest.height)
+  };
+}
+
 function median(values: number[]) {
   const sorted = [...values].sort((a, b) => a - b);
   const middle = Math.floor(sorted.length / 2);
