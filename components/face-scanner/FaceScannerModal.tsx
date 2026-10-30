@@ -31,7 +31,8 @@ import {
   analyzeFacePosition,
   advanceFaceStability,
   type FaceStability,
-  calibrateWithIris,
+  computeIrisMeasurementFromSamples,
+  type FaceMeasurementSample,
   computeFaceMeasurements,
 } from "@/lib/face-measurement";
 import type { FaceMeasurements } from "@/lib/frame-fit";
@@ -128,8 +129,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const [landmarksReady, setLandmarksReady] = useState(false);
 
   // Calibration
-  const [calibrationMode, setCalibrationMode] = useState<"choosing" | "card" | "skip">("choosing");
-  const [calibrationResult, setCalibrationResult] = useState<CalibrationResult | null>(null);
+  const [calibrationMode, setCalibrationMode] = useState<"choosing" | "card">("choosing");
 
   // Results
   const [measurement, setMeasurement] = useState<FaceMeasurementResult | null>(null);
@@ -141,12 +141,11 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const animFrameRef = useRef<number>(0);
   const landmarkerRef = useRef<any>(null);
   const latestLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
-  const readyFrameCountRef = useRef(0);
   const stableFaceRef = useRef<FaceStability | null>(null);
+  const recentSamplesRef = useRef<FaceMeasurementSample[]>([]);
   const lastDetectionAtRef = useRef(0);
   const latestFaceCountRef = useRef(0);
   const detectionRunningRef = useRef(false);
-  const videoDimensionsRef = useRef({ width: 0, height: 0 });
   const mountedRef = useRef(false);
   const measurementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -154,6 +153,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const stopCamera = useCallback(() => {
     cameraRequestRef.current++;
     stableFaceRef.current = null;
+    recentSamplesRef.current = [];
     if (measurementTimerRef.current) clearTimeout(measurementTimerRef.current);
     measurementTimerRef.current = null;
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -182,10 +182,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     const requestId = cameraRequestRef.current;
     latestLandmarksRef.current = null;
     latestFaceCountRef.current = 0;
-    readyFrameCountRef.current = 0;
     stableFaceRef.current = null;
+    recentSamplesRef.current = [];
     setLandmarksReady(false);
-    setCalibrationResult(null);
     setCalibrationMode("choosing");
     setError(null);
     setCameraReady(false);
@@ -276,10 +275,6 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         return;
       }
 
-      if (video.videoWidth > 0 && video.videoHeight > 0) {
-        videoDimensionsRef.current = { width: video.videoWidth, height: video.videoHeight };
-      }
-
       const now = performance.now();
       if (video.currentTime === lastTimestamp) {
         animFrameRef.current = requestAnimationFrame(detect);
@@ -296,24 +291,33 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         latestLandmarksRef.current = landmarks;
 
         const guidance = analyzeFacePosition(landmarks, faceCount, video.videoWidth, video.videoHeight);
-        lastDetectionAtRef.current = now;
+        // Inference may itself take more than a second on slower phones.
+        lastDetectionAtRef.current = performance.now();
         setFaceGuidance(guidance);
 
         if (guidance.status === "ready") {
           const stability = advanceFaceStability(stableFaceRef.current, landmarks!, now);
           stableFaceRef.current = stability.state;
+          if (stability.state.frames === 1) recentSamplesRef.current = [];
+          const capturedAt = lastDetectionAtRef.current;
+          recentSamplesRef.current = [...recentSamplesRef.current, {
+            landmarks: landmarks!.map(({ x, y, z }) => ({ x, y, z })),
+            width: video.videoWidth, height: video.videoHeight, capturedAt
+          }].filter(sample => capturedAt - sample.capturedAt <= 4_000).slice(-12);
           setLandmarksReady(stability.ready);
           if (!stability.ready) setFaceGuidance({ ...guidance, message: "Hold still for a moment to confirm your position" });
         } else {
-          readyFrameCountRef.current = 0;
           stableFaceRef.current = null;
+          recentSamplesRef.current = [];
           setLandmarksReady(false);
         }
       } catch {
         latestLandmarksRef.current = null;
-        readyFrameCountRef.current = 0;
+        lastDetectionAtRef.current = 0;
         stableFaceRef.current = null;
+        recentSamplesRef.current = [];
         setLandmarksReady(false);
+        setFaceGuidance({ status: "no_face", message: "Face detection interrupted. Hold still and try again.", confidence: 0 });
       }
 
       animFrameRef.current = requestAnimationFrame(detect);
@@ -333,6 +337,16 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
       return;
     }
     if (modelLoading) return;
+
+    // Every preview mounts a new video element. Do not let readiness or
+    // samples from the previous element enable capture before it starts.
+    setCameraReady(false);
+    setLandmarksReady(false);
+    latestLandmarksRef.current = null;
+    latestFaceCountRef.current = 0;
+    lastDetectionAtRef.current = 0;
+    stableFaceRef.current = null;
+    recentSamplesRef.current = [];
 
     let cancelled = false;
     let frameId = 0;
@@ -373,7 +387,6 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     if ((!video && !captured) || !videoWidth || !videoHeight || !landmarks || landmarks.length < 468) {
       setError("Face landmarks were lost. Center your face in the guide and try again.");
       setLandmarksReady(false);
-      readyFrameCountRef.current = 0;
       stableFaceRef.current = null;
       setStep("camera");
       return;
@@ -387,22 +400,29 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
     }
     setError(null);
     setStep("scanning");
-    trackEvent("calibration_completed", { method: calibrationOverride?.method ?? calibrationResult?.method ?? "heuristic" });
+    trackEvent("calibration_completed", { method: calibrationOverride?.method ?? "heuristic" });
 
-    // Use calibration result or fall back to iris heuristic
-    const cal = calibrationOverride ?? calibrationResult ?? calibrateWithIris(landmarks, videoWidth, videoHeight);
+    // Freeze recent valid camera frames before the video view unmounts.
+    const samples = recentSamplesRef.current.filter(sample =>
+      performance.now() - sample.capturedAt <= 4_000 && sample.width === videoWidth && sample.height === videoHeight
+    );
 
     if (measurementTimerRef.current) clearTimeout(measurementTimerRef.current);
     measurementTimerRef.current = setTimeout(() => {
       measurementTimerRef.current = null;
       if (!mountedRef.current) return;
       try {
-        const result = computeFaceMeasurements(
-          landmarks,
-          videoWidth,
-          videoHeight,
-          cal
-        );
+        let result: FaceMeasurementResult;
+        let cal: CalibrationResult;
+        if (captured) {
+          if (!calibrationOverride) throw new Error("Card calibration is missing. Mark the corners again.");
+          cal = calibrationOverride;
+          result = computeFaceMeasurements(landmarks, videoWidth, videoHeight, cal);
+        } else {
+          const aggregate = computeIrisMeasurementFromSamples(samples);
+          result = aggregate.result;
+          cal = aggregate.calibration;
+        }
 
         setMeasurement(result);
         trackEvent("measurement_completed", {
@@ -449,25 +469,11 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
         setStep(captured ? "corners" : "camera");
       }
     }, 1200); // Brief scanning animation delay
-  }, [calibrationResult, landmarksReady, stopCamera]);
+  }, [landmarksReady, stopCamera]);
 
   // ─── CALIBRATION HANDLERS ───
   const handleSkipCalibration = () => {
-    setCalibrationMode("skip");
     trackEvent("calibration_skipped");
-    // Use iris-based heuristic calibration
-    const landmarks = latestLandmarksRef.current;
-    const video = videoRef.current;
-    if (landmarks && video) {
-      const cal = calibrateWithIris(
-        landmarks,
-        video.videoWidth || videoDimensionsRef.current.width,
-        video.videoHeight || videoDimensionsRef.current.height
-      );
-      setCalibrationResult(cal);
-      performMeasurement(cal);
-      return;
-    }
     performMeasurement();
   };
 
@@ -509,10 +515,8 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
   const handleRetry = () => {
     setCapture(null);
     setMeasurement(null);
-    setCalibrationResult(null);
     setCalibrationMode("choosing");
     setLandmarksReady(false);
-    readyFrameCountRef.current = 0;
     stableFaceRef.current = null;
     setError(null);
     stopCamera();
@@ -678,6 +682,9 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               onClick={() => {
                 if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
                 detectionRunningRef.current = false;
+                setCameraReady(false);
+                setLandmarksReady(false);
+                setCalibrationMode("choosing");
                 setStep("calibration");
               }}
               disabled={!landmarksReady}
@@ -736,7 +743,7 @@ export default function FaceScannerModal({ onClose }: FaceScannerModalProps) {
               type="button"
               onClick={handleSkipCalibration}
               disabled={!landmarksReady || !cameraReady}
-              className="group flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-900/60 p-5 text-left transition hover:border-slate-600 hover:bg-slate-900/80"
+              className="group flex items-center gap-4 rounded-2xl border border-slate-700 bg-slate-900/60 p-5 text-left transition hover:border-slate-600 hover:bg-slate-900/80 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800 text-slate-400">
                 <SkipForward className="h-6 w-6" />

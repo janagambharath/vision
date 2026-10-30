@@ -9,7 +9,7 @@ interface FaceGuideOverlayProps {
   showLandmarks?: boolean;
 }
 
-export function FaceGuideOverlay({ status, message, confidence, showLandmarks: _showLandmarks = false }: FaceGuideOverlayProps) {
+export function FaceGuideOverlay({ status, message, confidence: _confidence, showLandmarks: _showLandmarks = false }: FaceGuideOverlayProps) {
   const isReady = status === "ready";
   const hasWarning = status !== "ready" && status !== "no_face";
 
@@ -117,11 +117,7 @@ export function FaceGuideOverlay({ status, message, confidence, showLandmarks: _
             )}
             <p className="text-sm font-bold">{message}</p>
           </div>
-          {isReady && (
-            <p className="mt-1 text-[11px] text-emerald-300/70">
-              Confidence: {Math.round(confidence * 100)}%
-            </p>
-          )}
+
         </div>
       </div>
     </div>

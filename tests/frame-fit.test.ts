@@ -8,7 +8,7 @@ import {
   type FaceMeasurements,
   type ProductMeasurements,
 } from "../lib/frame-fit";
-import { advanceFaceStability, analyzeFacePosition, calibrateWithCard, computeFaceMeasurements } from "../lib/face-measurement";
+import { advanceFaceStability, analyzeFacePosition, calibrateWithCard, computeFaceMeasurements, computeIrisMeasurementFromSamples } from "../lib/face-measurement";
 
 test("calibrateWithCard uses a standard horizontal card width and validates its aspect ratio", () => {
   const calibration = calibrateWithCard({
@@ -238,7 +238,7 @@ test("frames with only saved text measurements are ranked alongside total-width 
 
 function alignedFace() {
   const points = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
-  points[234].x = 0.27; points[454].x = 0.73;
+  points[234].x = 0.34; points[454].x = 0.66;
   points[10].y = 0.18; points[152].y = 0.82;
   points[33] = { x: 0.38, y: 0.4, z: 0 }; points[133] = { x: 0.45, y: 0.4, z: 0 };
   points[263] = { x: 0.62, y: 0.4, z: 0 }; points[362] = { x: 0.55, y: 0.4, z: 0 };
@@ -298,4 +298,58 @@ test("natural pose variation does not lock the capture controls", () => {
   points[1].x = 0.53;
   points[263].y = 0.42;
   assert.equal(analyzeFacePosition(points, 1, 1280, 720).status, "ready");
+});
+
+
+test("face guidance follows the visible square crop on landscape and portrait cameras", () => {
+  const square = alignedFace();
+  const toCamera = (width: number, height: number) => {
+    const visible = Math.min(width, height);
+    return square.map(point => ({
+      x: (point.x * visible + (width - visible) / 2) / width,
+      y: (point.y * visible + (height - visible) / 2) / height,
+      z: point.z
+    }));
+  };
+  for (const [width, height] of [[720, 720], [1280, 720], [720, 1280]]) {
+    assert.equal(analyzeFacePosition(toCamera(width, height), 1, width, height).status, "ready");
+  }
+  const clipped = toCamera(1280, 720);
+  clipped[10].y = -0.01;
+  assert.equal(analyzeFacePosition(clipped, 1, 1280, 720).status, "face_clipped");
+});
+
+
+function realisticIrisSample(irisDiameterPx: number, capturedAt: number) {
+  const points = alignedFace();
+  const place = (index: number, x: number, y: number) => { points[index] = { x: x / 1280, y: y / 1280, z: 0 }; };
+  place(234, 295, 640); place(454, 985, 640);
+  place(10, 640, 250); place(152, 640, 1000);
+  place(468, 482.5, 500); place(473, 797.5, 500);
+  place(129, 555, 640); place(358, 725, 640);
+  place(54, 390, 350); place(284, 890, 350);
+  place(116, 300, 600); place(345, 980, 600);
+  place(172, 400, 850); place(397, 880, 850);
+  place(469, 482.5 - irisDiameterPx / 2, 500); place(471, 482.5 + irisDiameterPx / 2, 500);
+  place(474, 797.5 - irisDiameterPx / 2, 500); place(476, 797.5 + irisDiameterPx / 2, 500);
+  return { landmarks: points, width: 1280, height: 1280, capturedAt };
+}
+
+test("iris estimate uses the middle of stable frames and rejects an outlier", () => {
+  const samples = [58, 58.5, 59, 58.2, 35].map((diameter, index) => realisticIrisSample(diameter, index * 250));
+  const aggregate = computeIrisMeasurementFromSamples(samples);
+  assert.equal(aggregate.sampleCount, 4);
+  assert.ok(Math.abs(aggregate.result.faceWidthMm! - 139) < 3);
+  assert.equal(aggregate.result.measurementQuality, "Approximate");
+  assert.equal(aggregate.calibration.method, "heuristic");
+});
+
+test("iris estimate asks for another scan when too few frames are usable", () => {
+  const samples = [58, 58, 2, 2].map((diameter, index) => realisticIrisSample(diameter, index * 250));
+  assert.throws(() => computeIrisMeasurementFromSamples(samples), /steady measurement/);
+});
+
+test("iris estimate rejects unstable scales rather than saving a misleading result", () => {
+  const samples = [30, 45, 60, 75, 95].map((diameter, index) => realisticIrisSample(diameter, index * 250));
+  assert.throws(() => computeIrisMeasurementFromSamples(samples), /changed while scanning/);
 });

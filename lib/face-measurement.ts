@@ -335,6 +335,68 @@ export function computeFaceMeasurements(
   };
 }
 
+export type FaceMeasurementSample = {
+  landmarks: NormalizedLandmark[];
+  width: number;
+  height: number;
+  capturedAt: number;
+};
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/** Reduce single-frame landmark jitter; iris calibration is still approximate. */
+export function computeIrisMeasurementFromSamples(samples: FaceMeasurementSample[]) {
+  const valid: { result: FaceMeasurementResult; calibration: CalibrationResult }[] = [];
+  for (const sample of samples) {
+    try {
+      const calibration = calibrateWithIris(sample.landmarks, sample.width, sample.height);
+      const result = computeFaceMeasurements(sample.landmarks, sample.width, sample.height, calibration);
+      valid.push({ result, calibration });
+    } catch {
+      // A blink or poorly resolved iris can invalidate an individual frame.
+    }
+  }
+  if (valid.length < 3) {
+    throw new Error("We could not get a steady measurement. Try again in even light or use a reference card.");
+  }
+  const centre = median(valid.map(sample => sample.result.faceWidthMm!));
+  const consistent = valid.filter(sample => Math.abs(sample.result.faceWidthMm! - centre) / centre <= 0.12);
+  if (consistent.length < 3) {
+    throw new Error("Measurements changed while scanning. Hold still and try again or use a reference card.");
+  }
+  const faceWidthMm = round1(median(consistent.map(sample => sample.result.faceWidthMm!)));
+  const representative = consistent.reduce((best, sample) =>
+    Math.abs(sample.result.faceWidthMm! - faceWidthMm) < Math.abs(best.result.faceWidthMm! - faceWidthMm) ? sample : best
+  );
+  const medianField = (key: "faceHeightMm" | "estimatedPdMm" | "interocularWidthMm" | "noseWidthMm") =>
+    round1(median(consistent.map(sample => sample.result[key]!)));
+  const shapeCounts = new Map<FaceShape, number>();
+  for (const sample of consistent) {
+    const shape = sample.result.faceShape;
+    if (shape) shapeCounts.set(shape, (shapeCounts.get(shape) ?? 0) + 1);
+  }
+  const faceShape = [...shapeCounts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? representative.result.faceShape;
+  return {
+    result: {
+      ...representative.result,
+      faceWidthMm,
+      faceHeightMm: medianField("faceHeightMm"),
+      estimatedPdMm: medianField("estimatedPdMm"),
+      interocularWidthMm: medianField("interocularWidthMm"),
+      noseWidthMm: medianField("noseWidthMm"),
+      faceShape,
+      recommendedSize: classifyFrameSize(faceWidthMm),
+      measurementQuality: "Approximate" as const
+    },
+    calibration: { ...representative.calibration, confidence: median(consistent.map(sample => sample.calibration.confidence)) },
+    sampleCount: consistent.length
+  };
+}
+
 // ─── FACE SHAPE CLASSIFICATION ───
 
 /**
@@ -449,29 +511,43 @@ export function analyzeFacePosition(
     return { status: "multiple_faces", message: "Only one face should be visible", confidence: 0 };
   }
 
+  // The preview uses object-cover in a square. Compare positions against the
+  // visible crop, while keeping pixel measurements in the original image.
+  if (!Number.isFinite(imageWidth) || imageWidth <= 0 || !Number.isFinite(imageHeight) || imageHeight <= 0) {
+    return { status: "no_face", message: "Waiting for camera video", confidence: 0 };
+  }
+  const visibleSize = Math.min(imageWidth, imageHeight);
+  const offsetX = (imageWidth - visibleSize) / 2;
+  const offsetY = (imageHeight - visibleSize) / 2;
+  const inPreview = (point: NormalizedLandmark) => ({
+    x: (point.x * imageWidth - offsetX) / visibleSize,
+    y: (point.y * imageHeight - offsetY) / visibleSize
+  });
+
   // Check if face is centered (nose tip should be near center)
   const noseTip = landmarks[LANDMARK.noseTip];
+  const previewNose = inPreview(noseTip);
 
   // Check horizontal position
-  if (noseTip.x < 0.3) {
-    return { status: "too_left", message: "Move slightly to the right", confidence: 0.4 };
+  if (previewNose.x < 0.3) {
+    return { status: "too_left", message: "Move toward the centre of the guide", confidence: 0.4 };
   }
-  if (noseTip.x > 0.7) {
-    return { status: "too_right", message: "Move slightly to the left", confidence: 0.4 };
+  if (previewNose.x > 0.7) {
+    return { status: "too_right", message: "Move toward the centre of the guide", confidence: 0.4 };
   }
 
   // Check vertical position
-  if (noseTip.y < 0.3) {
+  if (previewNose.y < 0.3) {
     return { status: "too_high", message: "Move your face down a bit", confidence: 0.4 };
   }
-  if (noseTip.y > 0.7) {
+  if (previewNose.y > 0.7) {
     return { status: "too_low", message: "Move your face up a bit", confidence: 0.4 };
   }
 
   // Check face size (too close / too far)
   const leftCheek = landmarks[LANDMARK.leftCheek];
   const rightCheek = landmarks[LANDMARK.rightCheek];
-  const faceWidth = Math.abs(rightCheek.x - leftCheek.x);
+  const faceWidth = Math.abs(rightCheek.x - leftCheek.x) * imageWidth / visibleSize;
 
   if (faceWidth < 0.25) {
     return { status: "too_far", message: "Move closer to the camera", confidence: 0.5 };
@@ -490,7 +566,10 @@ export function analyzeFacePosition(
   }
 
   const boundary = [leftCheek, rightCheek, landmarks[10], landmarks[152]];
-  if (boundary.some(point => point.x < 0.02 || point.x > 0.98 || point.y < 0.02 || point.y > 0.98)) {
+  if (boundary.some(point => {
+    const visible = inPreview(point);
+    return visible.x < 0.02 || visible.x > 0.98 || visible.y < 0.02 || visible.y > 0.98;
+  })) {
     return { status: "face_clipped", message: "Keep your whole face visible, including forehead and chin", confidence: 0.3 };
   }
   const leftDistance = Math.abs(noseTip.x - leftEye.x);
@@ -509,7 +588,7 @@ export function analyzeFacePosition(
   }
 
   // All checks passed
-  const centeredness = 1 - (Math.abs(noseTip.x - 0.5) + Math.abs(noseTip.y - 0.45));
+  const centeredness = 1 - (Math.abs(previewNose.x - 0.5) + Math.abs(previewNose.y - 0.45));
   const confidence = Math.min(1, Math.max(0.6, centeredness + faceWidth * 0.5));
 
   return { status: "ready", message: "Hold still — scanning", confidence };
